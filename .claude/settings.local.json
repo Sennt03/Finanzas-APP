@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node -e \"require\\('./src/app'\\); console.log\\('OK'\\)\")",
       "Bash(npx ng *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npx --yes ng add @angular/pwa --skip-confirmation --defaults)",
+      "Bash(npm install *)"
     ]
   }
 }
