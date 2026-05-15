@@ -95,6 +95,24 @@ export class SettingsComponent {
     ));
   }
 
+  toggleItemCredit(catIdx: number, itemIdx: number) {
+    this.draftCategories.update(list => list.map((c, i) => {
+      if (i !== catIdx) return c;
+      return {
+        ...c,
+        items: c.items.map((it, j) => {
+          if (j !== itemIdx) return it;
+          const next = it.paymentMethod === 'credit' ? 'cash' : 'credit';
+          return { ...it, paymentMethod: next };
+        })
+      };
+    }));
+  }
+
+  isCreditItem(it: { paymentMethod?: 'cash' | 'credit' }): boolean {
+    return it.paymentMethod === 'credit';
+  }
+
   save() {
     if (this.draftTotal() > this.draftSalary()) {
       toastr.error(`Excede el sueldo en ${(this.draftTotal() - this.draftSalary()).toFixed(2)}`, 'Inválido');

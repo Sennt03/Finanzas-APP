@@ -36,9 +36,17 @@
           </button>
         </div>
         @for (it of cat.items; track $index; let ii = $index) {
-          <div class="edit-item">
+          <div class="edit-item" [class.is-credit]="isCreditItem(it)">
             <input type="text" [ngModel]="it.name" (ngModelChange)="updateItemName(ci, ii, $event)" placeholder="Item">
             <input type="number" min="0" [ngModel]="it.amount" (ngModelChange)="updateItemAmount(ci, ii, $event)">
+            <button
+              type="button"
+              class="btn-icon credit-toggle"
+              [class.active]="isCreditItem(it)"
+              (click)="toggleItemCredit(ci, ii)"
+              [title]="isCreditItem(it) ? 'Se paga con tarjeta · click para cambiar a efectivo' : 'Marcar como pago con tarjeta'">
+              <i class="bx bx-credit-card"></i>
+            </button>
             <button class="btn-icon" (click)="removeItem(ci, ii)" title="Eliminar item">
               <i class="bx bx-x"></i>
             </button>

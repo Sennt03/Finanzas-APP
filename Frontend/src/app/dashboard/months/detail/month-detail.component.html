@@ -74,7 +74,10 @@
             <span class="label">Tarjeta de crédito</span>
             <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
             @if (s.summary.creditCard.diferidosShare > 0) {
-              <small>incluye {{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
+              <small>diferidos: {{ s.summary.creditCard.diferidosShare | number:'1.2-2' }}</small>
+            }
+            @if (s.summary.creditCard.itemsShare > 0) {
+              <small>items presupuesto: {{ s.summary.creditCard.itemsShare | number:'1.2-2' }}</small>
             }
             <small [class.positive]="s.summary.creditCard.groupPaid">{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente de pagar' }}</small>
           </div>
@@ -110,9 +113,17 @@
               </button>
             </div>
             @for (it of cat.items; track $index; let ii = $index) {
-              <div class="edit-item">
+              <div class="edit-item" [class.is-credit]="isCreditItem(it)">
                 <input type="text" [ngModel]="it.name" (ngModelChange)="updateItemName(ci, ii, $event)" placeholder="Item">
                 <input type="number" min="0" [ngModel]="it.budgetedAmount" (ngModelChange)="updateItemAmount(ci, ii, $event)" placeholder="0">
+                <button
+                  type="button"
+                  class="btn-icon credit-toggle"
+                  [class.active]="isCreditItem(it)"
+                  (click)="toggleDraftItemCredit(ci, ii)"
+                  [title]="isCreditItem(it) ? 'Se paga con tarjeta · click para volver a efectivo' : 'Marcar como pago con tarjeta'">
+                  <i class="bx bx-credit-card"></i>
+                </button>
                 <button class="btn-icon" (click)="removeItem(ci, ii)" title="Eliminar item">
                   <i class="bx bx-x"></i>
                 </button>
@@ -166,6 +177,12 @@
                 <span class="free" [class.warn]="categoryFreeAmount(cat) < 0">libre {{ categoryFreeAmount(cat) | number:'1.2-2' }}</span>
               </div>
             }
+            @if (cat.isVirtual) {
+              <div class="cat-budget credit-total" [class.paid]="cat.categoryPaid">
+                <span class="label">total a pagar</span>
+                <span class="total">{{ (cat.totalAll || 0) | number:'1.2-2' }}</span>
+              </div>
+            }
           </div>
 
           @if (!cat.isVirtual && cat.totalAmount > 0) {
@@ -174,63 +191,108 @@
             </div>
           }
 
-          @if (cat.items.length === 0 && !isAddingTo(cat)) {
+          @if (!cat.isVirtual && cat.items.length === 0 && !isAddingTo(cat)) {
             <p class="muted small">Sin items en esta categoría</p>
           }
+          @if (cat.isVirtual && cat.items.length === 0 && (!cat.externalCreditItems || cat.externalCreditItems.length === 0)) {
+            <p class="muted small">Sin compras con tarjeta este mes</p>
+          }
           @for (it of cat.items; track it._id) {
-            <div class="item"
-              [class.paid]="it.isPaid && !cat.isVirtual"
-              [class.partial]="!it.isPaid && it.paidAmount > 0 && !cat.isVirtual">
+            @if (!isDeletingItem(it._id)) {
+              <div class="item"
+                [class.paid]="it.isPaid && !cat.isVirtual"
+                [class.partial]="!it.isPaid && it.paidAmount > 0 && !cat.isVirtual"
+                [class.credit-item]="!cat.isVirtual && isCreditItem(it)">
 
-              @if (cat.isVirtual) {
-                <div class="item-readonly">
-                  <span class="name">{{ it.name }}</span>
-                  @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
-                </div>
-                <div class="amounts">
-                  <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
-                  <select class="convert-select" (change)="convertCuota(it, $any($event.target).value); $any($event.target).value=''">
-                    <option value="" disabled selected>⋮</option>
-                    <option value="expense">→ Gasto cash</option>
-                    <option value="income">→ Ingreso</option>
-                    @if (it.subType === 'diferido') { <option value="tdc">→ TDC 1 cuota</option> }
-                    @if (it.subType === 'tdc') { <option value="diferido">→ Diferido N cuotas</option> }
-                  </select>
-                </div>
-              } @else {
-                <label class="check">
-                  <input
-                    type="checkbox"
-                    [checked]="it.isPaid"
-                    [disabled]="isSaving(it)"
-                    (change)="onCheck(it, cat, $event)">
-                  <span class="name">{{ it.name }}</span>
-                  @if (!it.isPaid && it.paidAmount > 0) {
-                    <span class="partial-badge">parcial</span>
-                  }
-                </label>
-                <div class="amounts">
-                  <div class="amount-input" [class.saving]="isSaving(it)">
-                    <input
-                      type="number"
-                      min="0"
-                      [max]="it.budgetedAmount"
-                      [value]="draftValue(it)"
-                      [disabled]="isSaving(it)"
-                      (input)="onAmountInput(it, $any($event.target).value)"
-                      (blur)="commitAmount(it, cat)"
-                      (keydown.enter)="commitAmount(it, cat); $any($event.target).blur()">
-                    <span class="of">/ {{ it.budgetedAmount | number:'1.2-2' }}</span>
+                @if (cat.isVirtual) {
+                  <div class="item-readonly">
+                    <span class="name">{{ it.name }}</span>
+                    @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
                   </div>
-                  <select class="convert-select" (change)="convertItem(cat, it, $any($event.target).value); $any($event.target).value=''">
-                    <option value="" disabled selected>⋮</option>
-                    <option value="income">→ Ingreso</option>
-                    <option value="tdc">→ TDC</option>
-                    <option value="diferido">→ Diferido</option>
-                  </select>
-                  <button class="btn-icon mini" (click)="removeItemInline(cat, it)" title="Eliminar item">
-                    <i class="bx bx-x"></i>
-                  </button>
+                  <div class="amounts">
+                    <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+                    <select class="convert-select" (change)="convertCuota(it, $any($event.target).value); $any($event.target).value=''">
+                      <option value="" disabled selected>⋮</option>
+                      <option value="expense">→ Gasto cash</option>
+                      <option value="income">→ Ingreso</option>
+                      @if (it.subType === 'diferido') { <option value="tdc">→ TDC 1 cuota</option> }
+                      @if (it.subType === 'tdc') { <option value="diferido">→ Diferido N cuotas</option> }
+                    </select>
+                  </div>
+                } @else if (isCreditItem(it)) {
+                  <div class="credit-info"
+                    [title]="s.summary.creditCard.groupPaid ? 'Pagada junto con la tarjeta del mes' : 'Se paga al marcar la tarjeta del mes como pagada'">
+                    @if (s.summary.creditCard.groupPaid) {
+                      <i class="bx bx-check-circle status paid"></i>
+                    } @else {
+                      <i class="bx bx-credit-card status pending"></i>
+                    }
+                    <span class="name">{{ it.name }}</span>
+                    <span class="credit-badge">tarjeta</span>
+                  </div>
+                  <div class="amounts">
+                    <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+                    <button class="btn-icon mini" (click)="removeItemInline(cat, it)" title="Eliminar item">
+                      <i class="bx bx-x"></i>
+                    </button>
+                  </div>
+                } @else {
+                  <label class="check">
+                    <input
+                      type="checkbox"
+                      [checked]="it.isPaid"
+                      [disabled]="isSaving(it)"
+                      (change)="onCheck(it, cat, $event)">
+                    <span class="name">{{ it.name }}</span>
+                    @if (!it.isPaid && it.paidAmount > 0) {
+                      <span class="partial-badge">parcial</span>
+                    }
+                  </label>
+                  <div class="amounts">
+                    <div class="amount-input" [class.saving]="isSaving(it)">
+                      <input
+                        type="number"
+                        min="0"
+                        [max]="it.budgetedAmount"
+                        [value]="draftValue(it)"
+                        [disabled]="isSaving(it)"
+                        (input)="onAmountInput(it, $any($event.target).value)"
+                        (blur)="commitAmount(it, cat)"
+                        (keydown.enter)="commitAmount(it, cat); $any($event.target).blur()">
+                      <span class="of">/ {{ it.budgetedAmount | number:'1.2-2' }}</span>
+                    </div>
+                    <select class="convert-select" (change)="convertItem(cat, it, $any($event.target).value); $any($event.target).value=''">
+                      <option value="" disabled selected>⋮</option>
+                      <option value="income">→ Ingreso</option>
+                      <option value="tdc">→ TDC</option>
+                      <option value="diferido">→ Diferido</option>
+                    </select>
+                    <button class="btn-icon mini" (click)="removeItemInline(cat, it)" title="Eliminar item">
+                      <i class="bx bx-x"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          }
+
+          @if (cat.isVirtual && cat.externalCreditItems && cat.externalCreditItems.length > 0) {
+            <div class="ext-credit-block">
+              <div class="ext-credit-head">
+                <i class="bx bx-link"></i>
+                <span>También en tarjeta este mes</span>
+                <small class="muted">{{ cat.externalCreditItems.length }} {{ cat.externalCreditItems.length === 1 ? 'item' : 'items' }} en otras categorías</small>
+              </div>
+              @for (ext of cat.externalCreditItems; track ext.itemId) {
+                <div class="ext-credit-item" [class.paid]="ext.isPaid">
+                  @if (ext.isPaid) {
+                    <i class="bx bx-check-circle status paid"></i>
+                  } @else {
+                    <i class="bx bx-credit-card status pending"></i>
+                  }
+                  <span class="name">{{ ext.name }}</span>
+                  <span class="from-cat"><i class="bx bx-folder"></i> {{ ext.categoryName }}</span>
+                  <span class="amount">-{{ ext.amount | number:'1.2-2' }}</span>
                 </div>
               }
             </div>
@@ -238,9 +300,17 @@
 
           @if (!cat.isVirtual) {
             @if (isAddingTo(cat)) {
-              <div class="add-item-form">
+              <div class="add-item-form" [class.is-credit]="newItemPaymentMethod() === 'credit'">
                 <input type="text" placeholder="Nombre del item" [ngModel]="newItemName()" (ngModelChange)="newItemName.set($event)">
                 <input type="number" min="0" placeholder="Monto" [ngModel]="newItemAmount()" (ngModelChange)="newItemAmount.set($event)" (keydown.enter)="submitAddItem(cat)">
+                <button
+                  type="button"
+                  class="btn-icon credit-toggle"
+                  [class.active]="newItemPaymentMethod() === 'credit'"
+                  (click)="toggleNewItemCredit()"
+                  [title]="newItemPaymentMethod() === 'credit' ? 'Pago con tarjeta · click para efectivo' : 'Marcar como pago con tarjeta'">
+                  <i class="bx bx-credit-card"></i>
+                </button>
                 <button class="btn btn-primary btn-sm" (click)="submitAddItem(cat)">Agregar</button>
                 <button class="btn btn-outline btn-sm" (click)="closeAddItem()">Cancelar</button>
               </div>
@@ -348,6 +418,16 @@
         }
       </section>
     }
+  </div>
+}
+
+@if (pendingDelete(); as pd) {
+  <div class="undo-toast" role="status">
+    <i class="bx bx-trash"></i>
+    <span class="msg">Item <strong>{{ pd.name }}</strong> eliminado</span>
+    <button class="undo-btn" (click)="undoDelete()">
+      <i class="bx bx-undo"></i> Deshacer
+    </button>
   </div>
 }
 

@@ -5,7 +5,8 @@ const itemSchema = new Schema({
     budgetedAmount: { type: Number, default: 0, min: 0 },
     isPaid: { type: Boolean, default: false },
     paidAmount: { type: Number, default: 0, min: 0 },
-    paidAt: { type: Date, default: null }
+    paidAt: { type: Date, default: null },
+    paymentMethod: { type: String, enum: ['cash', 'credit'], default: 'cash' }
 }, { _id: true })
 
 const categorySchema = new Schema({

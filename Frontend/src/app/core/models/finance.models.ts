@@ -2,6 +2,7 @@ export type CategoryKind = 'expense' | 'savings' | 'credit';
 export type AccountType = 'transactional' | 'savings';
 export type SavingsMovementType = 'deposit' | 'withdrawal';
 export type ExtraType = 'expense' | 'income';
+export type PaymentMethod = 'cash' | 'credit';
 
 export interface LsAccount {
     _id: string;
@@ -18,6 +19,7 @@ export interface LsTemplateItem {
     _id?: string;
     name: string;
     amount: number;
+    paymentMethod?: PaymentMethod;
 }
 
 export interface LsTemplateCategory {
@@ -43,9 +45,19 @@ export interface LsStatementItem {
     isPaid: boolean;
     paidAmount: number;
     paidAt: string | null;
+    paymentMethod?: PaymentMethod;
     purchaseId?: string;
     cuotaId?: string;
     subType?: 'tdc' | 'diferido';
+}
+
+export interface LsExternalCreditItem {
+    itemId: string;
+    categoryId: string;
+    name: string;
+    amount: number;
+    categoryName: string;
+    isPaid: boolean;
 }
 
 export interface LsStatementCategory {
@@ -58,6 +70,8 @@ export interface LsStatementCategory {
     groupKey?: 'tdc' | 'diferidos';
     categoryPaid?: boolean;
     categoryPaidAt?: string | null;
+    externalCreditItems?: LsExternalCreditItem[];
+    totalAll?: number;
 }
 
 export interface LsStatementExtra {
@@ -88,6 +102,7 @@ export interface LsStatementSummary {
         groupPaid: boolean;
         tdcShare: number;
         diferidosShare: number;
+        itemsShare: number;
     };
 }
 

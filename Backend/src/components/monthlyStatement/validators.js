@@ -4,7 +4,8 @@ const validatorHandler = require('../../middlewares/validatorHandlers')
 const itemSchema = Joi.object({
     _id: Joi.any(),
     name: Joi.string().min(1).max(120).required(),
-    budgetedAmount: Joi.number().min(0).default(0)
+    budgetedAmount: Joi.number().min(0).default(0),
+    paymentMethod: Joi.string().valid('cash', 'credit').default('cash')
 })
 
 const categorySchema = Joi.object({
@@ -48,7 +49,8 @@ const toggleGroupSchema = Joi.object({
 
 const addItemSchema = Joi.object({
     name: Joi.string().min(1).max(120).required(),
-    budgetedAmount: Joi.number().min(0).default(0)
+    budgetedAmount: Joi.number().min(0).default(0),
+    paymentMethod: Joi.string().valid('cash', 'credit').default('cash')
 })
 
 const updateCategorySchema = Joi.object({

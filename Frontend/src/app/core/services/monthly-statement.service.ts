@@ -52,7 +52,7 @@ export class MonthlyStatementService {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/convert`, payload);
     }
 
-    addItemToCategory(id: string, categoryId: string, payload: { name: string; budgetedAmount: number }): Observable<LsMonthlyStatement> {
+    addItemToCategory(id: string, categoryId: string, payload: { name: string; budgetedAmount: number; paymentMethod?: 'cash' | 'credit' }): Observable<LsMonthlyStatement> {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items`, payload);
     }
 

@@ -5,8 +5,22 @@ const SavingsMovement = require('../savingsMovement/model')
 const creditPurchaseController = require('../creditPurchase/controller')
 const myError = require('../../libs/myError')
 
+function isCreditItem(it) {
+    return it && it.paymentMethod === 'credit'
+}
+
 function sumItems(cat) {
     return (cat.items || []).reduce((a, it) => a + (it.budgetedAmount || 0), 0)
+}
+
+function sumCreditItems(categories) {
+    return (categories || [])
+        .filter(c => !c.isVirtual)
+        .reduce((acc, cat) =>
+            acc + (cat.items || [])
+                .filter(isCreditItem)
+                .reduce((a, it) => a + (it.budgetedAmount || 0), 0)
+        , 0)
 }
 
 function categoryBudget(cat) {
@@ -17,9 +31,13 @@ function totalBudgeted(categories) {
     return (categories || []).reduce((acc, cat) => acc + categoryBudget(cat), 0)
 }
 
-function totalPaid(categories) {
+// Suma de pagos de items pagados en efectivo (los credit cuentan vía creditCard.paid)
+function totalPaidCash(categories) {
     return (categories || []).reduce((acc, cat) =>
-        acc + (cat.items || []).filter(i => i.isPaid || i.paidAmount > 0).reduce((a, it) => a + (it.paidAmount || 0), 0), 0)
+        acc + (cat.items || [])
+            .filter(i => !isCreditItem(i) && (i.isPaid || i.paidAmount > 0))
+            .reduce((a, it) => a + (it.paidAmount || 0), 0)
+    , 0)
 }
 
 function sumExtras(extras, type) {
@@ -28,7 +46,7 @@ function sumExtras(extras, type) {
         .reduce((a, e) => a + (e.amount || 0), 0)
 }
 
-function buildVirtualCategory(idTag, name, items, groupKey, creditState) {
+function buildVirtualCategory(idTag, name, items, groupKey, creditState, extras = {}) {
     const isPaid = !!(creditState && creditState[groupKey + 'Paid'])
     const paidAt = creditState ? creditState[groupKey + 'PaidAt'] : null
     return {
@@ -39,8 +57,30 @@ function buildVirtualCategory(idTag, name, items, groupKey, creditState) {
         isVirtual: true,
         groupKey,
         categoryPaid: isPaid,
-        categoryPaidAt: paidAt
+        categoryPaidAt: paidAt,
+        externalCreditItems: extras.externalCreditItems || [],
+        totalAll: extras.totalAll || 0
     }
+}
+
+function collectExternalCreditItems(categories) {
+    const out = []
+    for (const cat of categories || []) {
+        if (cat.isVirtual) continue
+        for (const it of cat.items || []) {
+            if (it && it.paymentMethod === 'credit') {
+                out.push({
+                    itemId: String(it._id),
+                    categoryId: String(cat._id),
+                    name: it.name,
+                    amount: it.budgetedAmount || 0,
+                    categoryName: cat.name,
+                    isPaid: !!it.isPaid
+                })
+            }
+        }
+    }
+    return out
 }
 
 async function buildEnrichedStatement(stmt, userId) {
@@ -48,14 +88,22 @@ async function buildEnrichedStatement(stmt, userId) {
     const cs = obj.creditState || {}
     const { tdc, diferidos } = await creditPurchaseController.findCuotasForMonth(userId, obj.year, obj.month)
 
+    // Items credit "dispersos" en otras categorías del statement
+    const externalCreditItems = collectExternalCreditItems(obj.categories || [])
+
     // Una sola categoría virtual con TDC + Diferidos combinados
     const allCreditItems = [
         ...tdc.map(i => ({ ...i, subType: 'tdc' })),
         ...diferidos.map(i => ({ ...i, subType: 'diferido' }))
     ]
     const virtualCats = []
-    if (allCreditItems.length > 0) {
-        virtualCats.push(buildVirtualCategory('__credit__', 'Tarjeta de crédito', allCreditItems, 'tdc', cs))
+    if (allCreditItems.length > 0 || externalCreditItems.length > 0) {
+        const cuotasTotal = allCreditItems.reduce((s, i) => s + (i.budgetedAmount || 0), 0)
+        const extTotal = externalCreditItems.reduce((s, i) => s + (i.amount || 0), 0)
+        virtualCats.push(buildVirtualCategory('__credit__', 'Tarjeta de crédito', allCreditItems, 'tdc', cs, {
+            externalCreditItems,
+            totalAll: cuotasTotal + extTotal
+        }))
     }
     obj.categories = [...(obj.categories || []), ...virtualCats]
 
@@ -65,14 +113,16 @@ async function buildEnrichedStatement(stmt, userId) {
     const monthDeposits = movs.filter(m => m.type === 'deposit').reduce((s, m) => s + m.amount, 0)
     const monthWithdrawals = movs.filter(m => m.type === 'withdrawal').reduce((s, m) => s + m.amount, 0)
 
-    const budgeted = totalBudgeted((obj.categories || []).filter(c => !c.isVirtual))
-    const paid = totalPaid((obj.categories || []).filter(c => !c.isVirtual))
+    const nonVirtual = (obj.categories || []).filter(c => !c.isVirtual)
+    const budgeted = totalBudgeted(nonVirtual)
+    const paid = totalPaidCash(nonVirtual)
     const extrasExpense = sumExtras(obj.extras, 'expense')
     const extrasIncome = sumExtras(obj.extras, 'income')
 
     const tdcShare = tdc.reduce((s, i) => s + i.budgetedAmount, 0)
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
-    const creditTotal = tdcShare + difShare
+    const itemsShare = sumCreditItems(nonVirtual)
+    const creditTotal = tdcShare + difShare + itemsShare
     const groupPaid = !!cs.tdcPaid
     const creditPaidAmt = groupPaid ? creditTotal : 0
     const creditPending = creditTotal - creditPaidAmt
@@ -95,7 +145,8 @@ async function buildEnrichedStatement(stmt, userId) {
             pending: creditPending,
             groupPaid,
             tdcShare,
-            diferidosShare: difShare
+            diferidosShare: difShare,
+            itemsShare
         }
     }
 
@@ -107,10 +158,22 @@ async function toggleCreditGroup(userId, statementId, { paid }) {
     if (!stmt) throw myError('Statement not found', 404)
 
     if (!stmt.creditState) stmt.creditState = {}
+    const now = new Date()
     stmt.creditState.tdcPaid = !!paid
     stmt.creditState.diferidosPaid = !!paid
-    stmt.creditState.tdcPaidAt = paid ? new Date() : null
-    stmt.creditState.diferidosPaidAt = paid ? new Date() : null
+    stmt.creditState.tdcPaidAt = paid ? now : null
+    stmt.creditState.diferidosPaidAt = paid ? now : null
+
+    // Propagar pago a items con paymentMethod='credit' dentro de las categorías del mes
+    for (const cat of stmt.categories || []) {
+        for (const it of cat.items || []) {
+            if (isCreditItem(it)) {
+                it.isPaid = !!paid
+                it.paidAmount = paid ? (it.budgetedAmount || 0) : 0
+                it.paidAt = paid ? now : null
+            }
+        }
+    }
 
     const CreditPurchase = require('../creditPurchase/model')
     const purchases = await CreditPurchase.find({ userId })
@@ -120,7 +183,7 @@ async function toggleCreditGroup(userId, statementId, { paid }) {
             if (c.year === stmt.year && c.month === stmt.month) {
                 c.isPaid = !!paid
                 c.paidAmount = paid ? c.amount : 0
-                c.paidAt = paid ? new Date() : null
+                c.paidAt = paid ? now : null
                 dirty = true
             }
         }
@@ -223,7 +286,8 @@ async function create(userId, { year, month, salary }) {
             budgetedAmount: it.amount || 0,
             isPaid: false,
             paidAmount: 0,
-            paidAt: null
+            paidAt: null,
+            paymentMethod: it.paymentMethod === 'credit' ? 'credit' : 'cash'
         }))
     }))
 
@@ -251,6 +315,7 @@ async function updateMeta(userId, id, { salary, categories }) {
                 oldMap.set(String(it._id), it)
             }
         }
+        const groupPaid = !!(stmt.creditState && stmt.creditState.tdcPaid)
         stmt.categories = categories.map(cat => ({
             _id: cat._id,
             name: cat.name,
@@ -258,13 +323,42 @@ async function updateMeta(userId, id, { salary, categories }) {
             totalAmount: cat.totalAmount || 0,
             items: (cat.items || []).map(it => {
                 const prev = it._id ? oldMap.get(String(it._id)) : null
+                const pm = it.paymentMethod === 'credit' ? 'credit' : 'cash'
+                const prevPm = prev?.paymentMethod === 'credit' ? 'credit' : 'cash'
+                const changedMethod = prev && prevPm !== pm
+
+                if (pm === 'credit') {
+                    // En credit el pago lo gobierna el toggle grupal
+                    return {
+                        _id: it._id,
+                        name: it.name,
+                        budgetedAmount: it.budgetedAmount || 0,
+                        isPaid: groupPaid,
+                        paidAmount: groupPaid ? (it.budgetedAmount || 0) : 0,
+                        paidAt: groupPaid ? (prev?.paidAt || new Date()) : null,
+                        paymentMethod: 'credit'
+                    }
+                }
+                // cash: si venía de credit, reseteamos el pago (lo de "pagado" venía del toggle grupal)
+                if (changedMethod) {
+                    return {
+                        _id: it._id,
+                        name: it.name,
+                        budgetedAmount: it.budgetedAmount || 0,
+                        isPaid: false,
+                        paidAmount: 0,
+                        paidAt: null,
+                        paymentMethod: 'cash'
+                    }
+                }
                 return {
                     _id: it._id,
                     name: it.name,
                     budgetedAmount: it.budgetedAmount || 0,
                     isPaid: prev?.isPaid || false,
                     paidAmount: prev?.paidAmount || 0,
-                    paidAt: prev?.paidAt || null
+                    paidAt: prev?.paidAt || null,
+                    paymentMethod: 'cash'
                 }
             })
         }))
@@ -302,6 +396,10 @@ async function setItemAmount(userId, id, { categoryId, itemId, amount, purchaseI
     if (!cat) throw myError('Categoría no encontrada', 404)
     const item = cat.items.id(itemId)
     if (!item) throw myError('Item no encontrado', 404)
+
+    if (isCreditItem(item)) {
+        throw myError('Este item se paga con tarjeta. Usa el toggle grupal de Tarjeta de crédito.', 400)
+    }
 
     const amt = Number(amount) || 0
     if (amt < 0) throw myError('Monto inválido', 400)
@@ -374,7 +472,7 @@ async function removeExtra(userId, id, extraId) {
     return buildEnrichedStatement(stmt, userId)
 }
 
-async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount }) {
+async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount, paymentMethod }) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
 
@@ -396,7 +494,17 @@ async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount 
         }
     }
 
-    cat.items.push({ name, budgetedAmount: amount, isPaid: false, paidAmount: 0, paidAt: null })
+    const pm = paymentMethod === 'credit' ? 'credit' : 'cash'
+    const groupPaid = !!(stmt.creditState && stmt.creditState.tdcPaid)
+    const startsPaid = pm === 'credit' && groupPaid
+    cat.items.push({
+        name,
+        budgetedAmount: amount,
+        isPaid: startsPaid,
+        paidAmount: startsPaid ? amount : 0,
+        paidAt: startsPaid ? new Date() : null,
+        paymentMethod: pm
+    })
     await stmt.save()
     return buildEnrichedStatement(stmt, userId)
 }

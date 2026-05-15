@@ -109,9 +109,11 @@
 
       .edit-item {
         display: grid;
-        grid-template-columns: 2fr 110px 32px;
+        grid-template-columns: 2fr 110px 32px 32px;
         gap: 8px;
         margin: 6px 0;
+        align-items: center;
+
         input {
           padding: 7px 10px;
           border-radius: $r-sm;
@@ -119,6 +121,20 @@
           background: $surface;
           font-size: 13.5px;
           &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+        }
+
+        &.is-credit {
+          input { border-color: color.adjust($credit, $lightness: 25%); background: $credit-soft; }
+        }
+
+        .credit-toggle {
+          color: $primary-faint;
+          &:hover { background: $credit-soft; color: $credit; }
+          &.active {
+            color: #fff;
+            background: $credit;
+            &:hover { background: color.adjust($credit, $lightness: -5%); color: #fff; }
+          }
         }
       }
     }

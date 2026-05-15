@@ -13,6 +13,7 @@ interface DraftItem {
   _id?: string;
   name: string;
   budgetedAmount: number;
+  paymentMethod: 'cash' | 'credit';
 }
 interface DraftCategory {
   _id?: string;
@@ -60,6 +61,19 @@ export class MonthDetailComponent {
   addingForCategory = signal<string | null>(null);
   newItemName = signal('');
   newItemAmount = signal<number | null>(null);
+  newItemPaymentMethod = signal<'cash' | 'credit'>('cash');
+
+  // Eliminación optimista con undo: solo un item pendiente a la vez
+  pendingDelete = signal<{
+    statementId: string;
+    categoryId: string;
+    itemId: string;
+    name: string;
+    timer: any;
+    deadline: number;
+  } | null>(null);
+
+  private readonly UNDO_DELAY_MS = 5000;
 
   monthLabel = computed(() => {
     const s = this.stmt();
@@ -202,7 +216,12 @@ export class MonthDetailComponent {
         name: c.name,
         kind: c.kind,
         totalAmount: c.totalAmount || 0,
-        items: c.items.map(i => ({ _id: i._id, name: i.name, budgetedAmount: i.budgetedAmount }))
+        items: c.items.map(i => ({
+          _id: i._id,
+          name: i.name,
+          budgetedAmount: i.budgetedAmount,
+          paymentMethod: i.paymentMethod === 'credit' ? 'credit' : 'cash'
+        }))
       }))
     );
     this.editMode.set(true);
@@ -231,10 +250,15 @@ export class MonthDetailComponent {
     this.addingForCategory.set(cat._id);
     this.newItemName.set('');
     this.newItemAmount.set(null);
+    this.newItemPaymentMethod.set('cash');
   }
 
   closeAddItem() {
     this.addingForCategory.set(null);
+  }
+
+  toggleNewItemCredit() {
+    this.newItemPaymentMethod.update(m => m === 'credit' ? 'cash' : 'credit');
   }
 
   isAddingTo(cat: LsStatementCategory): boolean {
@@ -249,7 +273,11 @@ export class MonthDetailComponent {
     if (!name) { toastr.error('Nombre requerido', ''); return; }
 
     this.loading.set(true);
-    this.svc.addItemToCategory(s._id, cat._id, { name, budgetedAmount: amount }).subscribe({
+    this.svc.addItemToCategory(s._id, cat._id, {
+      name,
+      budgetedAmount: amount,
+      paymentMethod: this.newItemPaymentMethod()
+    }).subscribe({
       next: (updated) => {
         this.stmt.set(updated);
         this.closeAddItem();
@@ -266,19 +294,63 @@ export class MonthDetailComponent {
   removeItemInline(cat: LsStatementCategory, item: LsStatementItem) {
     const s = this.stmt();
     if (!s || !cat._id || !item._id) return;
-    if (!confirm(`¿Eliminar "${item.name}"?`)) return;
-    this.loading.set(true);
-    this.svc.removeItemFromCategory(s._id, cat._id, item._id).subscribe({
-      next: (updated) => {
-        this.stmt.set(updated);
-        this.loading.set(false);
-        toastr.info('Item eliminado', '');
-      },
+
+    // Si ya hay un delete pendiente, comitearlo antes de programar este
+    this.flushPendingDelete();
+
+    const itemId = item._id;
+    const categoryId = cat._id;
+    const statementId = s._id;
+    const name = item.name;
+
+    const timer = setTimeout(() => this.commitDelete(itemId), this.UNDO_DELAY_MS);
+    this.pendingDelete.set({
+      statementId,
+      categoryId,
+      itemId,
+      name,
+      timer,
+      deadline: Date.now() + this.UNDO_DELAY_MS
+    });
+  }
+
+  isDeletingItem(itemId?: string): boolean {
+    if (!itemId) return false;
+    return this.pendingDelete()?.itemId === itemId;
+  }
+
+  undoDelete() {
+    const p = this.pendingDelete();
+    if (!p) return;
+    clearTimeout(p.timer);
+    this.pendingDelete.set(null);
+  }
+
+  flushPendingDelete() {
+    const p = this.pendingDelete();
+    if (!p) return;
+    clearTimeout(p.timer);
+    this.commitDelete(p.itemId);
+  }
+
+  private commitDelete(itemId: string) {
+    const p = this.pendingDelete();
+    if (!p || p.itemId !== itemId) return;
+    const { statementId, categoryId } = p;
+    this.pendingDelete.set(null);
+    this.svc.removeItemFromCategory(statementId, categoryId, itemId).subscribe({
+      next: (updated) => this.stmt.set(updated),
       error: (err) => {
-        this.loading.set(false);
-        toastr.error(err.error?.message ?? 'Error', '');
+        toastr.error(err.error?.message ?? 'No se pudo eliminar', '');
+        // Recargar para resincronizar en caso de error
+        if (this.stmt()) this.load(this.stmt()!._id);
       }
     });
+  }
+
+  ngOnDestroy() {
+    // Si quedó un delete pendiente al salir, comitearlo
+    this.flushPendingDelete();
   }
 
   cancelEdit() { this.editMode.set(false); }
@@ -301,8 +373,24 @@ export class MonthDetailComponent {
 
   addItem(catIdx: number) {
     this.draftCategories.update(list => list.map((c, i) =>
-      i === catIdx ? { ...c, items: [...c.items, { name: 'Nuevo item', budgetedAmount: 0 }] } : c
+      i === catIdx ? { ...c, items: [...c.items, { name: 'Nuevo item', budgetedAmount: 0, paymentMethod: 'cash' as const }] } : c
     ));
+  }
+
+  toggleDraftItemCredit(catIdx: number, itemIdx: number) {
+    this.draftCategories.update(list => list.map((c, i) => {
+      if (i !== catIdx) return c;
+      return {
+        ...c,
+        items: c.items.map((it, j) => j === itemIdx
+          ? { ...it, paymentMethod: it.paymentMethod === 'credit' ? 'cash' as const : 'credit' as const }
+          : it)
+      };
+    }));
+  }
+
+  isCreditItem(it: { paymentMethod?: 'cash' | 'credit' }): boolean {
+    return it.paymentMethod === 'credit';
   }
 
   removeItem(catIdx: number, itemIdx: number) {

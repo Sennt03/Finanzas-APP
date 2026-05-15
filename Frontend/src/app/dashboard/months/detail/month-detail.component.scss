@@ -646,6 +646,227 @@
   &:hover { color: $accent-hover; }
 }
 
+// ---- Items pagados con tarjeta dentro de su categoría ----
+.item.credit-item {
+  background: $credit-soft;
+  margin: 0 -8px;
+  padding: 10px 8px;
+  border-radius: $r-sm;
+  border-bottom-color: transparent;
+
+  .credit-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: default;
+
+    .status {
+      font-size: 18px;
+      flex-shrink: 0;
+      &.pending { color: $credit; }
+      &.paid    { color: $success; }
+    }
+
+    .name {
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &:has(.status.paid) .name { text-decoration: line-through; opacity: 0.6; }
+
+  .credit-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: $credit;
+    color: #fff;
+  }
+}
+
+// ---- "También en tarjeta" dentro de la categoría virtual TDC ----
+.ext-credit-block {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: $r-md;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px dashed color.adjust($credit, $lightness: 20%);
+
+  .ext-credit-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: $credit;
+    i { font-size: 14px; }
+    .muted {
+      margin-left: auto;
+      text-transform: none;
+      font-weight: 500;
+      letter-spacing: 0;
+      font-size: 11.5px;
+      color: $primary-muted;
+    }
+  }
+
+  .ext-credit-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    font-size: 13.5px;
+
+    .status {
+      font-size: 16px;
+      flex-shrink: 0;
+      &.pending { color: $credit; }
+      &.paid    { color: $success; }
+    }
+
+    .name {
+      font-weight: 600;
+      color: $primary;
+    }
+
+    .from-cat {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11.5px;
+      color: $primary-muted;
+      background: $surface;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid $border;
+      i { font-size: 12px; }
+    }
+
+    .amount {
+      margin-left: auto;
+      color: $credit;
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+
+    &.paid {
+      .name { text-decoration: line-through; opacity: 0.6; }
+      .amount { color: $success; }
+    }
+  }
+}
+
+// Variante "credit-total" del cat-budget para mostrar total a pagar
+.cat-budget.credit-total {
+  background: $surface;
+  border-color: color.adjust($credit, $lightness: 25%);
+  .label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: $primary-muted;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .total { color: $credit; }
+  &.paid {
+    border-color: color.adjust($success, $lightness: 30%);
+    .total { color: $success; }
+  }
+}
+
+// Toggle de pago con tarjeta (en edit-item del detalle y en add-item-form)
+.month-detail {
+  .edit-cat .edit-item {
+    grid-template-columns: 2fr 110px 32px 32px;
+    align-items: center;
+
+    &.is-credit input {
+      border-color: color.adjust($credit, $lightness: 25%);
+      background: $credit-soft;
+    }
+  }
+
+  .credit-toggle {
+    color: $primary-faint;
+    &:hover { background: $credit-soft; color: $credit; }
+    &.active {
+      color: #fff;
+      background: $credit;
+      &:hover { background: color.adjust($credit, $lightness: -5%); color: #fff; }
+    }
+  }
+
+  .add-item-form {
+    grid-template-columns: 2fr 1fr 32px auto auto;
+
+    &.is-credit {
+      background: $credit-soft;
+      border-color: color.adjust($credit, $lightness: 25%);
+    }
+  }
+}
+
+// ---- Undo toast (eliminación de item) ----
+.undo-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: $primary;
+  color: #fff;
+  padding: 10px 14px 10px 16px;
+  border-radius: $r-md;
+  box-shadow: $shadow-lg;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  z-index: 1500;
+  animation: undoToastIn .18s ease-out;
+
+  i.bx-trash { color: $danger; font-size: 18px; }
+
+  .msg strong { font-weight: 700; }
+
+  .undo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12.5px;
+    padding: 6px 12px;
+    border-radius: $r-sm;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: background .15s ease, border-color .15s ease;
+    &:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.5); }
+    i { font-size: 14px; }
+  }
+}
+
+@keyframes undoToastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 .convert-select {
   padding: 5px 8px;
   border-radius: $r-sm;
