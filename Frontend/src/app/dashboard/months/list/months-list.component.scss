@@ -2,55 +2,70 @@
 @use 'vars' as *;
 
 .months-list {
+  max-width: 1180px;
+  margin: 0 auto;
+
   .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 24px;
-    h1 { margin: 0; font-size: 26px; font-weight: 700; }
+    flex-wrap: wrap;
+    gap: 12px;
+
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
     p { margin: 4px 0 0; }
   }
 
-  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .muted { color: $primary-muted; }
 
   .btn {
     border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
+    border-radius: $r-sm;
+    padding: 10px 16px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13.5px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
 
-    &.btn-primary { background: $accent; color: #fff; }
-    &.btn-primary:hover { background: color.adjust($accent, $lightness: -5%); }
+    &.btn-primary {
+      background: $accent;
+      color: #fff;
+      box-shadow: 0 1px 2px rgba($accent, 0.25);
+      &:hover { background: $accent-hover; transform: translateY(-1px); }
+    }
     &.btn-outline {
-      background: transparent;
-      color: $primary;
-      border: 1px solid color.adjust($primary, $lightness: 50%);
+      background: $surface;
+      color: $primary-soft;
+      border: 1px solid $border;
+      &:hover { background: $surface-alt; color: $primary; border-color: $border-strong; }
     }
   }
 
   .btn-icon {
     background: transparent;
     border: none;
-    color: $danger;
+    color: $primary-muted;
     cursor: pointer;
-    font-size: 18px;
-    padding: 4px;
-    &:hover { color: color.adjust($danger, $lightness: -10%); }
+    font-size: 16px;
+    padding: 6px;
+    border-radius: $r-sm;
+    transition: background .15s ease, color .15s ease;
+    &:hover { background: $danger-soft; color: $danger; }
   }
 
   .create-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 22px;
+    margin-bottom: 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
 
-    h3 { margin-top: 0; }
+    h3 { margin: 0 0 14px; font-size: 16px; font-weight: 700; }
 
     .form-row {
       display: grid;
@@ -62,16 +77,25 @@
     label {
       display: flex;
       flex-direction: column;
-      font-size: 13px;
-      gap: 6px;
-      color: color.adjust($primary, $lightness: 15%);
+      font-size: 12px;
+      font-weight: 600;
+      color: $primary-soft;
+      gap: 5px;
     }
 
     select, input {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid color.adjust($primary, $lightness: 50%);
+      padding: 8px 12px;
+      border-radius: $r-sm;
+      border: 1px solid $border;
+      background: $surface-alt;
       font-size: 14px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      &:focus {
+        outline: none;
+        border-color: $accent;
+        background: $surface;
+        box-shadow: 0 0 0 3px rgba($accent, 0.12);
+      }
     }
 
     .actions {
@@ -84,8 +108,12 @@
   .empty {
     text-align: center;
     padding: 60px 20px;
-    color: color.adjust($primary, $lightness: 25%);
-    i { font-size: 60px; opacity: 0.3; }
+    color: $primary-muted;
+    background: $surface;
+    border-radius: $r-lg;
+    border: 1px dashed $border-strong;
+
+    i { font-size: 56px; opacity: 0.3; color: $accent; display: block; margin-bottom: 10px; }
   }
 
   .grid {
@@ -95,40 +123,45 @@
   }
 
   .month-card {
-    background: #fff;
-    border-radius: 12px;
+    background: $surface;
+    border-radius: $r-lg;
     padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
     color: $primary;
-    transition: transform .15s ease, box-shadow .15s ease;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
     display: block;
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+      box-shadow: $shadow-md;
+      border-color: $accent;
     }
 
     .head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      h3 { margin: 0; font-size: 18px; }
+      margin-bottom: 14px;
+      h3 { margin: 0; font-size: 16px; font-weight: 700; }
     }
 
     .row {
       display: flex;
       justify-content: space-between;
       padding: 6px 0;
-      font-size: 14px;
-      color: color.adjust($primary, $lightness: 15%);
+      font-size: 13.5px;
+      color: $primary-soft;
+
+      strong { font-weight: 600; color: $primary; }
 
       &.remaining {
-        border-top: 1px solid color.adjust($primary, $lightness: 55%);
+        border-top: 1px solid $border;
         margin-top: 8px;
         padding-top: 10px;
-        color: $accent;
         font-weight: 700;
+
+        strong { color: $success; font-size: 15px; }
       }
     }
   }

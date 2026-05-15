@@ -2,6 +2,9 @@
 @use 'vars' as *;
 
 .home {
+  max-width: 1180px;
+  margin: 0 auto;
+
   .hello {
     display: flex;
     justify-content: space-between;
@@ -10,106 +13,189 @@
     flex-wrap: wrap;
     gap: 12px;
 
-    h1 { margin: 0; font-size: 26px; font-weight: 700; }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
     p { margin: 4px 0 0; }
   }
 
-  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .muted { color: $primary-muted; }
   .small { font-size: 13px; }
 
   .month-switcher {
     display: flex;
     align-items: center;
     gap: 8px;
+
     label {
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: color.adjust($primary, $lightness: 25%);
+      color: $primary-muted;
+      font-weight: 600;
     }
     select {
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid color.adjust($primary, $lightness: 50%);
-      background: #fff;
-      font-size: 14px;
+      padding: 8px 30px 8px 12px;
+      border-radius: $r-md;
+      border: 1px solid $border;
+      background: $surface url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3e%3cpath fill='none' stroke='%2364748b' stroke-width='2' d='M1 1l5 5 5-5'/%3e%3c/svg%3e") no-repeat right 10px center;
+      font-size: 13.5px;
       font-weight: 600;
       cursor: pointer;
+      color: $primary;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+
+      &:focus {
+        outline: none;
+        border-color: $accent;
+        box-shadow: 0 0 0 3px rgba($accent, 0.12);
+      }
     }
   }
 
   .month-title {
-    margin: 24px 0 12px;
-    font-size: 20px;
-    color: color.adjust($primary, $lightness: 10%);
+    margin: 22px 0 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: $primary-soft;
   }
 
   .empty {
     text-align: center;
     padding: 60px 20px;
-    color: color.adjust($primary, $lightness: 25%);
-    i { font-size: 60px; opacity: 0.3; display: block; margin-bottom: 12px; }
+    color: $primary-muted;
+    background: $surface;
+    border-radius: $r-lg;
+    border: 1px dashed $border-strong;
+    i { font-size: 56px; opacity: 0.3; display: block; margin-bottom: 12px; color: $accent; }
     a { color: $accent; font-weight: 600; }
+  }
+
+  .section {
+    margin-bottom: 24px;
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: $primary-muted;
+      font-weight: 700;
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
   }
 
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 14px;
-    margin-bottom: 28px;
 
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 18px 20px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      border-left: 4px solid transparent;
+    &.balances {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 
-      .label {
-        font-size: 12px;
-        color: color.adjust($primary, $lightness: 25%);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      strong {
-        display: block;
-        font-size: 24px;
-        font-weight: 700;
-        margin-top: 4px;
-      }
-      small {
-        display: block;
-        font-size: 12px;
-        color: color.adjust($primary, $lightness: 30%);
-        margin-top: 2px;
-        &.positive { color: #27ae60; font-weight: 600; }
-      }
+      .card {
+        padding: 22px 24px;
 
-      &.primary { border-left-color: $accent; strong { color: $accent; } }
-      &.real { border-left-color: #27ae60; strong { color: #27ae60; } }
-      &.available { border-left-color: #3498db; strong { color: #3498db; } }
-      &.spent { border-left-color: $danger; strong { color: $danger; } }
-      &.credit { border-left-color: #e67e22; strong { color: #e67e22; } }
-      &.savings { border-left-color: #8e44ad; strong { color: #8e44ad; } }
+        strong { font-size: 30px; }
+      }
+    }
+
+    &.summary {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
   }
 
+  .card {
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 18px 20px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
+    position: relative;
+    transition: transform .15s ease, box-shadow .15s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+
+      .hint {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: $primary-faint;
+        font-weight: 600;
+      }
+    }
+
+    .label {
+      font-size: 12px;
+      color: $primary-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 6px;
+      letter-spacing: -0.3px;
+    }
+
+    small {
+      display: block;
+      font-size: 11.5px;
+      color: $primary-muted;
+      margin-top: 4px;
+
+      &.positive { color: $success; font-weight: 600; }
+      &.status { font-weight: 600; }
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 3px;
+      border-radius: $r-lg $r-lg 0 0;
+      background: $border;
+    }
+
+    &.primary { strong { color: $primary; } &::after { background: $primary; } }
+    &.real { strong { color: $success; } &::after { background: $success; } }
+    &.available { strong { color: $info; } &::after { background: $info; } }
+    &.spent { strong { color: $danger; } &::after { background: $danger; } }
+    &.credit { strong { color: $credit; } &::after { background: $credit; } }
+    &.savings { strong { color: $savings; } &::after { background: $savings; } }
+  }
+
   .movements {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
 
     .section-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      h2 { margin: 0; font-size: 18px; }
+      margin-bottom: 14px;
+      h2 { font-size: 16px; font-weight: 700; }
       .link {
         color: $accent;
         font-size: 13px;
         font-weight: 600;
+        transition: color .15s ease;
+        &:hover { color: $accent-hover; }
       }
     }
 
@@ -120,21 +206,36 @@
 
       li {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid color.adjust($primary, $lightness: 60%);
+        gap: 12px;
+        padding: 12px 4px;
+        border-bottom: 1px solid $border;
         &:last-child { border-bottom: none; }
 
+        .dot {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          font-size: 16px;
+          &.income { background: $success-soft; color: $success; }
+          &.expense { background: $danger-soft; color: $danger; }
+        }
+
         .info {
-          strong { display: block; font-size: 14px; }
-          small { color: color.adjust($primary, $lightness: 30%); font-size: 12px; }
+          flex: 1;
+          min-width: 0;
+          strong { display: block; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          small { color: $primary-muted; font-size: 12px; }
         }
 
         .amt {
           font-weight: 700;
-          font-size: 15px;
-          &.income { color: #27ae60; }
+          font-size: 14.5px;
+          &.income { color: $success; }
           &.expense { color: $danger; }
         }
       }

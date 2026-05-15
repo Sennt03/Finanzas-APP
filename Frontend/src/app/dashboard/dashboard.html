@@ -1,48 +1,63 @@
 <div class="layout" [class.sidebar-open]="sidebarOpen()">
+    <!-- Topbar (solo móvil) -->
+    <header class="topbar">
+        <button class="hamburger" type="button" (click)="toggleSidebar()" aria-label="Abrir menú">
+            <i class="bx bx-menu"></i>
+        </button>
+        <div class="brand">
+            <i class="bx bx-wallet"></i>
+            <span>Finanzas</span>
+        </div>
+        <button class="ghost" type="button" (click)="logout()" title="Salir" aria-label="Cerrar sesión">
+            <i class="bx bx-log-out"></i>
+        </button>
+    </header>
+
+    <!-- Backdrop móvil -->
+    @if (sidebarOpen()) {
+        <div class="backdrop" (click)="toggleSidebar()" aria-hidden="true"></div>
+    }
+
+    <!-- Sidebar -->
     <aside class="sidebar">
         <div class="logo-details">
             <i class="bx bx-wallet icon"></i>
             <span class="logo_name">Finanzas</span>
-            <i class="bx bx-menu" id="btn" (click)="toggleSidebar()"></i>
         </div>
-        <ul class="nav-list">
-            <li>
-                <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-                    <i class="bx bx-grid-alt"></i>
-                    <span class="links_name">Inicio</span>
-                </a>
-            </li>
-            <li>
-                <a routerLink="/months" routerLinkActive="active">
-                    <i class="bx bx-calendar"></i>
-                    <span class="links_name">Meses</span>
-                </a>
-            </li>
-            <li>
-                <a routerLink="/accounts" routerLinkActive="active">
-                    <i class="bx bx-wallet-alt"></i>
-                    <span class="links_name">Cuentas</span>
-                </a>
-            </li>
-            <li>
-                <a routerLink="/purchases" routerLinkActive="active">
-                    <i class="bx bx-credit-card"></i>
-                    <span class="links_name">Compras</span>
-                </a>
-            </li>
-            <li>
-                <a routerLink="/settings" routerLinkActive="active">
-                    <i class="bx bx-cog"></i>
-                    <span class="links_name">Configuración</span>
-                </a>
-            </li>
-            <li class="profile">
-                <div class="profile-details">
-                    <div class="name">{{ user().username }}</div>
-                </div>
-                <i class="bx bx-log-out" id="log_out" (click)="logout()" title="Salir"></i>
-            </li>
-        </ul>
+
+        <nav class="nav-list">
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-grid-alt"></i>
+                <span class="links_name">Inicio</span>
+            </a>
+            <a routerLink="/months" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-calendar"></i>
+                <span class="links_name">Meses</span>
+            </a>
+            <a routerLink="/accounts" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-wallet-alt"></i>
+                <span class="links_name">Cuentas</span>
+            </a>
+            <a routerLink="/purchases" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-credit-card"></i>
+                <span class="links_name">Compras</span>
+            </a>
+            <a routerLink="/settings" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-cog"></i>
+                <span class="links_name">Configuración</span>
+            </a>
+        </nav>
+
+        <div class="profile">
+            <div class="avatar">{{ (user().username || '?').charAt(0).toUpperCase() }}</div>
+            <div class="profile-details">
+                <div class="name">{{ user().username }}</div>
+                <div class="email">{{ user().email }}</div>
+            </div>
+            <button class="logout" type="button" (click)="logout()" title="Salir" aria-label="Cerrar sesión">
+                <i class="bx bx-log-out"></i>
+            </button>
+        </div>
     </aside>
 
     <section class="home-section">

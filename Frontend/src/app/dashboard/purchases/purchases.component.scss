@@ -2,62 +2,76 @@
 @use 'vars' as *;
 
 .purchases {
+  max-width: 1180px;
+  margin: 0 auto;
+
   .page-header {
     margin-bottom: 24px;
-    h1 { margin: 0; font-size: 26px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
     p { margin: 4px 0 0; }
   }
 
-  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .muted { color: $primary-muted; }
 
   .empty {
     text-align: center;
     padding: 60px 20px;
-    color: color.adjust($primary, $lightness: 25%);
-    i { font-size: 60px; opacity: 0.3; }
+    color: $primary-muted;
+    background: $surface;
+    border-radius: $r-lg;
+    border: 1px dashed $border-strong;
+    i { font-size: 56px; opacity: 0.3; color: $credit; display: block; margin-bottom: 10px; }
   }
 
   .block {
-    margin-bottom: 32px;
+    margin-bottom: 28px;
     h2 {
-      font-size: 18px;
+      font-size: 16px;
+      font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       margin: 0 0 12px;
-      i { color: #e67e22; }
+      padding-left: 4px;
+      i { color: $credit; }
     }
   }
 
   .purchase-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 18px 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 20px 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
+    border-left: 4px solid $savings;
     margin-bottom: 14px;
-    border-left: 4px solid #9b59b6;
+    transition: transform .15s ease, box-shadow .15s ease;
 
-    &.single { border-left-color: #e67e22; }
+    &:hover { transform: translateY(-1px); box-shadow: $shadow-md; }
+    &.single { border-left-color: $credit; }
 
     .head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       gap: 12px;
 
-      h3 { margin: 0; font-size: 18px; }
+      h3 { margin: 0; font-size: 17px; font-weight: 700; }
       .actions { display: flex; gap: 6px; }
     }
 
     .edit-input {
       font-size: 16px;
       font-weight: 600;
-      padding: 4px 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      padding: 6px 10px;
+      border-radius: $r-sm;
+      border: 1px solid $border;
+      background: $surface-alt;
       flex: 1;
       max-width: 320px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); background: $surface; }
 
       &.small { width: 100px; font-size: 14px; max-width: none; flex: none; }
     }
@@ -65,37 +79,39 @@
     .meta {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 14px;
+      margin-bottom: 14px;
 
       .label {
         display: block;
-        font-size: 11px;
+        font-size: 10.5px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: color.adjust($primary, $lightness: 25%);
-        margin-bottom: 2px;
+        letter-spacing: 0.4px;
+        color: $primary-muted;
+        font-weight: 700;
+        margin-bottom: 4px;
       }
       strong {
         display: block;
         font-size: 14px;
         font-weight: 700;
-        &.pending { color: #e67e22; }
-        &.positive { color: $accent; }
+        color: $primary;
+        &.pending { color: $credit; }
+        &.positive { color: $success; }
       }
     }
 
     .progress {
       height: 6px;
-      background: color.adjust($primary, $lightness: 60%);
+      background: $border;
       border-radius: 999px;
       overflow: hidden;
-      margin-bottom: 12px;
-
+      margin-bottom: 14px;
       .bar {
         height: 100%;
-        background: $accent;
+        background: $success;
         transition: width .3s ease;
+        border-radius: 999px;
       }
     }
 
@@ -107,33 +123,33 @@
         font-weight: 600;
         user-select: none;
         list-style: none;
-
         &::-webkit-details-marker { display: none; }
         &::before { content: '▸ '; font-size: 10px; }
+        &:hover { color: $accent-hover; }
       }
       &[open] summary::before { content: '▾ '; }
     }
 
     .cuotas-list {
       list-style: none;
-      padding: 8px 0 0;
+      padding: 10px 0 0;
       margin: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 6px;
 
       li {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 10px;
-        background: $bg;
-        border-radius: 6px;
+        padding: 8px 12px;
+        background: $surface-alt;
+        border-radius: $r-sm;
         font-size: 13px;
+        border: 1px solid $border;
 
-        .m { flex: 1; }
-        .a { font-weight: 700; }
-
+        .m { flex: 1; color: $primary-soft; }
+        .a { font-weight: 700; color: $primary; }
         &.paid { opacity: 0.65; }
       }
     }
@@ -142,44 +158,51 @@
 
 .tag {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 3px 9px;
   border-radius: 999px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
-
-  &.paid { background: #d4edda; color: #155724; }
-  &.pending { background: #fff3cd; color: #856404; }
+  &.paid { background: $success-soft; color: $success; }
+  &.pending { background: $warning-soft; color: $warning; }
 }
 
 .btn {
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: $r-sm;
+  padding: 9px 16px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: background .15s ease, transform .1s ease;
 
-  &.btn-sm { padding: 6px 10px; font-size: 12px; }
-  &.btn-primary { background: $accent; color: #fff; }
-  &.btn-primary:hover { background: color.adjust($accent, $lightness: -5%); }
+  &.btn-sm { padding: 7px 12px; font-size: 12.5px; }
+  &.btn-primary {
+    background: $accent;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba($accent, 0.25);
+    &:hover { background: $accent-hover; transform: translateY(-1px); }
+  }
   &.btn-outline {
-    background: transparent;
-    color: $primary;
-    border: 1px solid color.adjust($primary, $lightness: 50%);
+    background: $surface;
+    color: $primary-soft;
+    border: 1px solid $border;
+    &:hover { background: $surface-alt; color: $primary; border-color: $border-strong; }
   }
 }
 
 .btn-icon {
   background: transparent;
   border: none;
-  color: color.adjust($primary, $lightness: 20%);
+  color: $primary-muted;
   cursor: pointer;
   font-size: 16px;
-  padding: 4px;
-  &.danger:hover { color: $danger; }
-  &:hover { color: $accent; }
+  padding: 6px;
+  border-radius: $r-sm;
+  transition: background .15s ease, color .15s ease;
+  &:hover { background: $surface-alt; color: $accent; }
+  &.danger:hover { background: $danger-soft; color: $danger; }
 }

@@ -18,6 +18,7 @@ interface DraftCategory {
   _id?: string;
   name: string;
   kind: CategoryKind;
+  totalAmount: number;
   items: DraftItem[];
 }
 
@@ -55,14 +56,22 @@ export class MonthDetailComponent {
   itemDrafts = signal<Record<string, number | null>>({});
   itemSaving = signal<Record<string, boolean>>({});
 
+  // Estado "Agregar item" inline por categoría
+  addingForCategory = signal<string | null>(null);
+  newItemName = signal('');
+  newItemAmount = signal<number | null>(null);
+
   monthLabel = computed(() => {
     const s = this.stmt();
     return s ? `${MONTH_NAMES[s.month - 1]} ${s.year}` : '';
   });
 
   draftTotalBudgeted = computed(() =>
-    this.draftCategories().reduce((acc, c) =>
-      acc + c.items.reduce((a, i) => a + (Number(i.budgetedAmount) || 0), 0), 0)
+    this.draftCategories().reduce((acc, c) => {
+      const sum = c.items.reduce((a, i) => a + (Number(i.budgetedAmount) || 0), 0);
+      const budget = (c.totalAmount && c.totalAmount > 0) ? Number(c.totalAmount) : sum;
+      return acc + budget;
+    }, 0)
   );
 
   draftRemaining = computed(() => this.draftSalary() - this.draftTotalBudgeted());
@@ -192,16 +201,90 @@ export class MonthDetailComponent {
         _id: c._id,
         name: c.name,
         kind: c.kind,
+        totalAmount: c.totalAmount || 0,
         items: c.items.map(i => ({ _id: i._id, name: i.name, budgetedAmount: i.budgetedAmount }))
       }))
     );
     this.editMode.set(true);
   }
 
+  updateCategoryTotal(idx: number, total: number) {
+    this.draftCategories.update(list => list.map((c, i) => i === idx ? { ...c, totalAmount: total } : c));
+  }
+
+  // ----- Agregar item inline desde detalle -----
+  itemsSum(cat: LsStatementCategory): number {
+    return (cat.items || []).reduce((s, it) => s + (it.budgetedAmount || 0), 0);
+  }
+
+  categoryFreeAmount(cat: LsStatementCategory): number {
+    if (cat.totalAmount && cat.totalAmount > 0) {
+      return cat.totalAmount - this.itemsSum(cat);
+    }
+    const s = this.stmt();
+    if (!s) return 0;
+    return s.summary.availableToBudget;
+  }
+
+  openAddItem(cat: LsStatementCategory) {
+    if (!cat._id) return;
+    this.addingForCategory.set(cat._id);
+    this.newItemName.set('');
+    this.newItemAmount.set(null);
+  }
+
+  closeAddItem() {
+    this.addingForCategory.set(null);
+  }
+
+  isAddingTo(cat: LsStatementCategory): boolean {
+    return this.addingForCategory() === cat._id;
+  }
+
+  submitAddItem(cat: LsStatementCategory) {
+    const s = this.stmt();
+    if (!s || !cat._id) return;
+    const name = this.newItemName().trim();
+    const amount = this.newItemAmount() ?? 0;
+    if (!name) { toastr.error('Nombre requerido', ''); return; }
+
+    this.loading.set(true);
+    this.svc.addItemToCategory(s._id, cat._id, { name, budgetedAmount: amount }).subscribe({
+      next: (updated) => {
+        this.stmt.set(updated);
+        this.closeAddItem();
+        this.loading.set(false);
+        toastr.success('Item agregado', '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  removeItemInline(cat: LsStatementCategory, item: LsStatementItem) {
+    const s = this.stmt();
+    if (!s || !cat._id || !item._id) return;
+    if (!confirm(`¿Eliminar "${item.name}"?`)) return;
+    this.loading.set(true);
+    this.svc.removeItemFromCategory(s._id, cat._id, item._id).subscribe({
+      next: (updated) => {
+        this.stmt.set(updated);
+        this.loading.set(false);
+        toastr.info('Item eliminado', '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
   cancelEdit() { this.editMode.set(false); }
 
   addCategory() {
-    this.draftCategories.update(list => [...list, { name: 'Nueva categoría', kind: 'expense', items: [] }]);
+    this.draftCategories.update(list => [...list, { name: 'Nueva categoría', kind: 'expense', totalAmount: 0, items: [] }]);
   }
 
   removeCategory(idx: number) {

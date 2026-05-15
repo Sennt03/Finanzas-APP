@@ -30,6 +30,7 @@
             <option value="expense">Gasto</option>
             <option value="savings">Ahorro</option>
           </select>
+          <input type="number" min="0" class="cat-total-input" [ngModel]="cat.totalAmount" (ngModelChange)="updateCategoryTotal(ci, $event)" placeholder="Total (opcional)" title="Presupuesto total de la categoría">
           <button class="btn-icon" (click)="removeCategory(ci)" title="Eliminar categoría">
             <i class="bx bx-trash"></i>
           </button>
@@ -55,9 +56,10 @@
   </section>
 
   <p class="muted small">
-    Tip: las categorías de tipo <strong>Ahorro</strong> moverán dinero a tu cuenta de ahorros al marcar el item como pagado.
-    El <strong>día de corte TDC</strong> determina si una compra con tarjeta se paga este mes o el siguiente
-    (compras hechas hasta ese día → este mes; después → siguiente mes).
+    Tip: el <strong>Total (opcional)</strong> de la categoría fija un presupuesto máximo; los items no pueden excederlo.
+    Si lo dejas en 0, la categoría suma según los items.
+    Las categorías de tipo <strong>Ahorro</strong> mueven dinero a tu cuenta de ahorros al marcar el item como pagado.
+    El <strong>día de corte TDC</strong> determina si una compra con tarjeta se paga este mes o el siguiente.
   </p>
 </div>
 

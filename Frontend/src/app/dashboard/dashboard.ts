@@ -26,9 +26,8 @@ export class Dashboard {
   private $subUser?: Subscription;
 
   ngOnInit(): void {
-    if (window.innerWidth > 764) {
-      this.sidebarOpen.set(true);
-    }
+    // En móvil el sidebar arranca cerrado; en desktop siempre se ve por CSS.
+    this.sidebarOpen.set(false);
 
     const auth = this.authService.getAuth() as LsResAuth;
     if (auth?.user) this.user.set(auth.user);
@@ -46,6 +45,12 @@ export class Dashboard {
 
   toggleSidebar() {
     this.sidebarOpen.update(v => !v);
+  }
+
+  closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+      this.sidebarOpen.set(false);
+    }
   }
 
   logout() {

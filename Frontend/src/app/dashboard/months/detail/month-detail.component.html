@@ -14,53 +14,73 @@
       </div>
     </header>
 
-    <!-- Resumen -->
-    <section class="summary">
-      <div class="card highlight">
-        <span class="label">Sueldo</span>
-        <strong>{{ s.salary | number:'1.2-2' }}</strong>
-        @if (s.summary.totalExtrasIncome > 0) {
-          <small class="positive">+{{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
-        }
-      </div>
-      <div class="card">
-        <span class="label">Presupuestado</span>
-        <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
-        <small>libre: {{ s.summary.availableToBudget | number:'1.2-2' }}</small>
-      </div>
-      <div class="card">
-        <span class="label">Gastado</span>
-        <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
-        <small>items: {{ s.summary.totalPaid | number:'1.2-2' }} · extras: {{ s.summary.totalExtras | number:'1.2-2' }}</small>
-      </div>
-      <div class="card positive">
-        <span class="label">Saldo real (en banco)</span>
-        <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
-        <small>incluye TDC no pagada aún</small>
-      </div>
-      <div class="card available">
-        <span class="label">Saldo disponible</span>
-        <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
-        <small>descuenta TDC pendiente</small>
-      </div>
-      <div class="card savings">
-        <span class="label">Ahorro del mes</span>
-        <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
-        @if (s.summary.savings.monthWithdrawals > 0) {
-          <small>egresos: -{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }}</small>
-        }
-      </div>
-      @if (s.summary.creditCard.total > 0) {
-        <div class="card credit">
-          <span class="label">Tarjeta de crédito</span>
-          <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
-          @if (s.summary.creditCard.diferidosShare > 0) {
-            <small>incluye {{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
-          }
-          <small>{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente de pagar' }}</small>
+    <!-- Sección: Saldos -->
+    <div class="section">
+      <div class="section-label">Saldos</div>
+      <div class="cards balances">
+        <div class="card real">
+          <div class="card-top">
+            <span class="label">Saldo real</span>
+            <span class="hint">en banco</span>
+          </div>
+          <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+          <small>Incluye TDC no pagada aún</small>
         </div>
-      }
-    </section>
+        <div class="card available">
+          <div class="card-top">
+            <span class="label">Saldo disponible</span>
+            <span class="hint">real</span>
+          </div>
+          <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
+          <small>Descuenta TDC pendiente</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Resumen del mes -->
+    <div class="section">
+      <div class="section-label">Resumen del mes</div>
+      <div class="cards summary">
+        <div class="card primary">
+          <span class="label">Sueldo</span>
+          <strong>{{ s.salary | number:'1.2-2' }}</strong>
+          @if (s.summary.totalExtrasIncome > 0) {
+            <small class="positive">+{{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
+          } @else {
+            <small>ingresos del mes</small>
+          }
+        </div>
+        <div class="card budget">
+          <span class="label">Presupuestado</span>
+          <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
+          <small>libre: {{ s.summary.availableToBudget | number:'1.2-2' }}</small>
+        </div>
+        <div class="card spent">
+          <span class="label">Gastado</span>
+          <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
+          <small>items {{ s.summary.totalPaid | number:'1.2-2' }} · extras {{ s.summary.totalExtras | number:'1.2-2' }}</small>
+        </div>
+        <div class="card savings">
+          <span class="label">Ahorro</span>
+          <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
+          @if (s.summary.savings.monthWithdrawals > 0) {
+            <small>egresos: -{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }}</small>
+          } @else {
+            <small>depositado a ahorros</small>
+          }
+        </div>
+        @if (s.summary.creditCard.total > 0) {
+          <div class="card credit">
+            <span class="label">Tarjeta de crédito</span>
+            <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
+            @if (s.summary.creditCard.diferidosShare > 0) {
+              <small>incluye {{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
+            }
+            <small [class.positive]="s.summary.creditCard.groupPaid">{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente de pagar' }}</small>
+          </div>
+        }
+      </div>
+    </div>
 
     <!-- Edit budget -->
     @if (editMode()) {
@@ -84,6 +104,7 @@
                 <option value="expense">Gasto</option>
                 <option value="savings">Ahorro</option>
               </select>
+              <input type="number" min="0" class="cat-total-input" [ngModel]="cat.totalAmount" (ngModelChange)="updateCategoryTotal(ci, $event)" placeholder="Total (opcional)" title="Presupuesto total de la categoría (opcional)">
               <button class="btn-icon" (click)="removeCategory(ci)" title="Eliminar categoría">
                 <i class="bx bx-trash"></i>
               </button>
@@ -137,9 +158,23 @@
               @if (cat.isVirtual) { <span class="auto-tag">auto</span> }
               @if (cat.isVirtual && cat.categoryPaid) { <span class="paid-tag">pagada</span> }
             </h3>
+            @if (!cat.isVirtual && cat.totalAmount > 0) {
+              <div class="cat-budget">
+                <span class="used">{{ itemsSum(cat) | number:'1.2-2' }}</span>
+                <span class="sep">/</span>
+                <span class="total">{{ cat.totalAmount | number:'1.2-2' }}</span>
+                <span class="free" [class.warn]="categoryFreeAmount(cat) < 0">libre {{ categoryFreeAmount(cat) | number:'1.2-2' }}</span>
+              </div>
+            }
           </div>
 
-          @if (cat.items.length === 0) {
+          @if (!cat.isVirtual && cat.totalAmount > 0) {
+            <div class="cat-progress">
+              <div class="bar" [style.width.%]="(itemsSum(cat) / cat.totalAmount) * 100"></div>
+            </div>
+          }
+
+          @if (cat.items.length === 0 && !isAddingTo(cat)) {
             <p class="muted small">Sin items en esta categoría</p>
           }
           @for (it of cat.items; track it._id) {
@@ -193,9 +228,31 @@
                     <option value="tdc">→ TDC</option>
                     <option value="diferido">→ Diferido</option>
                   </select>
+                  <button class="btn-icon mini" (click)="removeItemInline(cat, it)" title="Eliminar item">
+                    <i class="bx bx-x"></i>
+                  </button>
                 </div>
               }
             </div>
+          }
+
+          @if (!cat.isVirtual) {
+            @if (isAddingTo(cat)) {
+              <div class="add-item-form">
+                <input type="text" placeholder="Nombre del item" [ngModel]="newItemName()" (ngModelChange)="newItemName.set($event)">
+                <input type="number" min="0" placeholder="Monto" [ngModel]="newItemAmount()" (ngModelChange)="newItemAmount.set($event)" (keydown.enter)="submitAddItem(cat)">
+                <button class="btn btn-primary btn-sm" (click)="submitAddItem(cat)">Agregar</button>
+                <button class="btn btn-outline btn-sm" (click)="closeAddItem()">Cancelar</button>
+              </div>
+            } @else {
+              <button class="add-item-btn" (click)="openAddItem(cat)">
+                <i class="bx bx-plus"></i>
+                <span>Agregar item</span>
+                @if (cat.totalAmount > 0) {
+                  <small>libre {{ categoryFreeAmount(cat) | number:'1.2-2' }}</small>
+                }
+              </button>
+            }
           }
         </section>
       }

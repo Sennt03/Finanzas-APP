@@ -2,104 +2,160 @@
 @use 'vars' as *;
 
 .accounts {
+  max-width: 1180px;
+  margin: 0 auto;
+
   .page-header {
     margin-bottom: 24px;
-    h1 { margin: 0; font-size: 26px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
     p { margin: 4px 0 0; }
   }
 
-  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .muted { color: $primary-muted; }
   .small { font-size: 13px; }
 
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 16px;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
   }
 
   .card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
+    position: relative;
+    transition: transform .15s ease, box-shadow .15s ease;
+
+    &:hover { transform: translateY(-2px); box-shadow: $shadow-md; }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 3px;
+      border-radius: $r-lg $r-lg 0 0;
+      background: $info;
+    }
+
+    &.savings-card::after { background: $savings; }
 
     .card-head {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
 
-      h3 { margin: 0; font-size: 18px; }
+      h3 { margin: 0; font-size: 17px; font-weight: 700; }
       .badge {
         display: inline-block;
         margin-top: 4px;
-        background: $bg;
-        color: color.adjust($primary, $lightness: 15%);
-        font-size: 11px;
-        padding: 2px 8px;
+        background: $info-soft;
+        color: $info;
+        font-size: 10.5px;
+        padding: 3px 9px;
         border-radius: 999px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
       }
       .edit-input {
         font-size: 16px;
         font-weight: 600;
-        padding: 4px 8px;
-        border-radius: 6px;
-        border: 1px solid #ccc;
+        padding: 6px 10px;
+        border-radius: $r-sm;
+        border: 1px solid $border;
+        background: $surface-alt;
+        &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
       }
 
       .actions { display: flex; gap: 6px; }
     }
 
+    &.savings-card .card-head .badge { background: $savings-soft; color: $savings; }
+
     .balance {
-      .label { font-size: 12px; color: color.adjust($primary, $lightness: 25%); text-transform: uppercase; letter-spacing: 0.5px; }
-      strong { display: block; font-size: 28px; font-weight: 700; margin-top: 4px; color: $accent; }
+      .label { font-size: 11px; color: $primary-muted; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+      strong { display: block; font-size: 30px; font-weight: 700; margin-top: 4px; color: $info; letter-spacing: -0.4px; }
+      small { display: block; font-size: 11.5px; color: $primary-muted; margin-top: 2px; }
+
+      &.secondary {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px dashed $border;
+        strong { font-size: 22px; color: $primary-soft; }
+      }
     }
 
-    &.savings-card .balance strong { color: #8e44ad; }
+    &.savings-card .balance strong { color: $savings; }
 
     .edit-row {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-top: 12px;
-      font-size: 13px;
-      input { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; max-width: 200px; }
+      gap: 5px;
+      margin-top: 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: $primary-soft;
+      input {
+        padding: 7px 10px;
+        border-radius: $r-sm;
+        border: 1px solid $border;
+        background: $surface-alt;
+        max-width: 200px;
+        font-size: 13.5px;
+        &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+      }
     }
   }
 
   .movements {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
 
     .section-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
-      h2 { margin: 0; font-size: 18px; }
+      h2 { margin: 0; font-size: 17px; font-weight: 700; }
     }
 
     .mov-form {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
       margin-bottom: 16px;
       padding: 16px;
-      background: $bg;
-      border-radius: 8px;
+      background: $surface-alt;
+      border-radius: $r-md;
+      border: 1px solid $border;
 
       label {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-        font-size: 13px;
-
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $primary-soft;
         &.span-2 { grid-column: span 2; }
 
-        input, select { padding: 8px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+        input, select {
+          padding: 8px 10px;
+          border-radius: $r-sm;
+          border: 1px solid $border;
+          background: $surface;
+          font-size: 13.5px;
+          transition: border-color .15s ease, box-shadow .15s ease;
+          &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+        }
       }
       .form-actions { grid-column: span 2; display: flex; justify-content: flex-end; gap: 6px; }
     }
@@ -107,32 +163,36 @@
     .mov-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
+      font-size: 13.5px;
 
       th {
         text-align: left;
         padding: 10px 8px;
-        border-bottom: 1px solid color.adjust($primary, $lightness: 55%);
-        font-size: 12px;
+        border-bottom: 1px solid $border;
+        font-size: 11px;
         text-transform: uppercase;
-        color: color.adjust($primary, $lightness: 20%);
+        letter-spacing: 0.4px;
+        color: $primary-muted;
+        font-weight: 700;
       }
       td {
-        padding: 10px 8px;
-        border-bottom: 1px solid color.adjust($primary, $lightness: 60%);
+        padding: 12px 8px;
+        border-bottom: 1px solid $border;
       }
       .right { text-align: right; }
-      .positive { color: #27ae60; font-weight: 600; }
-      .negative { color: $danger; font-weight: 600; }
+      .positive { color: $success; font-weight: 700; }
+      .negative { color: $danger; font-weight: 700; }
 
       .tag {
-        font-size: 11px;
-        padding: 2px 8px;
+        font-size: 10px;
+        padding: 3px 9px;
         border-radius: 999px;
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
 
-        &.deposit { background: #d4edda; color: #155724; }
-        &.withdrawal { background: #f8d7da; color: #721c24; }
+        &.deposit { background: $success-soft; color: $success; }
+        &.withdrawal { background: $danger-soft; color: $danger; }
       }
     }
   }
@@ -140,31 +200,39 @@
 
 .btn {
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: $r-sm;
+  padding: 9px 16px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: background .15s ease, transform .1s ease;
 
-  &.btn-sm { padding: 6px 10px; font-size: 12px; }
-  &.btn-primary { background: $accent; color: #fff; }
-  &.btn-primary:hover { background: color.adjust($accent, $lightness: -5%); }
+  &.btn-sm { padding: 7px 12px; font-size: 12.5px; }
+  &.btn-primary {
+    background: $accent;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba($accent, 0.25);
+    &:hover { background: $accent-hover; transform: translateY(-1px); }
+  }
   &.btn-outline {
-    background: transparent;
-    color: $primary;
-    border: 1px solid color.adjust($primary, $lightness: 50%);
+    background: $surface;
+    color: $primary-soft;
+    border: 1px solid $border;
+    &:hover { background: $surface-alt; color: $primary; border-color: $border-strong; }
   }
 }
 
 .btn-icon {
   background: transparent;
   border: none;
-  color: color.adjust($primary, $lightness: 20%);
+  color: $primary-muted;
   cursor: pointer;
   font-size: 16px;
-  padding: 4px;
-  &:hover { color: $danger; }
+  padding: 6px;
+  border-radius: $r-sm;
+  transition: background .15s ease, color .15s ease;
+  &:hover { background: $danger-soft; color: $danger; }
 }

@@ -1,4 +1,42 @@
-$primary: #1f2d3d;
-$accent: #16a085;
-$danger: #e74c3c;
-$bg: #f5f7fa;
+// Marca / Texto
+$primary: #0f172a;
+$primary-soft: #475569;
+$primary-muted: #64748b;
+$primary-faint: #94a3b8;
+
+// Superficies
+$bg: #f1f5f9;
+$surface: #ffffff;
+$surface-alt: #f8fafc;
+$border: #e2e8f0;
+$border-strong: #cbd5e1;
+
+// Acentos / Estados
+$accent: #6366f1;
+$accent-hover: #4f46e5;
+$accent-soft: #eef2ff;
+
+$success: #10b981;
+$success-soft: #ecfdf5;
+$danger: #ef4444;
+$danger-soft: #fef2f2;
+$warning: #f59e0b;
+$warning-soft: #fffbeb;
+$info: #0ea5e9;
+$info-soft: #f0f9ff;
+
+$savings: #a855f7;
+$savings-soft: #faf5ff;
+$credit: #f97316;
+$credit-soft: #fff7ed;
+
+// Sombras
+$shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+$shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
+$shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.10);
+
+// Radios
+$r-sm: 6px;
+$r-md: 10px;
+$r-lg: 14px;
+$r-xl: 18px;

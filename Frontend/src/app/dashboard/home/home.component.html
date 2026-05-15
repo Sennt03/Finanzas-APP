@@ -19,49 +19,72 @@
   @if (selected(); as s) {
     <h2 class="month-title">{{ monthLabel() }}</h2>
 
-    <section class="cards">
-      <div class="card primary">
-        <span class="label">Sueldo</span>
-        <strong>{{ s.salary | number:'1.2-2' }}</strong>
-        @if (s.summary.totalExtrasIncome > 0) {
-          <small class="positive">+ {{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
-        }
-      </div>
-      <div class="card real">
-        <span class="label">Saldo real</span>
-        <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
-        <small>en la cuenta</small>
-      </div>
-      <div class="card available">
-        <span class="label">Saldo disponible</span>
-        <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
-        <small>descontando TDC</small>
-      </div>
-      <div class="card spent">
-        <span class="label">Gastado</span>
-        <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
-        <small>de {{ s.salary | number:'1.2-2' }}</small>
-      </div>
-      @if (s.summary.creditCard.total > 0) {
-        <div class="card credit">
-          <span class="label">Tarjeta de crédito</span>
-          <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
-          @if (s.summary.creditCard.diferidosShare > 0) {
-            <small>{{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
-          }
-          <small [class.positive]="s.summary.creditCard.groupPaid">
-            {{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente' }}
-          </small>
+    <!-- Sección: Saldos (lo más importante) -->
+    <div class="section">
+      <div class="section-label">Saldos</div>
+      <div class="cards balances">
+        <div class="card real">
+          <div class="card-top">
+            <span class="label">Saldo real</span>
+            <span class="hint">en banco</span>
+          </div>
+          <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+          <small>Incluye TDC no pagada</small>
         </div>
-      }
-      <div class="card savings">
-        <span class="label">Ahorro del mes</span>
-        <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
-        @if (s.summary.savings.monthWithdrawals > 0) {
-          <small>-{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }} retirado</small>
-        }
+        <div class="card available">
+          <div class="card-top">
+            <span class="label">Saldo disponible</span>
+            <span class="hint">real</span>
+          </div>
+          <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
+          <small>Descontando TDC pendiente</small>
+        </div>
       </div>
-    </section>
+    </div>
+
+    <!-- Sección: Resumen del mes -->
+    <div class="section">
+      <div class="section-label">Resumen del mes</div>
+      <div class="cards summary">
+        <div class="card primary">
+          <span class="label">Sueldo</span>
+          <strong>{{ s.salary | number:'1.2-2' }}</strong>
+          @if (s.summary.totalExtrasIncome > 0) {
+            <small class="positive">+ {{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
+          } @else {
+            <small>ingresos del mes</small>
+          }
+        </div>
+        <div class="card spent">
+          <span class="label">Gastado</span>
+          <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
+          <small>de {{ s.salary | number:'1.2-2' }}</small>
+        </div>
+        @if (s.summary.creditCard.total > 0) {
+          <div class="card credit">
+            <span class="label">Tarjeta de crédito</span>
+            <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
+            @if (s.summary.creditCard.diferidosShare > 0) {
+              <small>{{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
+            } @else {
+              <small>{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente' }}</small>
+            }
+            @if (s.summary.creditCard.diferidosShare > 0) {
+              <small class="status" [class.positive]="s.summary.creditCard.groupPaid">{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente' }}</small>
+            }
+          </div>
+        }
+        <div class="card savings">
+          <span class="label">Ahorro del mes</span>
+          <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
+          @if (s.summary.savings.monthWithdrawals > 0) {
+            <small>-{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }} retirado</small>
+          } @else {
+            <small>depositado a ahorros</small>
+          }
+        </div>
+      </div>
+    </div>
 
     <section class="movements">
       <div class="section-head">
@@ -74,6 +97,9 @@
         <ul class="mov-list">
           @for (m of recentMovements(); track $index) {
             <li>
+              <div class="dot" [class.income]="m.type === 'income'" [class.expense]="m.type !== 'income'">
+                <i class="bx" [class.bx-up-arrow-alt]="m.type === 'income'" [class.bx-down-arrow-alt]="m.type !== 'income'"></i>
+              </div>
               <div class="info">
                 <strong>{{ m.name }}</strong>
                 <small>{{ m.date | date:'d MMM' }}</small>

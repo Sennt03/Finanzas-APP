@@ -11,6 +11,7 @@ const categorySchema = Joi.object({
     _id: Joi.any(),
     name: Joi.string().min(1).max(120).required(),
     kind: Joi.string().valid('expense', 'savings').default('expense'),
+    totalAmount: Joi.number().min(0).default(0),
     items: Joi.array().items(itemSchema).default([])
 })
 
@@ -45,6 +46,17 @@ const toggleGroupSchema = Joi.object({
     paid: Joi.boolean().required()
 })
 
+const addItemSchema = Joi.object({
+    name: Joi.string().min(1).max(120).required(),
+    budgetedAmount: Joi.number().min(0).default(0)
+})
+
+const updateCategorySchema = Joi.object({
+    name: Joi.string().min(1).max(120),
+    kind: Joi.string().valid('expense', 'savings'),
+    totalAmount: Joi.number().min(0)
+}).min(1)
+
 const convertSchema = Joi.object({
     source: Joi.object({
         kind: Joi.string().valid('item', 'extra', 'purchase').required(),
@@ -67,5 +79,7 @@ module.exports = {
     setItemAmountValidator: validatorHandler(setItemAmountSchema),
     extraValidator: validatorHandler(extraSchema),
     toggleGroupValidator: validatorHandler(toggleGroupSchema),
-    convertValidator: validatorHandler(convertSchema)
+    convertValidator: validatorHandler(convertSchema),
+    addItemValidator: validatorHandler(addItemSchema),
+    updateCategoryValidator: validatorHandler(updateCategorySchema)
 }

@@ -8,6 +8,7 @@ const itemSchema = new Schema({
 const categorySchema = new Schema({
     name: { type: String, required: true, trim: true },
     kind: { type: String, enum: ['expense', 'savings'], default: 'expense' },
+    totalAmount: { type: Number, default: 0, min: 0 },
     items: { type: [itemSchema], default: [] }
 }, { _id: true })
 

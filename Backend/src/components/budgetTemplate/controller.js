@@ -54,9 +54,20 @@ async function update(userId, data) {
     if (data.cutoffDay !== undefined) tpl.cutoffDay = data.cutoffDay
     if (data.categories !== undefined) tpl.categories = data.categories
 
-    const totalBudgeted = (tpl.categories || []).reduce((acc, cat) => {
-        return acc + (cat.items || []).reduce((a, it) => a + (it.amount || 0), 0)
-    }, 0)
+    const sumItems = (cat) => (cat.items || []).reduce((a, it) => a + (it.amount || 0), 0)
+    const categoryBudget = (cat) => (cat.totalAmount && cat.totalAmount > 0) ? cat.totalAmount : sumItems(cat)
+
+    // Items no pueden exceder el total de su categoría
+    for (const cat of tpl.categories || []) {
+        if (cat.totalAmount && cat.totalAmount > 0) {
+            const used = sumItems(cat)
+            if (used > cat.totalAmount) {
+                throw myError(`Los items de "${cat.name}" exceden el total de la categoría (${used} > ${cat.totalAmount})`, 400)
+            }
+        }
+    }
+
+    const totalBudgeted = (tpl.categories || []).reduce((acc, cat) => acc + categoryBudget(cat), 0)
     if (totalBudgeted > tpl.defaultSalary) {
         throw myError(`El total presupuestado (${totalBudgeted}) excede el sueldo default (${tpl.defaultSalary})`, 400)
     }

@@ -11,6 +11,7 @@ const categorySchema = Joi.object({
     _id: Joi.any(),
     name: Joi.string().min(1).max(120).required(),
     kind: Joi.string().valid('expense', 'savings').default('expense'),
+    totalAmount: Joi.number().min(0).default(0),
     items: Joi.array().items(itemSchema).default([])
 })
 

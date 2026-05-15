@@ -2,6 +2,9 @@
 @use 'vars' as *;
 
 .month-detail {
+  max-width: 1180px;
+  margin: 0 auto;
+
   .page-header {
     display: flex;
     justify-content: space-between;
@@ -16,163 +19,295 @@
       gap: 4px;
       color: $accent;
       font-size: 13px;
+      font-weight: 600;
       margin-bottom: 4px;
+      transition: color .15s ease;
+      &:hover { color: $accent-hover; }
     }
-    h1 { margin: 0; font-size: 26px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
   }
 
-  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .muted { color: $primary-muted; }
   .small { font-size: 13px; }
 
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 24px;
+  .section {
+    margin-bottom: 22px;
 
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-
-      .label {
-        font-size: 12px;
-        color: color.adjust($primary, $lightness: 25%);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      strong {
-        display: block;
-        font-size: 22px;
-        font-weight: 700;
-        margin-top: 4px;
-      }
-      small {
-        display: block;
-        font-size: 11px;
-        color: color.adjust($primary, $lightness: 30%);
-        margin-top: 2px;
-      }
-
-      &.highlight strong { color: $accent; }
-      &.positive strong { color: $accent; }
-      &.available strong { color: #3498db; }
-      &.savings strong { color: #8e44ad; }
-      &.credit strong { color: #e67e22; }
-
-      small.positive { color: #27ae60; }
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: $primary-muted;
+      font-weight: 700;
+      margin-bottom: 10px;
+      padding-left: 4px;
     }
+  }
+
+  .cards {
+    display: grid;
+    gap: 14px;
+
+    &.balances {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      .card {
+        padding: 22px 24px;
+        strong { font-size: 30px; }
+      }
+    }
+    &.summary {
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+  }
+
+  .card {
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 18px 20px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
+    position: relative;
+    transition: transform .15s ease, box-shadow .15s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+
+      .hint {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: $primary-faint;
+        font-weight: 600;
+      }
+    }
+
+    .label {
+      font-size: 12px;
+      color: $primary-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 6px;
+      letter-spacing: -0.3px;
+    }
+
+    small {
+      display: block;
+      font-size: 11.5px;
+      color: $primary-muted;
+      margin-top: 4px;
+      &.positive { color: $success; font-weight: 600; }
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 3px;
+      border-radius: $r-lg $r-lg 0 0;
+      background: $border;
+    }
+
+    &.primary { strong { color: $primary; } &::after { background: $primary; } }
+    &.real { strong { color: $success; } &::after { background: $success; } }
+    &.available { strong { color: $info; } &::after { background: $info; } }
+    &.budget { strong { color: $accent; } &::after { background: $accent; } }
+    &.spent { strong { color: $danger; } &::after { background: $danger; } }
+    &.credit { strong { color: $credit; } &::after { background: $credit; } }
+    &.savings { strong { color: $savings; } &::after { background: $savings; } }
   }
 
   .category {
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px 20px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-    margin-bottom: 16px;
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 18px 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
+    margin-bottom: 14px;
 
     h3 {
       margin: 0 0 12px;
-      font-size: 16px;
+      font-size: 15px;
+      font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 6px;
-      i { color: $accent; }
+      gap: 8px;
+      i { color: $accent; font-size: 18px; }
     }
 
-    &.savings-cat h3 i { color: #8e44ad; }
-    &.credit-cat h3 i { color: #e67e22; }
+    &.savings-cat h3 i { color: $savings; }
+    &.credit-cat h3 i { color: $credit; }
     &.credit-cat {
-      background: #fff8f0;
-      border-left: 4px solid #e67e22;
+      background: $credit-soft;
+      border-color: color.adjust($credit, $lightness: 30%);
     }
     &.credit-cat.group-paid {
-      background: #f0fff4;
-      border-left-color: #27ae60;
+      background: $success-soft;
+      border-color: color.adjust($success, $lightness: 35%);
     }
 
     .group-check {
       display: inline-flex;
       align-items: center;
-      margin-right: 4px;
+      margin-right: 2px;
       input[type="checkbox"] {
         width: 20px;
         height: 20px;
-        accent-color: #27ae60;
+        accent-color: $success;
         cursor: pointer;
       }
     }
 
+    .auto-tag,
     .paid-tag {
       font-size: 10px;
-      background: #27ae60;
-      color: #fff;
       padding: 2px 8px;
       border-radius: 999px;
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-      margin-left: 6px;
+      margin-left: 4px;
     }
+    .auto-tag { background: $border; color: $primary-soft; }
+    .paid-tag { background: $success; color: #fff; }
 
     .item-readonly {
       flex: 1;
       min-width: 0;
-      padding-left: 28px;
+      padding-left: 4px;
       display: flex;
       align-items: center;
       gap: 8px;
-      .name { font-weight: 500; }
+      .name { font-weight: 500; font-size: 14px; }
 
       .sub-tag {
         font-size: 10px;
         padding: 2px 6px;
         border-radius: 999px;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
-        &.dif { background: #9b59b6; color: #fff; }
+        &.dif { background: $savings-soft; color: $savings; }
       }
-    }
-
-    .convert-select {
-      padding: 4px 6px;
-      border-radius: 6px;
-      border: 1px solid color.adjust($primary, $lightness: 55%);
-      background: transparent;
-      font-size: 13px;
-      cursor: pointer;
-      color: color.adjust($primary, $lightness: 20%);
-      width: 32px;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      text-align: center;
-
-      &:hover {
-        background: $bg;
-      }
-    }
-
-    .auto-tag {
-      font-size: 10px;
-      background: color.adjust($primary, $lightness: 50%);
-      color: color.adjust($primary, $lightness: 15%);
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin-left: 6px;
     }
 
     .cat-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
       h3 { margin: 0; }
+
+      .cat-budget {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        color: $primary-soft;
+        background: $surface-alt;
+        padding: 4px 12px;
+        border-radius: 999px;
+        border: 1px solid $border;
+
+        .used { color: $danger; }
+        .sep { color: $primary-faint; }
+        .total { color: $primary; }
+        .free {
+          margin-left: 6px;
+          font-size: 10.5px;
+          color: $success;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          &.warn { color: $danger; }
+        }
+      }
+    }
+
+    .cat-progress {
+      height: 5px;
+      background: $border;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: -2px 0 12px;
+
+      .bar {
+        height: 100%;
+        background: $accent;
+        transition: width .3s ease;
+        border-radius: 999px;
+      }
+    }
+
+    .add-item-form {
+      display: grid;
+      grid-template-columns: 2fr 1fr auto auto;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: $accent-soft;
+      border-radius: $r-md;
+      border: 1px solid color.adjust($accent, $lightness: 30%);
+
+      input {
+        padding: 7px 10px;
+        border-radius: $r-sm;
+        border: 1px solid $border;
+        background: $surface;
+        font-size: 13.5px;
+        &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+      }
+    }
+
+    .add-item-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 9px 14px;
+      background: transparent;
+      border: 1px dashed $border-strong;
+      border-radius: $r-md;
+      color: $accent;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+      width: 100%;
+      justify-content: center;
+
+      small {
+        margin-left: 4px;
+        color: $primary-muted;
+        font-weight: 500;
+        font-size: 11px;
+      }
+
+      &:hover {
+        background: $accent-soft;
+        border-color: $accent;
+        border-style: solid;
+        color: $accent-hover;
+      }
+
+      i { font-size: 16px; }
     }
 
     .item {
@@ -180,22 +315,19 @@
       justify-content: space-between;
       align-items: center;
       padding: 10px 0;
-      border-bottom: 1px solid color.adjust($primary, $lightness: 60%);
+      border-bottom: 1px solid $border;
       gap: 12px;
-
       &:last-child { border-bottom: none; }
 
       &.paid {
-        .name { text-decoration: line-through; opacity: 0.6; }
+        .name { text-decoration: line-through; opacity: 0.55; }
       }
 
       &.partial {
-        background: color.adjust(#f39c12, $lightness: 42%);
-        margin-left: -8px;
-        margin-right: -8px;
-        padding-left: 8px;
-        padding-right: 8px;
-        border-radius: 6px;
+        background: $warning-soft;
+        margin: 0 -8px;
+        padding: 10px 8px;
+        border-radius: $r-sm;
         border-bottom-color: transparent;
       }
 
@@ -219,11 +351,12 @@
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          font-size: 14px;
         }
 
         .partial-badge {
           font-size: 10px;
-          background: #f39c12;
+          background: $warning;
           color: #fff;
           padding: 2px 6px;
           border-radius: 999px;
@@ -239,7 +372,7 @@
         gap: 8px;
         flex-shrink: 0;
 
-        .paid-amount { color: $danger; font-weight: 600; }
+        .paid-amount { color: $danger; font-weight: 600; font-size: 14px; }
 
         .amount-input {
           display: flex;
@@ -247,34 +380,34 @@
           gap: 6px;
 
           input[type="number"] {
-            width: 90px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid color.adjust($primary, $lightness: 50%);
-            font-size: 14px;
+            width: 88px;
+            padding: 6px 10px;
+            border-radius: $r-sm;
+            border: 1px solid $border;
+            background: $surface-alt;
+            font-size: 13.5px;
             text-align: right;
             font-weight: 600;
             color: $danger;
+            transition: border-color .15s ease, box-shadow .15s ease;
 
             &:focus {
               outline: none;
               border-color: $accent;
-              box-shadow: 0 0 0 2px color.adjust($accent, $lightness: 40%);
+              background: $surface;
+              box-shadow: 0 0 0 3px rgba($accent, 0.12);
             }
 
-            &:disabled {
-              opacity: 0.5;
-              cursor: wait;
-            }
+            &:disabled { opacity: 0.5; cursor: wait; }
           }
 
           .of {
-            color: color.adjust($primary, $lightness: 25%);
-            font-size: 13px;
+            color: $primary-muted;
+            font-size: 12.5px;
             white-space: nowrap;
           }
 
-          &.saving input { background: color.adjust($accent, $lightness: 50%); }
+          &.saving input { background: $accent-soft; }
         }
       }
     }
@@ -288,27 +421,36 @@
     .tx-form {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 14px;
       padding: 16px;
-      background: $bg;
-      border-radius: 8px;
+      background: $surface-alt;
+      border-radius: $r-md;
+      border: 1px solid $border;
 
       label {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-        font-size: 13px;
-        color: color.adjust($primary, $lightness: 15%);
-
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $primary-soft;
         &.span-full { grid-column: span 2; }
       }
 
       input, select {
         padding: 8px 10px;
-        border-radius: 6px;
-        border: 1px solid color.adjust($primary, $lightness: 50%);
-        font-size: 14px;
+        border-radius: $r-sm;
+        border: 1px solid $border;
+        background: $surface;
+        font-size: 13.5px;
+        transition: border-color .15s ease, box-shadow .15s ease;
+
+        &:focus {
+          outline: none;
+          border-color: $accent;
+          box-shadow: 0 0 0 3px rgba($accent, 0.12);
+        }
       }
 
       .form-actions {
@@ -320,71 +462,113 @@
 
     .extra-item {
       &.income {
-        background: #f0fff4;
-        margin-left: -8px;
-        margin-right: -8px;
-        padding-left: 8px;
-        padding-right: 8px;
-        border-radius: 6px;
+        background: $success-soft;
+        margin: 0 -8px;
+        padding: 10px 8px;
+        border-radius: $r-sm;
+        border-bottom-color: transparent;
       }
 
-      .extra-info { flex: 1; min-width: 0; }
-      .date { color: color.adjust($primary, $lightness: 30%); }
-      .income-amount { color: #27ae60; font-weight: 700; }
+      .extra-info {
+        flex: 1;
+        min-width: 0;
+        strong { font-size: 14px; }
+      }
+      .date { color: $primary-muted; }
+      .income-amount { color: $success; font-weight: 700; font-size: 14px; }
     }
   }
 
   .edit-block {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    background: $surface;
+    border-radius: $r-lg;
+    padding: 22px;
+    margin-bottom: 22px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border;
+
+    h3 { margin: 0 0 14px; font-size: 16px; }
 
     .edit-row {
       display: flex;
       gap: 16px;
       align-items: center;
       margin-bottom: 16px;
+      flex-wrap: wrap;
 
       label {
         display: flex;
         flex-direction: column;
-        font-size: 13px;
-        input { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; max-width: 200px; }
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $primary-soft;
+        input {
+          padding: 8px 12px;
+          border-radius: $r-sm;
+          border: 1px solid $border;
+          background: $surface-alt;
+          font-size: 14px;
+          max-width: 180px;
+          transition: border-color .15s ease, box-shadow .15s ease;
+          &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); background: $surface; }
+        }
       }
 
       .balance {
         margin-left: auto;
         font-weight: 700;
-        color: $accent;
+        color: $success;
+        font-size: 14px;
         &.invalid { color: $danger; }
       }
     }
 
     .edit-cat {
-      border: 1px solid color.adjust($primary, $lightness: 55%);
-      border-radius: 8px;
-      padding: 12px;
+      border: 1px solid $border;
+      border-radius: $r-md;
+      padding: 14px;
       margin-bottom: 12px;
+      background: $surface-alt;
 
       .edit-cat-head {
         display: flex;
         gap: 8px;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
 
-        input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-weight: 600; }
-        select { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; }
+        input {
+          flex: 1;
+          padding: 8px 10px;
+          border-radius: $r-sm;
+          border: 1px solid $border;
+          background: $surface;
+          font-weight: 600;
+          font-size: 14px;
+          &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+        }
+        select {
+          padding: 8px 10px;
+          border-radius: $r-sm;
+          border: 1px solid $border;
+          background: $surface;
+          font-size: 13.5px;
+        }
       }
 
       .edit-item {
         display: grid;
-        grid-template-columns: 2fr 120px 32px;
+        grid-template-columns: 2fr 110px 32px;
         gap: 8px;
         margin: 6px 0;
-
-        input { padding: 6px 10px; border-radius: 6px; border: 1px solid #ddd; }
+        input {
+          padding: 7px 10px;
+          border-radius: $r-sm;
+          border: 1px solid $border;
+          background: $surface;
+          font-size: 13.5px;
+          &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+        }
       }
     }
 
@@ -399,33 +583,52 @@
 
 .btn {
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: $r-sm;
+  padding: 9px 16px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
 
-  &.btn-sm { padding: 6px 10px; font-size: 12px; }
-  &.btn-primary { background: $accent; color: #fff; }
-  &.btn-primary:hover { background: color.adjust($accent, $lightness: -5%); }
-  &.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  &.btn-sm { padding: 7px 12px; font-size: 12.5px; }
+
+  &.btn-primary {
+    background: $accent;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba($accent, 0.25);
+    &:hover { background: $accent-hover; transform: translateY(-1px); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  }
+
   &.btn-outline {
-    background: transparent;
-    color: $primary;
-    border: 1px solid color.adjust($primary, $lightness: 50%);
+    background: $surface;
+    color: $primary-soft;
+    border: 1px solid $border;
+    &:hover { background: $surface-alt; border-color: $border-strong; color: $primary; }
   }
 }
 
 .btn-icon {
   background: transparent;
   border: none;
-  color: $danger;
+  color: $primary-muted;
   cursor: pointer;
   font-size: 16px;
-  padding: 4px;
+  padding: 6px;
+  border-radius: $r-sm;
+  transition: background .15s ease, color .15s ease;
+  &:hover { background: $danger-soft; color: $danger; }
+  &.mini { font-size: 14px; padding: 4px; }
+}
+
+.cat-total-input {
+  flex: 0 0 auto !important;
+  width: 130px !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
 }
 
 .btn-link {
@@ -435,7 +638,26 @@
   cursor: pointer;
   font-size: 13px;
   padding: 6px 0;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: color .15s ease;
+  &:hover { color: $accent-hover; }
+}
+
+.convert-select {
+  padding: 5px 8px;
+  border-radius: $r-sm;
+  border: 1px solid $border;
+  background: $surface;
+  font-size: 13px;
+  cursor: pointer;
+  color: $primary-muted;
+  width: 34px;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  transition: background .15s ease, color .15s ease;
+  &:hover { background: $surface-alt; color: $accent; }
 }

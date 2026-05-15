@@ -23,8 +23,11 @@ export class SettingsComponent {
   draftCategories = signal<LsTemplateCategory[]>([]);
 
   draftTotal = computed(() =>
-    this.draftCategories().reduce((acc, c) =>
-      acc + c.items.reduce((a, i) => a + (Number(i.amount) || 0), 0), 0)
+    this.draftCategories().reduce((acc, c) => {
+      const itemsSum = c.items.reduce((a, i) => a + (Number(i.amount) || 0), 0);
+      const budget = (c.totalAmount && c.totalAmount > 0) ? Number(c.totalAmount) : itemsSum;
+      return acc + budget;
+    }, 0)
   );
 
   draftRemaining = computed(() => this.draftSalary() - this.draftTotal());
@@ -49,7 +52,11 @@ export class SettingsComponent {
   }
 
   addCategory() {
-    this.draftCategories.update(list => [...list, { name: 'Nueva categoría', kind: 'expense', items: [] }]);
+    this.draftCategories.update(list => [...list, { name: 'Nueva categoría', kind: 'expense', totalAmount: 0, items: [] }]);
+  }
+
+  updateCategoryTotal(idx: number, totalAmount: number) {
+    this.draftCategories.update(list => list.map((c, i) => i === idx ? { ...c, totalAmount } : c));
   }
 
   removeCategory(idx: number) {

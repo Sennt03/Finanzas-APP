@@ -5,9 +5,16 @@ const SavingsMovement = require('../savingsMovement/model')
 const creditPurchaseController = require('../creditPurchase/controller')
 const myError = require('../../libs/myError')
 
+function sumItems(cat) {
+    return (cat.items || []).reduce((a, it) => a + (it.budgetedAmount || 0), 0)
+}
+
+function categoryBudget(cat) {
+    return (cat.totalAmount && cat.totalAmount > 0) ? cat.totalAmount : sumItems(cat)
+}
+
 function totalBudgeted(categories) {
-    return (categories || []).reduce((acc, cat) =>
-        acc + (cat.items || []).reduce((a, it) => a + (it.budgetedAmount || 0), 0), 0)
+    return (categories || []).reduce((acc, cat) => acc + categoryBudget(cat), 0)
 }
 
 function totalPaid(categories) {
@@ -210,6 +217,7 @@ async function create(userId, { year, month, salary }) {
     const categories = (tpl?.categories || []).map(cat => ({
         name: cat.name,
         kind: cat.kind,
+        totalAmount: cat.totalAmount || 0,
         items: (cat.items || []).map(it => ({
             name: it.name,
             budgetedAmount: it.amount || 0,
@@ -247,6 +255,7 @@ async function updateMeta(userId, id, { salary, categories }) {
             _id: cat._id,
             name: cat.name,
             kind: cat.kind || 'expense',
+            totalAmount: cat.totalAmount || 0,
             items: (cat.items || []).map(it => {
                 const prev = it._id ? oldMap.get(String(it._id)) : null
                 return {
@@ -259,6 +268,16 @@ async function updateMeta(userId, id, { salary, categories }) {
                 }
             })
         }))
+    }
+
+    // Validar items vs total por categoría
+    for (const cat of stmt.categories) {
+        if (cat.totalAmount && cat.totalAmount > 0) {
+            const used = sumItems(cat)
+            if (used > cat.totalAmount) {
+                throw myError(`Los items de "${cat.name}" exceden el total de la categoría (${used} > ${cat.totalAmount})`, 400)
+            }
+        }
     }
 
     const budgeted = totalBudgeted(stmt.categories)
@@ -355,6 +374,79 @@ async function removeExtra(userId, id, extraId) {
     return buildEnrichedStatement(stmt, userId)
 }
 
+async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount }) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+
+    const cat = stmt.categories.id(categoryId)
+    if (!cat) throw myError('Categoría no encontrada', 404)
+
+    const amount = Number(budgetedAmount) || 0
+    if (amount < 0) throw myError('Monto inválido', 400)
+
+    if (cat.totalAmount && cat.totalAmount > 0) {
+        const used = sumItems(cat)
+        if (used + amount > cat.totalAmount) {
+            throw myError(`El item excede el presupuesto de la categoría (libre: ${(cat.totalAmount - used).toFixed(2)})`, 400)
+        }
+    } else {
+        const newTotalBudgeted = totalBudgeted(stmt.categories) + amount
+        if (newTotalBudgeted > stmt.salary) {
+            throw myError(`El item excede el sueldo (libre: ${(stmt.salary - totalBudgeted(stmt.categories)).toFixed(2)})`, 400)
+        }
+    }
+
+    cat.items.push({ name, budgetedAmount: amount, isPaid: false, paidAmount: 0, paidAt: null })
+    await stmt.save()
+    return buildEnrichedStatement(stmt, userId)
+}
+
+async function removeItemFromCategory(userId, id, categoryId, itemId) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+
+    const cat = stmt.categories.id(categoryId)
+    if (!cat) throw myError('Categoría no encontrada', 404)
+    const item = cat.items.id(itemId)
+    if (!item) throw myError('Item no encontrado', 404)
+
+    item.deleteOne()
+    await stmt.save()
+    return buildEnrichedStatement(stmt, userId)
+}
+
+async function updateCategoryMeta(userId, id, categoryId, data) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+
+    const cat = stmt.categories.id(categoryId)
+    if (!cat) throw myError('Categoría no encontrada', 404)
+
+    if (data.name !== undefined) cat.name = data.name
+    if (data.kind !== undefined) cat.kind = data.kind
+    if (data.totalAmount !== undefined) {
+        const newTotal = Number(data.totalAmount) || 0
+        if (newTotal > 0) {
+            const used = sumItems(cat)
+            if (newTotal < used) {
+                throw myError(`El total no puede ser menor a los items ya creados (${used.toFixed(2)})`, 400)
+            }
+        }
+        cat.totalAmount = newTotal
+    }
+
+    const otherBudget = stmt.categories
+        .filter(c => String(c._id) !== String(cat._id))
+        .reduce((acc, c) => acc + categoryBudget(c), 0)
+    const thisBudget = categoryBudget(cat)
+    if (otherBudget + thisBudget > stmt.salary) {
+        throw myError(`Excede el sueldo (libre: ${(stmt.salary - otherBudget).toFixed(2)})`, 400)
+    }
+
+    await stmt.save()
+    return buildEnrichedStatement(stmt, userId)
+}
+
 async function remove(userId, id) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
@@ -367,6 +459,7 @@ module.exports = {
     list, getOne, create, updateMeta,
     setItemAmount,
     addExtra, removeExtra,
+    addItemToCategory, removeItemFromCategory, updateCategoryMeta,
     toggleCreditGroup,
     convertMovement,
     remove

@@ -7,7 +7,9 @@ const {
     setItemAmountValidator,
     extraValidator,
     toggleGroupValidator,
-    convertValidator
+    convertValidator,
+    addItemValidator,
+    updateCategoryValidator
 } = require('./validators')
 
 router.use(verifyToken)
@@ -78,6 +80,27 @@ router.post('/:id/credit-group', toggleGroupValidator, async (req, res, next) =>
 router.post('/:id/convert', convertValidator, async (req, res, next) => {
     try {
         const data = await controller.convertMovement(req.user._id, req.params.id, req.body)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/categories/:categoryId/items', addItemValidator, async (req, res, next) => {
+    try {
+        const data = await controller.addItemToCategory(req.user._id, req.params.id, req.params.categoryId, req.body)
+        response.success(req, res, data, 201)
+    } catch (e) { next(e) }
+})
+
+router.delete('/:id/categories/:categoryId/items/:itemId', async (req, res, next) => {
+    try {
+        const data = await controller.removeItemFromCategory(req.user._id, req.params.id, req.params.categoryId, req.params.itemId)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.patch('/:id/categories/:categoryId', updateCategoryValidator, async (req, res, next) => {
+    try {
+        const data = await controller.updateCategoryMeta(req.user._id, req.params.id, req.params.categoryId, req.body)
         response.success(req, res, data)
     } catch (e) { next(e) }
 })

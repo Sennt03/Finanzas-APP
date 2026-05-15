@@ -24,6 +24,7 @@ export interface LsTemplateCategory {
     _id?: string;
     name: string;
     kind: CategoryKind;
+    totalAmount: number;
     items: LsTemplateItem[];
 }
 
@@ -51,6 +52,7 @@ export interface LsStatementCategory {
     _id?: string;
     name: string;
     kind: CategoryKind;
+    totalAmount: number;
     items: LsStatementItem[];
     isVirtual?: boolean;
     groupKey?: 'tdc' | 'diferidos';

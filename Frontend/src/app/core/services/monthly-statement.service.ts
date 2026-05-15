@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from 'environments/environment';
-import { LsMonthlyStatement, LsStatementCategory, LsStatementExtra } from '@models/finance.models';
+import { CategoryKind, LsMonthlyStatement, LsStatementCategory, LsStatementExtra } from '@models/finance.models';
 
 @Injectable({ providedIn: 'root' })
 export class MonthlyStatementService {
@@ -50,5 +50,17 @@ export class MonthlyStatementService {
         target: { type: 'expense' | 'income' | 'tdc' | 'diferido'; installments?: number; date?: string; categoryName?: string };
     }): Observable<LsMonthlyStatement> {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/convert`, payload);
+    }
+
+    addItemToCategory(id: string, categoryId: string, payload: { name: string; budgetedAmount: number }): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items`, payload);
+    }
+
+    removeItemFromCategory(id: string, categoryId: string, itemId: string): Observable<LsMonthlyStatement> {
+        return this.http.delete<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items/${itemId}`);
+    }
+
+    updateCategoryMeta(id: string, categoryId: string, payload: { name?: string; kind?: CategoryKind; totalAmount?: number }): Observable<LsMonthlyStatement> {
+        return this.http.patch<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}`, payload);
     }
 }
