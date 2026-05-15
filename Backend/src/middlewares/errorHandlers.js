@@ -4,8 +4,8 @@ function withErrorStack(error, stack) {
     if (config.dev) {
         return { message: error, stack }
     }
-    
-    return { message: error }
+
+    return { message: error, stack }
 }
 
 function logErrors(err, req, res, next) {
