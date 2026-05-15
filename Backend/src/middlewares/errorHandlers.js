@@ -3,6 +3,7 @@ const config = require('../config/config')
 function withErrorStack(error, stack) {
     if (config.dev) {
         return { message: error, stack }
+    }
     
     return { message: error }
 }
