@@ -3,7 +3,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const config = {
-    whitelist: ['http://localhost:4200', 'http://localhost:3000'],
+    whitelist: ['http://localhost:4200', 'http://localhost:3000', 'https://orange-kangaroo-453507.hostingersite.com', 'http://orange-kangaroo-453507.hostingersite.com'],
     dev: process.env.NODE_ENV !== 'production',
     dbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/finanzas',
     port: process.env.PORT || 3000,
