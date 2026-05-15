@@ -1,0 +1,84 @@
+<div class="auth register">
+  <div class="container-xl">
+    <form class="form" [formGroup]="form" (ngSubmit)="register()">
+      <div class="text">
+        Crear cuenta
+        <p>Finanzas personales</p>
+      </div>
+
+      <div class="form-floating form-floating-custom mb-3">
+        <input formControlName="username" type="text" class="form-control" id="input-username" placeholder="Usuario" />
+        <label for="input-username">Usuario</label>
+
+        @if (haveErrors('username')) {
+          <div class="div-error">
+            @if (hasError('username', 'minlength')) {
+              <div>*mínimo 3 caracteres</div>
+            } @if (hasError('username', 'required')) {
+              <div>*requerido</div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-floating form-floating-custom mb-3">
+        <input formControlName="email" type="text" class="form-control" id="input-email" placeholder="Email" />
+        <label for="input-email">Email</label>
+
+        @if (haveErrors('email')) {
+          <div class="div-error">
+            @if (hasError('email', 'not_available')) {
+              <div>*el email ya está en uso</div>
+            } @if (hasError('email', 'email')) {
+              <div>*ingresa un email válido</div>
+            } @if (hasError('email', 'required')) {
+              <div>*requerido</div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-floating form-floating-custom form-password auth-pass-inputgroup mb-3 position-relative">
+        <input formControlName="password" type="password" class="form-control" id="password-input" placeholder="Password" />
+        <button (click)="togglePasswordVisibility()" type="button" class="btn btn-link position-absolute h-100 end-0 top-0" id="password-addon">
+          <i class="icon-password fa-regular fa-eye"></i>
+        </button>
+        <label for="password-input">Password</label>
+
+        @if (haveErrors('password')) {
+          <div class="div-error">
+            @if (hasError('password', 'minlength')) {
+              <div>*mínimo 8 caracteres</div>
+            } @else if (hasError('password', 'required')) {
+              <div>*requerido</div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-floating form-floating-custom form-password auth-pass-inputgroup mb-3 position-relative">
+        <input formControlName="confirmPassword" type="password" class="form-control" id="conf-password-input" placeholder="Confirmar Password" />
+        <button (click)="togglePasswordVisibility('conf-')" type="button" class="btn btn-link position-absolute h-100 end-0 top-0" id="conf-password-addon">
+          <i class="conf-icon-password fa-regular fa-eye"></i>
+        </button>
+        <label for="conf-password-input">Confirmar Password</label>
+
+        @if (form.get('confirmPassword')?.touched && form.errors && form.hasError('match_password')) {
+          <div class="div-error">
+            <div>*las contraseñas no coinciden</div>
+          </div>
+        }
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-dark shadow-none w-100" type="submit">Registrarme</button>
+      </div>
+      <hr />
+      <div class="mt-3 text-center">
+        <p class="mb-0 text-muted">¿Ya tienes cuenta?<a (click)="signin()" class="fw-bold ms-1">Inicia sesión</a></p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<app-loading [show]="maskLoad()"></app-loading>

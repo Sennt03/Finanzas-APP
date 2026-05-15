@@ -1,0 +1,29 @@
+<div class="layout" [class.sidebar-open]="sidebarOpen()">
+    <aside class="sidebar">
+        <div class="logo-details">
+            <i class="bx bx-wallet icon"></i>
+            <span class="logo_name">Finanzas</span>
+            <i class="bx bx-menu" id="btn" (click)="toggleSidebar()"></i>
+        </div>
+        <ul class="nav-list">
+            <li>
+                <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+                    <i class="bx bx-grid-alt"></i>
+                    <span class="links_name">Inicio</span>
+                </a>
+            </li>
+            <li class="profile">
+                <div class="profile-details">
+                    <div class="name">{{ user().username }}</div>
+                </div>
+                <i class="bx bx-log-out" id="log_out" (click)="logout()" title="Salir"></i>
+            </li>
+        </ul>
+    </aside>
+
+    <section class="home-section">
+        <router-outlet></router-outlet>
+    </section>
+</div>
+
+<app-loading [show]="maskLoad()"></app-loading>

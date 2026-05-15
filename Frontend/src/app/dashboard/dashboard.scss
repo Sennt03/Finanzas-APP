@@ -1,0 +1,147 @@
+@use 'sass:color';
+@use 'vars' as *;
+
+.layout {
+    min-height: 100vh;
+    background: $bg;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 78px;
+    background: $primary;
+    padding: 6px 14px;
+    z-index: 99;
+    transition: all .3s ease;
+    color: #fff;
+
+    .logo-details {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .icon {
+            font-size: 28px;
+            color: #fff;
+        }
+
+        .logo_name {
+            font-weight: 700;
+            font-size: 20px;
+            opacity: 0;
+            transition: opacity .25s ease;
+        }
+
+        #btn {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            font-size: 22px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 50px;
+            width: 50px;
+        }
+    }
+
+    .nav-list {
+        margin-top: 20px;
+        height: calc(100% - 80px);
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+
+        li {
+            position: relative;
+            margin: 8px 0;
+
+            a {
+                display: flex;
+                align-items: center;
+                height: 50px;
+                width: 100%;
+                border-radius: 8px;
+                padding: 0 12px;
+                color: #fff;
+                transition: background .25s ease;
+
+                i {
+                    min-width: 50px;
+                    font-size: 20px;
+                    text-align: center;
+                }
+
+                .links_name {
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity .25s ease;
+                }
+
+                &:hover,
+                &.active {
+                    background: rgba(255, 255, 255, 0.08);
+                }
+            }
+        }
+
+        .profile {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+
+            .profile-details .name {
+                font-weight: 600;
+                opacity: 0;
+                transition: opacity .25s ease;
+            }
+
+            #log_out {
+                font-size: 22px;
+                cursor: pointer;
+            }
+        }
+    }
+}
+
+.layout.sidebar-open .sidebar {
+    width: 240px;
+
+    .logo-details .logo_name,
+    .nav-list li a .links_name,
+    .nav-list .profile .profile-details .name {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.home-section {
+    position: relative;
+    margin-left: 78px;
+    min-height: 100vh;
+    padding: 24px;
+    transition: margin-left .3s ease;
+}
+
+.layout.sidebar-open .home-section {
+    margin-left: 240px;
+}
+
+@media (max-width: 764px) {
+    .home-section {
+        margin-left: 78px;
+        padding: 16px;
+    }
+
+    .layout.sidebar-open .home-section {
+        margin-left: 78px;
+    }
+}

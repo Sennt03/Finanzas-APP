@@ -1,0 +1,40 @@
+@use 'sass:color';
+@use 'vars' as *;
+
+.home {
+    h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .muted {
+        color: color.adjust($primary, $lightness: 25%);
+        margin-bottom: 24px;
+    }
+
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+        h3 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            color: $accent;
+        }
+
+        p {
+            margin: 0;
+            font-size: 14px;
+            color: color.adjust($primary, $lightness: 20%);
+        }
+    }
+}
