@@ -1,11 +1,97 @@
 <div class="home">
-    <h1>Hola, {{ user().username }} 👋</h1>
-    <p class="muted">Bienvenido a tu app de finanzas personales. Los módulos se irán agregando paso a paso.</p>
-
-    <div class="cards">
-        <div class="card">
-            <h3>Próximamente</h3>
-            <p>Transacciones, presupuestos, ahorros, categorías personalizadas, histórico mes a mes y reportes.</p>
-        </div>
+  <header class="hello">
+    <div>
+      <h1>Hola, {{ user().username }}</h1>
+      <p class="muted">Tu resumen financiero</p>
     </div>
+    @if (months().length > 0) {
+      <div class="month-switcher">
+        <label>Mes</label>
+        <select [ngModel]="selectedId()" (ngModelChange)="selectMonth($event)">
+          @for (m of months(); track m._id) {
+            <option [ngValue]="m._id">{{ ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m.month - 1] }} {{ m.year }}</option>
+          }
+        </select>
+      </div>
+    }
+  </header>
+
+  @if (selected(); as s) {
+    <h2 class="month-title">{{ monthLabel() }}</h2>
+
+    <section class="cards">
+      <div class="card primary">
+        <span class="label">Sueldo</span>
+        <strong>{{ s.salary | number:'1.2-2' }}</strong>
+        @if (s.summary.totalExtrasIncome > 0) {
+          <small class="positive">+ {{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
+        }
+      </div>
+      <div class="card real">
+        <span class="label">Saldo real</span>
+        <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+        <small>en la cuenta</small>
+      </div>
+      <div class="card available">
+        <span class="label">Saldo disponible</span>
+        <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
+        <small>descontando TDC</small>
+      </div>
+      <div class="card spent">
+        <span class="label">Gastado</span>
+        <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
+        <small>de {{ s.salary | number:'1.2-2' }}</small>
+      </div>
+      @if (s.summary.creditCard.total > 0) {
+        <div class="card credit">
+          <span class="label">Tarjeta de crédito</span>
+          <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
+          @if (s.summary.creditCard.diferidosShare > 0) {
+            <small>{{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
+          }
+          <small [class.positive]="s.summary.creditCard.groupPaid">
+            {{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente' }}
+          </small>
+        </div>
+      }
+      <div class="card savings">
+        <span class="label">Ahorro del mes</span>
+        <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
+        @if (s.summary.savings.monthWithdrawals > 0) {
+          <small>-{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }} retirado</small>
+        }
+      </div>
+    </section>
+
+    <section class="movements">
+      <div class="section-head">
+        <h2>Últimos movimientos</h2>
+        <a [routerLink]="['/months', s._id]" class="link">Ver mes completo →</a>
+      </div>
+      @if (recentMovements().length === 0) {
+        <p class="muted small">Sin movimientos registrados aún.</p>
+      } @else {
+        <ul class="mov-list">
+          @for (m of recentMovements(); track $index) {
+            <li>
+              <div class="info">
+                <strong>{{ m.name }}</strong>
+                <small>{{ m.date | date:'d MMM' }}</small>
+              </div>
+              <span class="amt" [class.income]="m.type === 'income'" [class.expense]="m.type === 'expense' || m.type === 'paid'">
+                {{ m.type === 'income' ? '+' : '-' }}{{ m.amount | number:'1.2-2' }}
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  } @else {
+    <div class="empty">
+      <i class="bx bx-calendar"></i>
+      <p>No tienes meses registrados aún. <a routerLink="/months">Crea tu primer mes</a></p>
+    </div>
+  }
 </div>
+
+<app-loading [show]="loading()"></app-loading>

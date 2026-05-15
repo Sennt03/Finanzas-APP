@@ -1,0 +1,64 @@
+<div class="settings">
+  <header class="page-header">
+    <div>
+      <h1>Configuración</h1>
+      <p class="muted">Template default que se usa al crear cada nuevo mes.</p>
+    </div>
+    <button class="btn btn-primary" (click)="save()" [disabled]="draftRemaining() < 0">Guardar</button>
+  </header>
+
+  <section class="edit-block">
+    <div class="edit-row">
+      <label>
+        Sueldo default
+        <input type="number" min="0" [ngModel]="draftSalary()" (ngModelChange)="draftSalary.set($event)">
+      </label>
+      <label>
+        Día de corte TDC
+        <input type="number" min="1" max="28" [ngModel]="draftCutoffDay()" (ngModelChange)="draftCutoffDay.set($event)">
+      </label>
+      <div class="balance" [class.invalid]="draftRemaining() < 0">
+        Libre: {{ draftRemaining() | number:'1.2-2' }} · Presupuestado: {{ draftTotal() | number:'1.2-2' }}
+      </div>
+    </div>
+
+    @for (cat of draftCategories(); track $index; let ci = $index) {
+      <div class="edit-cat" [class.savings-cat]="cat.kind === 'savings'">
+        <div class="edit-cat-head">
+          <input type="text" [ngModel]="cat.name" (ngModelChange)="updateCategoryName(ci, $event)" placeholder="Categoría">
+          <select [ngModel]="cat.kind" (ngModelChange)="updateCategoryKind(ci, $event)">
+            <option value="expense">Gasto</option>
+            <option value="savings">Ahorro</option>
+          </select>
+          <button class="btn-icon" (click)="removeCategory(ci)" title="Eliminar categoría">
+            <i class="bx bx-trash"></i>
+          </button>
+        </div>
+        @for (it of cat.items; track $index; let ii = $index) {
+          <div class="edit-item">
+            <input type="text" [ngModel]="it.name" (ngModelChange)="updateItemName(ci, ii, $event)" placeholder="Item">
+            <input type="number" min="0" [ngModel]="it.amount" (ngModelChange)="updateItemAmount(ci, ii, $event)">
+            <button class="btn-icon" (click)="removeItem(ci, ii)" title="Eliminar item">
+              <i class="bx bx-x"></i>
+            </button>
+          </div>
+        }
+        <button class="btn-link" (click)="addItem(ci)">
+          <i class="bx bx-plus"></i> Agregar item
+        </button>
+      </div>
+    }
+
+    <button class="btn btn-outline" (click)="addCategory()">
+      <i class="bx bx-plus"></i> Agregar categoría
+    </button>
+  </section>
+
+  <p class="muted small">
+    Tip: las categorías de tipo <strong>Ahorro</strong> moverán dinero a tu cuenta de ahorros al marcar el item como pagado.
+    El <strong>día de corte TDC</strong> determina si una compra con tarjeta se paga este mes o el siguiente
+    (compras hechas hasta ese día → este mes; después → siguiente mes).
+  </p>
+</div>
+
+<app-loading [show]="loading()"></app-loading>

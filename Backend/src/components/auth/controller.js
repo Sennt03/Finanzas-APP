@@ -4,14 +4,21 @@ const myError = require('../../libs/myError')
 const config = require('../../config/config')
 const Model = require('../user/model')
 const Store = require('../../db/store')
+const accountController = require('../account/controller')
+const templateController = require('../budgetTemplate/controller')
 const store = new Store(Model)
 
 async function register(user) {
     const password = await bcrypt.hash(user.password, 10)
     user.password = password
     const newUser = await store.addOne(user)
-    const sendUser = createSendUser(newUser)
 
+    await Promise.all([
+        accountController.bootstrap(newUser._id),
+        templateController.bootstrap(newUser._id)
+    ])
+
+    const sendUser = createSendUser(newUser)
     const token = jwt.sign(sendUser, config.jwtSecret, { expiresIn: config.jwtExpiresIn })
 
     return { user: sendUser, token }
@@ -28,6 +35,11 @@ async function login({ email, password }) {
     if (!isMatch) {
         throw myError('Unauthorized', 401)
     }
+
+    await Promise.all([
+        accountController.bootstrap(user._id),
+        templateController.bootstrap(user._id)
+    ])
 
     const sendUser = createSendUser(user)
     const token = jwt.sign(sendUser, config.jwtSecret, { expiresIn: config.jwtExpiresIn })

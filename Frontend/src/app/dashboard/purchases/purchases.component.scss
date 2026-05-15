@@ -1,0 +1,185 @@
+@use 'sass:color';
+@use 'vars' as *;
+
+.purchases {
+  .page-header {
+    margin-bottom: 24px;
+    h1 { margin: 0; font-size: 26px; }
+    p { margin: 4px 0 0; }
+  }
+
+  .muted { color: color.adjust($primary, $lightness: 25%); }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: color.adjust($primary, $lightness: 25%);
+    i { font-size: 60px; opacity: 0.3; }
+  }
+
+  .block {
+    margin-bottom: 32px;
+    h2 {
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 12px;
+      i { color: #e67e22; }
+    }
+  }
+
+  .purchase-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 14px;
+    border-left: 4px solid #9b59b6;
+
+    &.single { border-left-color: #e67e22; }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 12px;
+
+      h3 { margin: 0; font-size: 18px; }
+      .actions { display: flex; gap: 6px; }
+    }
+
+    .edit-input {
+      font-size: 16px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      flex: 1;
+      max-width: 320px;
+
+      &.small { width: 100px; font-size: 14px; max-width: none; flex: none; }
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+
+      .label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: color.adjust($primary, $lightness: 25%);
+        margin-bottom: 2px;
+      }
+      strong {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        &.pending { color: #e67e22; }
+        &.positive { color: $accent; }
+      }
+    }
+
+    .progress {
+      height: 6px;
+      background: color.adjust($primary, $lightness: 60%);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 12px;
+
+      .bar {
+        height: 100%;
+        background: $accent;
+        transition: width .3s ease;
+      }
+    }
+
+    .cuotas-details {
+      summary {
+        cursor: pointer;
+        font-size: 13px;
+        color: $accent;
+        font-weight: 600;
+        user-select: none;
+        list-style: none;
+
+        &::-webkit-details-marker { display: none; }
+        &::before { content: '▸ '; font-size: 10px; }
+      }
+      &[open] summary::before { content: '▾ '; }
+    }
+
+    .cuotas-list {
+      list-style: none;
+      padding: 8px 0 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 6px;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: $bg;
+        border-radius: 6px;
+        font-size: 13px;
+
+        .m { flex: 1; }
+        .a { font-weight: 700; }
+
+        &.paid { opacity: 0.65; }
+      }
+    }
+  }
+}
+
+.tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+
+  &.paid { background: #d4edda; color: #155724; }
+  &.pending { background: #fff3cd; color: #856404; }
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &.btn-sm { padding: 6px 10px; font-size: 12px; }
+  &.btn-primary { background: $accent; color: #fff; }
+  &.btn-primary:hover { background: color.adjust($accent, $lightness: -5%); }
+  &.btn-outline {
+    background: transparent;
+    color: $primary;
+    border: 1px solid color.adjust($primary, $lightness: 50%);
+  }
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: color.adjust($primary, $lightness: 20%);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  &.danger:hover { color: $danger; }
+  &:hover { color: $accent; }
+}

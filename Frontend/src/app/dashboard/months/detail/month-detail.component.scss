@@ -1,0 +1,441 @@
+@use 'sass:color';
+@use 'vars' as *;
+
+.month-detail {
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: $accent;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    h1 { margin: 0; font-size: 26px; }
+  }
+
+  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .small { font-size: 13px; }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+      .label {
+        font-size: 12px;
+        color: color.adjust($primary, $lightness: 25%);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      strong {
+        display: block;
+        font-size: 22px;
+        font-weight: 700;
+        margin-top: 4px;
+      }
+      small {
+        display: block;
+        font-size: 11px;
+        color: color.adjust($primary, $lightness: 30%);
+        margin-top: 2px;
+      }
+
+      &.highlight strong { color: $accent; }
+      &.positive strong { color: $accent; }
+      &.available strong { color: #3498db; }
+      &.savings strong { color: #8e44ad; }
+      &.credit strong { color: #e67e22; }
+
+      small.positive { color: #27ae60; }
+    }
+  }
+
+  .category {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      i { color: $accent; }
+    }
+
+    &.savings-cat h3 i { color: #8e44ad; }
+    &.credit-cat h3 i { color: #e67e22; }
+    &.credit-cat {
+      background: #fff8f0;
+      border-left: 4px solid #e67e22;
+    }
+    &.credit-cat.group-paid {
+      background: #f0fff4;
+      border-left-color: #27ae60;
+    }
+
+    .group-check {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 4px;
+      input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: #27ae60;
+        cursor: pointer;
+      }
+    }
+
+    .paid-tag {
+      font-size: 10px;
+      background: #27ae60;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-left: 6px;
+    }
+
+    .item-readonly {
+      flex: 1;
+      min-width: 0;
+      padding-left: 28px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      .name { font-weight: 500; }
+
+      .sub-tag {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        &.dif { background: #9b59b6; color: #fff; }
+      }
+    }
+
+    .convert-select {
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid color.adjust($primary, $lightness: 55%);
+      background: transparent;
+      font-size: 13px;
+      cursor: pointer;
+      color: color.adjust($primary, $lightness: 20%);
+      width: 32px;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      text-align: center;
+
+      &:hover {
+        background: $bg;
+      }
+    }
+
+    .auto-tag {
+      font-size: 10px;
+      background: color.adjust($primary, $lightness: 50%);
+      color: color.adjust($primary, $lightness: 15%);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-left: 6px;
+    }
+
+    .cat-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      h3 { margin: 0; }
+    }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid color.adjust($primary, $lightness: 60%);
+      gap: 12px;
+
+      &:last-child { border-bottom: none; }
+
+      &.paid {
+        .name { text-decoration: line-through; opacity: 0.6; }
+      }
+
+      &.partial {
+        background: color.adjust(#f39c12, $lightness: 42%);
+        margin-left: -8px;
+        margin-right: -8px;
+        padding-left: 8px;
+        padding-right: 8px;
+        border-radius: 6px;
+        border-bottom-color: transparent;
+      }
+
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        flex: 1;
+        min-width: 0;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          accent-color: $accent;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .name {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .partial-badge {
+          font-size: 10px;
+          background: #f39c12;
+          color: #fff;
+          padding: 2px 6px;
+          border-radius: 999px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+      }
+
+      .amounts {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+
+        .paid-amount { color: $danger; font-weight: 600; }
+
+        .amount-input {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          input[type="number"] {
+            width: 90px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid color.adjust($primary, $lightness: 50%);
+            font-size: 14px;
+            text-align: right;
+            font-weight: 600;
+            color: $danger;
+
+            &:focus {
+              outline: none;
+              border-color: $accent;
+              box-shadow: 0 0 0 2px color.adjust($accent, $lightness: 40%);
+            }
+
+            &:disabled {
+              opacity: 0.5;
+              cursor: wait;
+            }
+          }
+
+          .of {
+            color: color.adjust($primary, $lightness: 25%);
+            font-size: 13px;
+            white-space: nowrap;
+          }
+
+          &.saving input { background: color.adjust($accent, $lightness: 50%); }
+        }
+      }
+    }
+
+    .tx-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tx-form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: $bg;
+      border-radius: 8px;
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 13px;
+        color: color.adjust($primary, $lightness: 15%);
+
+        &.span-full { grid-column: span 2; }
+      }
+
+      input, select {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid color.adjust($primary, $lightness: 50%);
+        font-size: 14px;
+      }
+
+      .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+    }
+
+    .extra-item {
+      &.income {
+        background: #f0fff4;
+        margin-left: -8px;
+        margin-right: -8px;
+        padding-left: 8px;
+        padding-right: 8px;
+        border-radius: 6px;
+      }
+
+      .extra-info { flex: 1; min-width: 0; }
+      .date { color: color.adjust($primary, $lightness: 30%); }
+      .income-amount { color: #27ae60; font-weight: 700; }
+    }
+  }
+
+  .edit-block {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+    .edit-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+
+      label {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        input { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; max-width: 200px; }
+      }
+
+      .balance {
+        margin-left: auto;
+        font-weight: 700;
+        color: $accent;
+        &.invalid { color: $danger; }
+      }
+    }
+
+    .edit-cat {
+      border: 1px solid color.adjust($primary, $lightness: 55%);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+
+      .edit-cat-head {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+
+        input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-weight: 600; }
+        select { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; }
+      }
+
+      .edit-item {
+        display: grid;
+        grid-template-columns: 2fr 120px 32px;
+        gap: 8px;
+        margin: 6px 0;
+
+        input { padding: 6px 10px; border-radius: 6px; border: 1px solid #ddd; }
+      }
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+  }
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &.btn-sm { padding: 6px 10px; font-size: 12px; }
+  &.btn-primary { background: $accent; color: #fff; }
+  &.btn-primary:hover { background: color.adjust($accent, $lightness: -5%); }
+  &.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  &.btn-outline {
+    background: transparent;
+    color: $primary;
+    border: 1px solid color.adjust($primary, $lightness: 50%);
+  }
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: $danger;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: $accent;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

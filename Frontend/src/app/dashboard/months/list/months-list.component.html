@@ -1,0 +1,74 @@
+<div class="months-list">
+  <header class="page-header">
+    <div>
+      <h1>Mis meses</h1>
+      <p class="muted">Estados de cuenta mes a mes.</p>
+    </div>
+    <button class="btn btn-primary" (click)="toggleCreate()">
+      <i class="bx bx-plus"></i> Nuevo mes
+    </button>
+  </header>
+
+  @if (showCreate()) {
+    <section class="create-card">
+      <h3>Nuevo estado de cuenta</h3>
+      <div class="form-row">
+        <label>
+          Año
+          <select [ngModel]="formYear()" (ngModelChange)="formYear.set($event)">
+            @for (y of yearOptions(); track y) {
+              <option [ngValue]="y">{{ y }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Mes
+          <select [ngModel]="formMonth()" (ngModelChange)="formMonth.set($event)">
+            @for (m of monthNames; track m; let i = $index) {
+              <option [ngValue]="i + 1">{{ m }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Sueldo (opcional, usa el default si vacío)
+          <input type="number" min="0" [ngModel]="formSalary()" (ngModelChange)="formSalary.set($event)" placeholder="default del template">
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" (click)="toggleCreate()">Cancelar</button>
+        <button class="btn btn-primary" (click)="createMonth()">Crear</button>
+      </div>
+    </section>
+  }
+
+  @if (loading() && months().length === 0) {
+    <p class="muted">Cargando...</p>
+  } @else if (months().length === 0) {
+    <div class="empty">
+      <i class="bx bx-calendar"></i>
+      <p>Aún no tienes meses registrados. Crea el primero.</p>
+    </div>
+  } @else {
+    <div class="grid">
+      @for (m of months(); track m._id) {
+        <a class="month-card" [routerLink]="['/months', m._id]">
+          <div class="head">
+            <h3>{{ monthLabel(m) }}</h3>
+            <button class="btn-icon" (click)="remove(m, $event)" title="Eliminar">
+              <i class="bx bx-trash"></i>
+            </button>
+          </div>
+          <div class="row"><span>Sueldo</span><strong>{{ m.salary | number:'1.2-2' }}</strong></div>
+          <div class="row"><span>Presupuestado</span><strong>{{ m.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
+          <div class="row"><span>Gastado</span><strong>{{ m.summary.totalPaid + m.summary.totalExtras | number:'1.2-2' }}</strong></div>
+          <div class="row remaining">
+            <span>Disponible</span>
+            <strong>{{ m.summary.remainingSalary | number:'1.2-2' }}</strong>
+          </div>
+        </a>
+      }
+    </div>
+  }
+</div>
+
+<app-loading [show]="loading()"></app-loading>

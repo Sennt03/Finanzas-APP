@@ -1,0 +1,297 @@
+@if (stmt(); as s) {
+  <div class="month-detail">
+    <header class="page-header">
+      <div>
+        <a routerLink="/months" class="back"><i class="bx bx-arrow-back"></i> Meses</a>
+        <h1>{{ monthLabel() }}</h1>
+      </div>
+      <div class="actions">
+        @if (!editMode()) {
+          <button class="btn btn-outline" (click)="enterEdit()">
+            <i class="bx bx-edit"></i> Editar presupuesto
+          </button>
+        }
+      </div>
+    </header>
+
+    <!-- Resumen -->
+    <section class="summary">
+      <div class="card highlight">
+        <span class="label">Sueldo</span>
+        <strong>{{ s.salary | number:'1.2-2' }}</strong>
+        @if (s.summary.totalExtrasIncome > 0) {
+          <small class="positive">+{{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
+        }
+      </div>
+      <div class="card">
+        <span class="label">Presupuestado</span>
+        <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
+        <small>libre: {{ s.summary.availableToBudget | number:'1.2-2' }}</small>
+      </div>
+      <div class="card">
+        <span class="label">Gastado</span>
+        <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
+        <small>items: {{ s.summary.totalPaid | number:'1.2-2' }} · extras: {{ s.summary.totalExtras | number:'1.2-2' }}</small>
+      </div>
+      <div class="card positive">
+        <span class="label">Saldo real (en banco)</span>
+        <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+        <small>incluye TDC no pagada aún</small>
+      </div>
+      <div class="card available">
+        <span class="label">Saldo disponible</span>
+        <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
+        <small>descuenta TDC pendiente</small>
+      </div>
+      <div class="card savings">
+        <span class="label">Ahorro del mes</span>
+        <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
+        @if (s.summary.savings.monthWithdrawals > 0) {
+          <small>egresos: -{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }}</small>
+        }
+      </div>
+      @if (s.summary.creditCard.total > 0) {
+        <div class="card credit">
+          <span class="label">Tarjeta de crédito</span>
+          <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
+          @if (s.summary.creditCard.diferidosShare > 0) {
+            <small>incluye {{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
+          }
+          <small>{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente de pagar' }}</small>
+        </div>
+      }
+    </section>
+
+    <!-- Edit budget -->
+    @if (editMode()) {
+      <section class="edit-block">
+        <h3>Editar presupuesto</h3>
+        <div class="edit-row">
+          <label>
+            Sueldo
+            <input type="number" min="0" [ngModel]="draftSalary()" (ngModelChange)="draftSalary.set($event)">
+          </label>
+          <div class="balance" [class.invalid]="draftRemaining() < 0">
+            Libre: {{ draftRemaining() | number:'1.2-2' }}
+          </div>
+        </div>
+
+        @for (cat of draftCategories(); track $index; let ci = $index) {
+          <div class="edit-cat">
+            <div class="edit-cat-head">
+              <input type="text" [ngModel]="cat.name" (ngModelChange)="updateCategoryName(ci, $event)" placeholder="Categoría">
+              <select [ngModel]="cat.kind" (ngModelChange)="updateCategoryKind(ci, $event)">
+                <option value="expense">Gasto</option>
+                <option value="savings">Ahorro</option>
+              </select>
+              <button class="btn-icon" (click)="removeCategory(ci)" title="Eliminar categoría">
+                <i class="bx bx-trash"></i>
+              </button>
+            </div>
+            @for (it of cat.items; track $index; let ii = $index) {
+              <div class="edit-item">
+                <input type="text" [ngModel]="it.name" (ngModelChange)="updateItemName(ci, ii, $event)" placeholder="Item">
+                <input type="number" min="0" [ngModel]="it.budgetedAmount" (ngModelChange)="updateItemAmount(ci, ii, $event)" placeholder="0">
+                <button class="btn-icon" (click)="removeItem(ci, ii)" title="Eliminar item">
+                  <i class="bx bx-x"></i>
+                </button>
+              </div>
+            }
+            <button class="btn-link" (click)="addItem(ci)">
+              <i class="bx bx-plus"></i> Agregar item
+            </button>
+          </div>
+        }
+
+        <button class="btn btn-outline" (click)="addCategory()">
+          <i class="bx bx-plus"></i> Agregar categoría
+        </button>
+
+        <div class="edit-actions">
+          <button class="btn btn-outline" (click)="cancelEdit()">Cancelar</button>
+          <button class="btn btn-primary" (click)="saveEdit()" [disabled]="draftRemaining() < 0">Guardar</button>
+        </div>
+      </section>
+    } @else {
+      <!-- Categorías (template + virtuales) -->
+      @for (cat of s.categories; track cat._id) {
+        <section class="category"
+          [class.savings-cat]="cat.kind === 'savings'"
+          [class.credit-cat]="cat.kind === 'credit'"
+          [class.group-paid]="cat.isVirtual && cat.categoryPaid">
+
+          <div class="cat-head">
+            <h3>
+              @if (cat.isVirtual) {
+                <label class="group-check" [title]="cat.categoryPaid ? 'Marcado como pagada' : 'Marcar como pagada'">
+                  <input
+                    type="checkbox"
+                    [checked]="!!cat.categoryPaid"
+                    (change)="toggleGroup(cat, $event)">
+                </label>
+              }
+              @if (cat.kind === 'savings') { <i class="bx bx-piggy-bank"></i> }
+              @else if (cat.kind === 'credit') { <i class="bx bx-credit-card"></i> }
+              @else { <i class="bx bx-wallet"></i> }
+              {{ cat.name }}
+              @if (cat.isVirtual) { <span class="auto-tag">auto</span> }
+              @if (cat.isVirtual && cat.categoryPaid) { <span class="paid-tag">pagada</span> }
+            </h3>
+          </div>
+
+          @if (cat.items.length === 0) {
+            <p class="muted small">Sin items en esta categoría</p>
+          }
+          @for (it of cat.items; track it._id) {
+            <div class="item"
+              [class.paid]="it.isPaid && !cat.isVirtual"
+              [class.partial]="!it.isPaid && it.paidAmount > 0 && !cat.isVirtual">
+
+              @if (cat.isVirtual) {
+                <div class="item-readonly">
+                  <span class="name">{{ it.name }}</span>
+                  @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
+                </div>
+                <div class="amounts">
+                  <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+                  <select class="convert-select" (change)="convertCuota(it, $any($event.target).value); $any($event.target).value=''">
+                    <option value="" disabled selected>⋮</option>
+                    <option value="expense">→ Gasto cash</option>
+                    <option value="income">→ Ingreso</option>
+                    @if (it.subType === 'diferido') { <option value="tdc">→ TDC 1 cuota</option> }
+                    @if (it.subType === 'tdc') { <option value="diferido">→ Diferido N cuotas</option> }
+                  </select>
+                </div>
+              } @else {
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    [checked]="it.isPaid"
+                    [disabled]="isSaving(it)"
+                    (change)="onCheck(it, cat, $event)">
+                  <span class="name">{{ it.name }}</span>
+                  @if (!it.isPaid && it.paidAmount > 0) {
+                    <span class="partial-badge">parcial</span>
+                  }
+                </label>
+                <div class="amounts">
+                  <div class="amount-input" [class.saving]="isSaving(it)">
+                    <input
+                      type="number"
+                      min="0"
+                      [max]="it.budgetedAmount"
+                      [value]="draftValue(it)"
+                      [disabled]="isSaving(it)"
+                      (input)="onAmountInput(it, $any($event.target).value)"
+                      (blur)="commitAmount(it, cat)"
+                      (keydown.enter)="commitAmount(it, cat); $any($event.target).blur()">
+                    <span class="of">/ {{ it.budgetedAmount | number:'1.2-2' }}</span>
+                  </div>
+                  <select class="convert-select" (change)="convertItem(cat, it, $any($event.target).value); $any($event.target).value=''">
+                    <option value="" disabled selected>⋮</option>
+                    <option value="income">→ Ingreso</option>
+                    <option value="tdc">→ TDC</option>
+                    <option value="diferido">→ Diferido</option>
+                  </select>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      <!-- Movimientos extras -->
+      <section class="category extras">
+        <div class="cat-head">
+          <h3><i class="bx bx-receipt"></i> Movimientos extras</h3>
+          <div class="tx-buttons">
+            <button class="btn btn-outline btn-sm" (click)="openTx('expense')">
+              <i class="bx bx-minus"></i> Gasto
+            </button>
+            <button class="btn btn-outline btn-sm" (click)="openTx('income')">
+              <i class="bx bx-plus"></i> Ingreso
+            </button>
+            <button class="btn btn-outline btn-sm" (click)="openTx('tdc')">
+              <i class="bx bx-credit-card"></i> TDC
+            </button>
+            <button class="btn btn-outline btn-sm" (click)="openTx('diferido')">
+              <i class="bx bx-list-plus"></i> Diferido
+            </button>
+          </div>
+        </div>
+
+        @if (showTx()) {
+          <div class="tx-form">
+            <label class="span-full">
+              Tipo
+              <select [ngModel]="txType()" (ngModelChange)="txType.set($event)">
+                <option value="expense">Gasto extra (cash)</option>
+                <option value="income">Ingreso extra</option>
+                <option value="tdc">Compra TDC (1 cuota)</option>
+                <option value="diferido">Diferido (N cuotas)</option>
+              </select>
+            </label>
+            <label>
+              Nombre
+              <input type="text" [ngModel]="txName()" (ngModelChange)="txName.set($event)" placeholder="Concepto">
+            </label>
+            <label>
+              Monto
+              <input type="number" min="0" [ngModel]="txAmount()" (ngModelChange)="txAmount.set($event)">
+            </label>
+            <label>
+              Fecha
+              <input type="date" [ngModel]="txDate()" (ngModelChange)="txDate.set($event)">
+            </label>
+            @if (txType() === 'expense' || txType() === 'income') {
+              <label>
+                Categoría (opcional)
+                <input type="text" [ngModel]="txCategoryName()" (ngModelChange)="txCategoryName.set($event)">
+              </label>
+            }
+            @if (txType() === 'diferido') {
+              <label>
+                Cuotas
+                <input type="number" min="2" max="60" [ngModel]="txInstallments()" (ngModelChange)="txInstallments.set($event)">
+              </label>
+            }
+            <div class="form-actions span-full">
+              <button class="btn btn-outline btn-sm" (click)="closeTx()">Cancelar</button>
+              <button class="btn btn-primary btn-sm" (click)="submitTx()">Guardar</button>
+            </div>
+          </div>
+        }
+
+        @if (s.extras.length === 0) {
+          <p class="muted small">Sin movimientos extras este mes</p>
+        }
+        @for (e of s.extras; track e._id) {
+          <div class="item extra-item" [class.income]="e.type === 'income'">
+            <div class="extra-info">
+              <strong>{{ e.name }}</strong>
+              @if (e.categoryName) { <small> · {{ e.categoryName }}</small> }
+              <small class="date"> · {{ e.date | date:'d MMM' }}</small>
+            </div>
+            <div class="amounts">
+              @if (e.type === 'income') {
+                <span class="income-amount">+{{ e.amount | number:'1.2-2' }}</span>
+              } @else {
+                <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
+              }
+              <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
+                <option value="" disabled selected>⋮</option>
+                @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }
+                @if (e.type !== 'income') { <option value="income">→ Ingreso</option> }
+                <option value="tdc">→ TDC</option>
+                <option value="diferido">→ Diferido</option>
+              </select>
+              <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
+            </div>
+          </div>
+        }
+      </section>
+    }
+  </div>
+}
+
+<app-loading [show]="loading()"></app-loading>

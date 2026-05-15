@@ -1,0 +1,152 @@
+<div class="accounts">
+  <header class="page-header">
+    <div>
+      <h1>Mis cuentas</h1>
+      <p class="muted">Saldos del mes actual y ahorros históricos.</p>
+    </div>
+  </header>
+
+  <section class="cards">
+    @if (transactional(); as t) {
+      <div class="card transactional">
+        <div class="card-head">
+          <div>
+            @if (editingId() === t._id) {
+              <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
+            } @else {
+              <h3>{{ t.name }}</h3>
+            }
+            <span class="badge">Transaccional · mes actual</span>
+          </div>
+          @if (editingId() === t._id) {
+            <div class="actions">
+              <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
+              <button class="btn btn-primary btn-sm" (click)="saveEdit(t)">Guardar</button>
+            </div>
+          } @else {
+            <button class="btn-icon" (click)="startEdit(t)" title="Editar"><i class="bx bx-edit"></i></button>
+          }
+        </div>
+        <div class="balance">
+          <span class="label">Saldo real (en banco)</span>
+          <strong>{{ t.balance | number:'1.2-2' }}</strong>
+          <small class="muted">incluye TDC pendiente</small>
+        </div>
+        <div class="balance secondary">
+          <span class="label">Saldo disponible</span>
+          <strong>{{ t.availableBalance | number:'1.2-2' }}</strong>
+          <small class="muted">descuenta TDC pendiente</small>
+        </div>
+      </div>
+    }
+
+    @if (savings(); as sv) {
+      <div class="card savings-card">
+        <div class="card-head">
+          <div>
+            @if (editingId() === sv._id) {
+              <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
+            } @else {
+              <h3>{{ sv.name }}</h3>
+            }
+            <span class="badge">Ahorros · histórico</span>
+          </div>
+          @if (editingId() === sv._id) {
+            <div class="actions">
+              <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
+              <button class="btn btn-primary btn-sm" (click)="saveEdit(sv)">Guardar</button>
+            </div>
+          } @else {
+            <button class="btn-icon" (click)="startEdit(sv)" title="Editar"><i class="bx bx-edit"></i></button>
+          }
+        </div>
+        <div class="balance">
+          <span class="label">Saldo total</span>
+          <strong>{{ sv.balance | number:'1.2-2' }}</strong>
+        </div>
+        @if (editingId() === sv._id) {
+          <label class="edit-row">
+            Saldo inicial
+            <input type="number" min="0" [ngModel]="editInitialBalance()" (ngModelChange)="editInitialBalance.set($event)">
+          </label>
+        } @else {
+          <small class="muted">Saldo inicial configurado: {{ sv.initialBalance | number:'1.2-2' }}</small>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="movements">
+    <div class="section-head">
+      <h2>Histórico de ahorros</h2>
+      <button class="btn btn-primary btn-sm" (click)="toggleMovementForm()">
+        <i class="bx bx-plus"></i> Nuevo movimiento
+      </button>
+    </div>
+
+    @if (showMovementForm()) {
+      <div class="mov-form">
+        <label>
+          Tipo
+          <select [ngModel]="newMovType()" (ngModelChange)="newMovType.set($event)">
+            <option value="withdrawal">Egreso (ahorros → transaccional)</option>
+            <option value="deposit">Ingreso manual (depósito)</option>
+          </select>
+        </label>
+        <label>
+          Monto
+          <input type="number" min="0" [ngModel]="newMovAmount()" (ngModelChange)="newMovAmount.set($event)">
+        </label>
+        <label class="span-2">
+          Descripción
+          <input type="text" [ngModel]="newMovDescription()" (ngModelChange)="newMovDescription.set($event)" placeholder="Motivo del movimiento">
+        </label>
+        <div class="form-actions">
+          <button class="btn btn-outline btn-sm" (click)="toggleMovementForm()">Cancelar</button>
+          <button class="btn btn-primary btn-sm" (click)="addMovement()">Registrar</button>
+        </div>
+      </div>
+    }
+
+    @if (movements().length === 0) {
+      <p class="muted small">Aún no hay movimientos de ahorro.</p>
+    } @else {
+      <table class="mov-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th class="right">Monto</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of movements(); track m._id) {
+            <tr>
+              <td>{{ m.date | date:'mediumDate' }}</td>
+              <td>
+                @if (m.type === 'deposit') {
+                  <span class="tag deposit">Depósito</span>
+                } @else {
+                  <span class="tag withdrawal">Egreso</span>
+                }
+              </td>
+              <td>{{ m.description || '—' }}</td>
+              <td class="right" [class.positive]="m.type === 'deposit'" [class.negative]="m.type === 'withdrawal'">
+                {{ m.type === 'deposit' ? '+' : '-' }}{{ m.amount | number:'1.2-2' }}
+              </td>
+              <td>
+                @if (!m.itemRef?.itemId) {
+                  <button class="btn-icon" (click)="removeMovement(m)"><i class="bx bx-trash"></i></button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+</div>
+
+<app-loading [show]="loading()"></app-loading>

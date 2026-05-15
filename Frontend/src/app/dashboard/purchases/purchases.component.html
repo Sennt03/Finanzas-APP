@@ -1,0 +1,142 @@
+<div class="purchases">
+  <header class="page-header">
+    <div>
+      <h1>Compras con tarjeta</h1>
+      <p class="muted">Diferidos y compras TDC. Edita o elimina aquí.</p>
+    </div>
+  </header>
+
+  @if (diferidos().length === 0 && singles().length === 0 && !loading()) {
+    <div class="empty">
+      <i class="bx bx-credit-card"></i>
+      <p>Aún no tienes compras con tarjeta. Crea una desde el detalle de un mes.</p>
+    </div>
+  }
+
+  @if (diferidos().length > 0) {
+    <section class="block">
+      <h2><i class="bx bx-list-plus"></i> Diferidos</h2>
+      @for (p of diferidos(); track p._id) {
+        <article class="purchase-card">
+          <div class="head">
+            @if (editingId() === p._id) {
+              <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
+            } @else {
+              <h3>{{ p.name }}</h3>
+            }
+            <div class="actions">
+              @if (editingId() === p._id) {
+                <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
+                <button class="btn btn-primary btn-sm" (click)="saveEdit(p)">Guardar</button>
+              } @else {
+                <button class="btn-icon" (click)="startEdit(p)" title="Editar"><i class="bx bx-edit"></i></button>
+                <button class="btn-icon danger" (click)="remove(p)" title="Eliminar"><i class="bx bx-trash"></i></button>
+              }
+            </div>
+          </div>
+
+          <div class="meta">
+            <div>
+              <span class="label">Total</span>
+              @if (editingId() === p._id) {
+                <input type="number" min="0" class="edit-input small" [ngModel]="editTotal()" (ngModelChange)="editTotal.set($event)">
+              } @else {
+                <strong>{{ p.totalAmount | number:'1.2-2' }}</strong>
+              }
+            </div>
+            <div>
+              <span class="label">Cuota</span>
+              <strong>{{ p.cuotaAmount | number:'1.2-2' }}</strong>
+            </div>
+            <div>
+              <span class="label">Pendiente</span>
+              <strong class="pending">{{ p.remainingAmount | number:'1.2-2' }}</strong>
+            </div>
+            <div>
+              <span class="label">Cuotas</span>
+              <strong>{{ p.paidCuotas }} / {{ p.totalCuotas }}</strong>
+            </div>
+            <div>
+              <span class="label">Periodo</span>
+              <strong>{{ p.startLabel }} → {{ p.endLabel }}</strong>
+            </div>
+            <div>
+              <span class="label">Fecha de compra</span>
+              <strong>{{ p.purchaseDate | date:'mediumDate' }}</strong>
+            </div>
+          </div>
+
+          <div class="progress">
+            <div class="bar" [style.width.%]="(p.paidCuotas / p.totalCuotas) * 100"></div>
+          </div>
+
+          <details class="cuotas-details">
+            <summary>Ver cuotas</summary>
+            <ul class="cuotas-list">
+              @for (c of p.cuotas; track c._id) {
+                <li [class.paid]="c.isPaid">
+                  <span class="m">{{ cuotaLabel(c) }}</span>
+                  <span class="a">{{ c.amount | number:'1.2-2' }}</span>
+                  @if (c.isPaid) { <span class="tag paid">pagada</span> }
+                  @else { <span class="tag pending">pendiente</span> }
+                </li>
+              }
+            </ul>
+          </details>
+        </article>
+      }
+    </section>
+  }
+
+  @if (singles().length > 0) {
+    <section class="block">
+      <h2><i class="bx bx-credit-card"></i> Compras TDC (1 cuota)</h2>
+      @for (p of singles(); track p._id) {
+        <article class="purchase-card single">
+          <div class="head">
+            @if (editingId() === p._id) {
+              <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
+            } @else {
+              <h3>{{ p.name }}</h3>
+            }
+            <div class="actions">
+              @if (editingId() === p._id) {
+                <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
+                <button class="btn btn-primary btn-sm" (click)="saveEdit(p)">Guardar</button>
+              } @else {
+                <button class="btn-icon" (click)="startEdit(p)" title="Editar"><i class="bx bx-edit"></i></button>
+                <button class="btn-icon danger" (click)="remove(p)" title="Eliminar"><i class="bx bx-trash"></i></button>
+              }
+            </div>
+          </div>
+          <div class="meta">
+            <div>
+              <span class="label">Monto</span>
+              @if (editingId() === p._id) {
+                <input type="number" min="0" class="edit-input small" [ngModel]="editTotal()" (ngModelChange)="editTotal.set($event)">
+              } @else {
+                <strong>{{ p.totalAmount | number:'1.2-2' }}</strong>
+              }
+            </div>
+            <div>
+              <span class="label">Pagar en</span>
+              <strong>{{ p.startLabel }}</strong>
+            </div>
+            <div>
+              <span class="label">Fecha</span>
+              <strong>{{ p.purchaseDate | date:'mediumDate' }}</strong>
+            </div>
+            <div>
+              <span class="label">Estado</span>
+              <strong [class.pending]="p.paidCuotas === 0" [class.positive]="p.paidCuotas > 0">
+                {{ p.paidCuotas > 0 ? 'pagada' : 'pendiente' }}
+              </strong>
+            </div>
+          </div>
+        </article>
+      }
+    </section>
+  }
+</div>
+
+<app-loading [show]="loading()"></app-loading>

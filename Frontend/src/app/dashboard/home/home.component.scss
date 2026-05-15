@@ -2,39 +2,142 @@
 @use 'vars' as *;
 
 .home {
-    h1 {
-        font-size: 28px;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
+  .hello {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 12px;
 
-    .muted {
-        color: color.adjust($primary, $lightness: 25%);
-        margin-bottom: 24px;
-    }
+    h1 { margin: 0; font-size: 26px; font-weight: 700; }
+    p { margin: 4px 0 0; }
+  }
 
-    .cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 16px;
+  .muted { color: color.adjust($primary, $lightness: 25%); }
+  .small { font-size: 13px; }
+
+  .month-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: color.adjust($primary, $lightness: 25%);
     }
+    select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid color.adjust($primary, $lightness: 50%);
+      background: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  }
+
+  .month-title {
+    margin: 24px 0 12px;
+    font-size: 20px;
+    color: color.adjust($primary, $lightness: 10%);
+  }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: color.adjust($primary, $lightness: 25%);
+    i { font-size: 60px; opacity: 0.3; display: block; margin-bottom: 12px; }
+    a { color: $accent; font-weight: 600; }
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
 
     .card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      border-left: 4px solid transparent;
 
-        h3 {
-            margin: 0 0 8px;
-            font-size: 18px;
-            color: $accent;
-        }
+      .label {
+        font-size: 12px;
+        color: color.adjust($primary, $lightness: 25%);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      strong {
+        display: block;
+        font-size: 24px;
+        font-weight: 700;
+        margin-top: 4px;
+      }
+      small {
+        display: block;
+        font-size: 12px;
+        color: color.adjust($primary, $lightness: 30%);
+        margin-top: 2px;
+        &.positive { color: #27ae60; font-weight: 600; }
+      }
 
-        p {
-            margin: 0;
-            font-size: 14px;
-            color: color.adjust($primary, $lightness: 20%);
-        }
+      &.primary { border-left-color: $accent; strong { color: $accent; } }
+      &.real { border-left-color: #27ae60; strong { color: #27ae60; } }
+      &.available { border-left-color: #3498db; strong { color: #3498db; } }
+      &.spent { border-left-color: $danger; strong { color: $danger; } }
+      &.credit { border-left-color: #e67e22; strong { color: #e67e22; } }
+      &.savings { border-left-color: #8e44ad; strong { color: #8e44ad; } }
     }
+  }
+
+  .movements {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      h2 { margin: 0; font-size: 18px; }
+      .link {
+        color: $accent;
+        font-size: 13px;
+        font-weight: 600;
+      }
+    }
+
+    .mov-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid color.adjust($primary, $lightness: 60%);
+        &:last-child { border-bottom: none; }
+
+        .info {
+          strong { display: block; font-size: 14px; }
+          small { color: color.adjust($primary, $lightness: 30%); font-size: 12px; }
+        }
+
+        .amt {
+          font-weight: 700;
+          font-size: 15px;
+          &.income { color: #27ae60; }
+          &.expense { color: $danger; }
+        }
+      }
+    }
+  }
 }
