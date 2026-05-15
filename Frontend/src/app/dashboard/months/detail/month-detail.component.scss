@@ -122,6 +122,12 @@
       background: $border;
     }
 
+    .loans-hint {
+      color: $success !important;
+      font-weight: 700 !important;
+      strong { color: inherit; }
+    }
+
     &.primary { strong { color: $primary; } &::after { background: $primary; } }
     &.real { strong { color: $success; } &::after { background: $success; } }
     &.available { strong { color: $info; } &::after { background: $info; } }
@@ -202,6 +208,8 @@
         letter-spacing: 0.4px;
         text-transform: uppercase;
         &.dif { background: $savings-soft; color: $savings; }
+        &.shared-tag { background: color.adjust($credit, $lightness: 32%); color: color.adjust($credit, $lightness: -5%); }
+        &.loan-ref-tag { background: color.adjust(#8b5cf6, $lightness: 35%); color: #7c3aed; }
       }
     }
 
@@ -246,7 +254,7 @@
       background: $border;
       border-radius: 999px;
       overflow: hidden;
-      margin: -2px 0 12px;
+      margin: -2px 0 8px;
 
       .bar {
         height: 100%;
@@ -254,6 +262,23 @@
         transition: width .3s ease;
         border-radius: 999px;
       }
+    }
+
+    .cat-spent-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: $primary-muted;
+      margin-bottom: 10px;
+      padding: 0 2px;
+
+      .sep { color: $border-strong; }
+
+      .spent-label strong { color: $danger; }
+
+      .remaining-label strong { color: $primary-soft; }
+      .remaining-label.all-paid strong { color: $success; }
     }
 
     .add-item-form {
@@ -436,6 +461,20 @@
         font-weight: 600;
         color: $primary-soft;
         &.span-full { grid-column: span 2; }
+
+        &.shared-toggle-label {
+          flex-direction: row;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: $accent;
+            cursor: pointer;
+            flex-shrink: 0;
+          }
+        }
       }
 
       input, select {
@@ -594,6 +633,14 @@
   transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
 
   &.btn-sm { padding: 7px 12px; font-size: 12.5px; }
+
+  &.btn-success {
+    background: $success;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba($success, 0.25);
+    &:hover { background: color.adjust($success, $lightness: -5%); transform: translateY(-1px); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  }
 
   &.btn-primary {
     background: $accent;
@@ -773,6 +820,7 @@
 .cat-budget.credit-total {
   background: $surface;
   border-color: color.adjust($credit, $lightness: 25%);
+  flex-wrap: wrap;
   .label {
     font-size: 10.5px;
     text-transform: uppercase;
@@ -782,6 +830,9 @@
     margin-right: 4px;
   }
   .total { color: $credit; }
+  .sep { color: $primary-faint; }
+  .own-share { color: $primary-soft; font-size: 11px; }
+  .shared-share { color: $credit; font-size: 11px; font-weight: 700; }
   &.paid {
     border-color: color.adjust($success, $lightness: 30%);
     .total { color: $success; }
@@ -867,6 +918,141 @@
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
+// ---- Sección préstamos ----
+.loans-section {
+  $loan-color: #8b5cf6;
+
+  h3 i { color: $loan-color !important; }
+
+  .loan-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto auto;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: color.adjust($loan-color, $lightness: 40%);
+    border-radius: $r-md;
+    border: 1px solid color.adjust($loan-color, $lightness: 30%);
+
+    input {
+      padding: 7px 10px;
+      border-radius: $r-sm;
+      border: 1px solid $border;
+      background: $surface;
+      font-size: 13.5px;
+      &:focus { outline: none; border-color: $loan-color; box-shadow: 0 0 0 3px rgba($loan-color, 0.12); }
+    }
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr 1fr;
+      .btn { grid-column: span 1; }
+    }
+  }
+
+  .loan-item {
+    &.loan-paid {
+      opacity: 0.7;
+      .name { text-decoration: line-through; }
+    }
+
+    .loan-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+
+      .loan-status {
+        font-size: 18px;
+        flex-shrink: 0;
+        &.pending { color: $loan-color; }
+        &.paid    { color: $success; }
+      }
+
+      .loan-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        .name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      }
+
+      .loan-tag {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        white-space: nowrap;
+        &.warn { background: $warning-soft; color: color.adjust($warning, $lightness: -15%); }
+      }
+    }
+  }
+
+  .transferred-tag {
+    background: color.adjust(#8b5cf6, $lightness: 38%);
+    color: #7c3aed;
+  }
+
+  .loan-amounts-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .loan-covered-note {
+    font-size: 11px;
+    color: $primary-muted;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    i { font-size: 12px; }
+  }
+
+  .loan-partial-note {
+    font-size: 11px;
+    color: $primary-muted;
+  }
+
+  .loan-pay-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    input[type="number"] {
+      width: 88px;
+      padding: 6px 10px;
+      border-radius: $r-sm;
+      border: 1px solid $border;
+      background: $surface-alt;
+      font-size: 13.5px;
+      text-align: right;
+      font-weight: 600;
+      &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); }
+    }
+  }
+
+  .income-amount { color: $success; font-weight: 700; font-size: 14px; }
+
+  .loans-hint-link {
+    margin-top: 10px;
+    a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12.5px;
+      color: $accent;
+      font-weight: 600;
+      text-decoration: none;
+      &:hover { color: $accent-hover; text-decoration: underline; }
+      i { font-size: 15px; }
+    }
+  }
+}
+
 .convert-select {
   padding: 5px 8px;
   border-radius: $r-sm;
@@ -881,4 +1067,58 @@
   text-align: center;
   transition: background .15s ease, color .15s ease;
   &:hover { background: $surface-alt; color: $accent; }
+}
+
+// ---- Items compartidos (tarjeta prestada) en categoría virtual TDC ----
+.shared-amounts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.shared-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.shared-paid-note {
+  font-size: 11px;
+  color: $success;
+  font-weight: 600;
+}
+
+.shared-label {
+  color: $primary-muted;
+  font-size: 14px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.borrower-pay-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  input[type="number"] {
+    width: 88px;
+    padding: 6px 10px;
+    border-radius: $r-sm;
+    border: 1px solid $border;
+    background: $surface-alt;
+    font-size: 13.5px;
+    text-align: right;
+    font-weight: 600;
+    color: $primary;
+    transition: border-color .15s ease, box-shadow .15s ease;
+
+    &:focus {
+      outline: none;
+      border-color: $accent;
+      background: $surface;
+      box-shadow: 0 0 0 3px rgba($accent, 0.12);
+    }
+  }
 }

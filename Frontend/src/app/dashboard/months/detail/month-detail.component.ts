@@ -3,8 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MonthlyStatementService } from '@services/monthly-statement.service';
 import { CreditPurchaseService } from '@services/credit-purchase.service';
+import { LoanService } from '@services/loan.service';
 import {
-  CategoryKind, ExtraType, LsMonthlyStatement, LsStatementCategory, LsStatementItem, MONTH_NAMES
+  CategoryKind, ExtraType, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementItem, MONTH_NAMES
 } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
@@ -37,6 +38,7 @@ export class MonthDetailComponent {
   private router = inject(Router);
   private svc = inject(MonthlyStatementService);
   private purchaseSvc = inject(CreditPurchaseService);
+  private loanSvc = inject(LoanService);
 
   stmt = signal<LsMonthlyStatement | null>(null);
   loading = signal(false);
@@ -53,6 +55,8 @@ export class MonthDetailComponent {
   txCategoryName = signal('');
   txDate = signal(this.todayIso());
   txInstallments = signal(2);
+  txIsShared = signal(false);
+  txBorrowerName = signal('');
 
   itemDrafts = signal<Record<string, number | null>>({});
   itemSaving = signal<Record<string, boolean>>({});
@@ -62,6 +66,21 @@ export class MonthDetailComponent {
   newItemName = signal('');
   newItemAmount = signal<number | null>(null);
   newItemPaymentMethod = signal<'cash' | 'credit'>('cash');
+
+  // Préstamos del mes
+  monthLoans = signal<LsLoan[]>([]);
+  showLoanForm = signal(false);
+  loanBorrower = signal('');
+  loanAmount = signal<number | null>(null);
+  loanDate = signal(this.todayIso());
+
+  // Pago parcial de préstamos
+  payingLoanId = signal<string | null>(null);
+  loanPayAmount = signal<number | null>(null);
+
+  // Pago de cuotas compartidas (cobrar a quien prestó la tarjeta)
+  payingBorrowerCuotaId = signal<string | null>(null);
+  borrowerPayAmount = signal<number | null>(null);
 
   // Eliminación optimista con undo: solo un item pendiente a la vez
   pendingDelete = signal<{
@@ -108,12 +127,20 @@ export class MonthDetailComponent {
         this.stmt.set(data);
         this.itemDrafts.set({});
         this.loading.set(false);
+        this.loadLoans(id);
       },
       error: () => {
         this.loading.set(false);
         toastr.error('No se pudo cargar', '');
         this.router.navigate(['/months']);
       }
+    });
+  }
+
+  loadLoans(statementId: string) {
+    this.loanSvc.listForStatement(statementId).subscribe({
+      next: (loans) => this.monthLoans.set(loans),
+      error: () => {}
     });
   }
 
@@ -229,6 +256,184 @@ export class MonthDetailComponent {
 
   updateCategoryTotal(idx: number, total: number) {
     this.draftCategories.update(list => list.map((c, i) => i === idx ? { ...c, totalAmount: total } : c));
+  }
+
+  // ----- Gasto real por categoría -----
+  categoryPaidSum(cat: LsStatementCategory): number {
+    // Incluye credit items cuando ya están pagados (TDC marcada como pagada)
+    return (cat.items || []).reduce((s, i) => s + (i.paidAmount || 0), 0);
+  }
+
+  categoryBudget(cat: LsStatementCategory): number {
+    return (cat.totalAmount && cat.totalAmount > 0) ? cat.totalAmount : this.itemsSum(cat);
+  }
+
+  categoryRemainingToPay(cat: LsStatementCategory): number {
+    return this.categoryBudget(cat) - this.categoryPaidSum(cat);
+  }
+
+  showSpentIndicator(cat: LsStatementCategory): boolean {
+    return !cat.isVirtual && cat.kind !== 'savings' && this.itemsSum(cat) > 0;
+  }
+
+  // ----- Préstamos del mes -----
+  openLoanForm() {
+    this.showLoanForm.set(true);
+    this.loanBorrower.set('');
+    this.loanAmount.set(null);
+    this.loanDate.set(this.todayIso());
+  }
+
+  closeLoanForm() { this.showLoanForm.set(false); }
+
+  submitLoan() {
+    const s = this.stmt();
+    if (!s) return;
+    const borrowerName = this.loanBorrower().trim();
+    const amount = this.loanAmount();
+    if (!borrowerName) { toastr.error('Indica a quién prestas', ''); return; }
+    if (!amount || amount <= 0) { toastr.error('Monto inválido', ''); return; }
+
+    this.loading.set(true);
+    this.loanSvc.create({ borrowerName, amount, lentDate: this.loanDate(), statementId: s._id }).subscribe({
+      next: (loan) => {
+        this.monthLoans.update(list => [loan, ...list]);
+        this.svc.get(s._id).subscribe({ next: (updated) => this.stmt.set(updated) });
+        this.closeLoanForm();
+        this.loading.set(false);
+        toastr.success('Préstamo registrado', '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  openPayLoan(loan: LsLoan) {
+    this.payingLoanId.set(loan._id);
+    const remaining = loan.amount - (loan.paidAmount || 0);
+    this.loanPayAmount.set(remaining);
+  }
+
+  closePayLoan() {
+    this.payingLoanId.set(null);
+    this.loanPayAmount.set(null);
+  }
+
+  isPayingLoan(loan: LsLoan): boolean {
+    return this.payingLoanId() === loan._id;
+  }
+
+  loanRemaining(loan: LsLoan): number {
+    return loan.amount - (loan.paidAmount || 0);
+  }
+
+  submitPayLoan(loan: LsLoan) {
+    const amount = this.loanPayAmount();
+    if (!amount || amount <= 0) { toastr.error('Monto inválido', ''); return; }
+    this.loading.set(true);
+    this.loanSvc.pay(loan._id, amount).subscribe({
+      next: ({ loan: updated, needsSavingsRepayment }) => {
+        this.monthLoans.update(list => list.map(l => l._id === updated._id ? updated : l));
+        const s = this.stmt();
+        if (s) this.svc.get(s._id).subscribe({ next: (fresh) => this.stmt.set(fresh) });
+        this.closePayLoan();
+        this.loading.set(false);
+        if (needsSavingsRepayment) {
+          toastr.info('Cobrado. Esta plata vino de ahorros — ve a Préstamos para devolverla.', '');
+        } else if (updated.status === 'paid') {
+          toastr.success('Préstamo cobrado completamente', '');
+        } else {
+          toastr.success(`Pago parcial registrado ($${amount.toFixed(2)})`, '');
+        }
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  deleteLoanInDetail(loan: LsLoan) {
+    if (!confirm(`¿Eliminar el préstamo a ${loan.borrowerName}?`)) return;
+    const s = this.stmt();
+    if (!s) return;
+    this.loading.set(true);
+    this.loanSvc.remove(loan._id).subscribe({
+      next: () => {
+        this.monthLoans.update(list => list.filter(l => l._id !== loan._id));
+        this.svc.get(s._id).subscribe({ next: (fresh) => this.stmt.set(fresh) });
+        this.loading.set(false);
+        toastr.info('Préstamo eliminado', '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  pendingLoans = computed(() => this.monthLoans().filter(l => l.status === 'pending'));
+
+  // ----- Shared card cuotas (tarjeta prestada) -----
+  openPayBorrower(cuota: LsStatementItem) {
+    this.payingBorrowerCuotaId.set(cuota.cuotaId ?? null);
+    const remaining = cuota.budgetedAmount - (cuota.paidByBorrower || 0);
+    this.borrowerPayAmount.set(remaining);
+  }
+
+  closePayBorrower() {
+    this.payingBorrowerCuotaId.set(null);
+    this.borrowerPayAmount.set(null);
+  }
+
+  isPayingBorrower(cuota: LsStatementItem): boolean {
+    return this.payingBorrowerCuotaId() === cuota.cuotaId;
+  }
+
+  borrowerRemaining(cuota: LsStatementItem): number {
+    return cuota.budgetedAmount - (cuota.paidByBorrower || 0);
+  }
+
+  submitPayBorrower(cuota: LsStatementItem) {
+    const s = this.stmt();
+    if (!s || !cuota.purchaseId || !cuota.cuotaId) return;
+    const amount = this.borrowerPayAmount();
+    if (!amount || amount <= 0) { toastr.error('Monto inválido', ''); return; }
+    this.loading.set(true);
+    this.purchaseSvc.payBorrowerCuota(cuota.purchaseId, cuota.cuotaId, amount).subscribe({
+      next: () => {
+        this.svc.get(s._id).subscribe({ next: (fresh) => this.stmt.set(fresh) });
+        this.closePayBorrower();
+        this.loading.set(false);
+        toastr.success(`Cobrado $${amount.toFixed(2)} de ${cuota.borrowerName}`, '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  convertCuotaToLoan(cuota: LsStatementItem) {
+    const s = this.stmt();
+    if (!s || !cuota.purchaseId || !cuota.cuotaId) return;
+    const remaining = this.borrowerRemaining(cuota);
+    if (!confirm(`¿Convertir el saldo pendiente de ${cuota.borrowerName} ($${remaining.toFixed(2)}) en un préstamo?`)) return;
+    this.loading.set(true);
+    this.purchaseSvc.convertCuotaToLoan(cuota.purchaseId, cuota.cuotaId).subscribe({
+      next: ({ loan }) => {
+        this.monthLoans.update(list => [loan, ...list]);
+        this.svc.get(s._id).subscribe({ next: (fresh) => this.stmt.set(fresh) });
+        this.loading.set(false);
+        toastr.info(`Préstamo creado para ${loan.borrowerName} — verás el detalle en la sección Préstamos`, '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
   }
 
   // ----- Agregar item inline desde detalle -----
@@ -444,6 +649,8 @@ export class MonthDetailComponent {
     this.txCategoryName.set('');
     this.txDate.set(this.todayIso());
     this.txInstallments.set(2);
+    this.txIsShared.set(false);
+    this.txBorrowerName.set('');
     this.showTx.set(true);
   }
 
@@ -484,11 +691,20 @@ export class MonthDetailComponent {
       });
     } else {
       const installments = type === 'diferido' ? Math.max(2, this.txInstallments()) : 1;
+      const isShared = this.txIsShared();
+      const borrowerName = this.txBorrowerName().trim();
+      if (isShared && !borrowerName) {
+        toastr.error('Indica el nombre de quien usó la tarjeta', '');
+        this.loading.set(false);
+        return;
+      }
       this.purchaseSvc.create({
         name,
         totalAmount: amount,
         purchaseDate: this.txDate(),
-        installments
+        installments,
+        isShared: isShared || undefined,
+        borrowerName: isShared ? borrowerName : undefined
       }).subscribe({
         next: () => {
           this.closeTx();

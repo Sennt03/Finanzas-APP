@@ -1,0 +1,299 @@
+@use 'sass:color';
+@use 'vars' as *;
+
+$loan-color: #8b5cf6;
+$loan-soft: #f5f3ff;
+
+.loans-page {
+  max-width: 860px;
+  margin: 0 auto;
+
+  .page-header {
+    margin-bottom: 24px;
+    h1 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      i { color: $loan-color; font-size: 26px; }
+    }
+    .muted { color: $primary-muted; font-size: 13.5px; margin: 0; }
+  }
+
+  .savings-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: $warning-soft;
+    border: 1px solid color.adjust($warning, $lightness: 20%);
+    border-radius: $r-md;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 13.5px;
+    i { color: $warning; font-size: 20px; flex-shrink: 0; }
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: $primary-muted;
+    font-weight: 700;
+    margin-bottom: 10px;
+    padding-left: 2px;
+  }
+
+  .loan-section {
+    margin-bottom: 28px;
+  }
+
+  .empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: $primary-faint;
+    font-size: 13.5px;
+    padding: 16px;
+    background: $surface;
+    border-radius: $r-md;
+    border: 1px dashed $border;
+    i { font-size: 18px; color: $success; }
+  }
+
+  .loan-card {
+    background: $surface;
+    border-radius: $r-lg;
+    border: 1px solid $border;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    box-shadow: $shadow-sm;
+    transition: box-shadow .15s ease;
+
+    &:hover { box-shadow: $shadow-md; }
+
+    &.pending {
+      border-left: 3px solid $loan-color;
+    }
+
+    &.paid {
+      border-left: 3px solid $success;
+      opacity: 0.85;
+      &.needs-repay {
+        border-left-color: $warning;
+        opacity: 1;
+        background: $warning-soft;
+      }
+    }
+
+    &.transferred {
+      border-left: 3px solid $primary-faint;
+      opacity: 0.6;
+    }
+  }
+
+  .loan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 12px;
+
+    .borrower {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      i { color: $primary-muted; font-size: 18px; flex-shrink: 0; }
+      strong { font-size: 15px; font-weight: 700; }
+    }
+
+    .amount-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+
+      .partial-note {
+        font-size: 11px;
+        color: $primary-muted;
+        white-space: nowrap;
+      }
+    }
+
+    .amount {
+      font-size: 17px;
+      font-weight: 700;
+      color: $loan-color;
+      white-space: nowrap;
+      &.paid-amount { color: $success; }
+    }
+  }
+
+  .pay-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: $surface-alt;
+    border: 1px solid $border;
+    border-radius: $r-md;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+
+    input[type="number"] {
+      flex: 1;
+      min-width: 120px;
+      padding: 7px 10px;
+      border-radius: $r-sm;
+      border: 1px solid $border;
+      background: $surface;
+      font-size: 13px;
+      &:focus { outline: none; border-color: $accent; }
+    }
+  }
+
+  .loan-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12.5px;
+    color: $primary-muted;
+    margin-bottom: 12px;
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      i { font-size: 13px; }
+    }
+
+    .origin-hint { color: $loan-color; }
+  }
+
+  .loan-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+
+    .btn-icon.danger {
+      margin-left: auto;
+      color: $primary-muted;
+      &:hover { background: $danger-soft; color: $danger; }
+    }
+  }
+
+  .transfer-form {
+    background: $surface-alt;
+    border: 1px solid $border;
+    border-radius: $r-md;
+    padding: 14px;
+    margin-bottom: 12px;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: $primary-soft;
+      margin-bottom: 10px;
+      i { color: $loan-color; font-size: 16px; }
+
+      select {
+        padding: 7px 10px;
+        border-radius: $r-sm;
+        border: 1px solid $border;
+        background: $surface;
+        font-size: 13px;
+        flex: 1;
+        &:focus { outline: none; border-color: $accent; }
+      }
+    }
+
+    .transfer-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      background: $warning-soft;
+      border: 1px solid color.adjust($warning, $lightness: 25%);
+      border-radius: $r-sm;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      color: $primary-soft;
+      margin-bottom: 10px;
+      i { color: $warning; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    }
+
+    .transfer-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  }
+
+  .repay-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: color.adjust($warning, $lightness: 38%);
+    border: 1px solid color.adjust($warning, $lightness: 25%);
+    border-radius: $r-md;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    flex-wrap: wrap;
+    gap: 8px;
+    i { color: $warning; font-size: 18px; flex-shrink: 0; }
+    span { flex: 1; }
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    &.savings-tag { background: $savings-soft; color: $savings; }
+    &.warn-tag { background: $warning-soft; color: color.adjust($warning, $lightness: -15%); }
+    &.ok-tag { background: $success-soft; color: color.adjust($success, $lightness: -10%); }
+    &.trans-tag { background: $border; color: $primary-soft; }
+  }
+}
+
+.btn {
+  border: none;
+  border-radius: $r-sm;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s ease, transform .1s ease;
+
+  &.btn-sm { padding: 7px 12px; font-size: 12.5px; }
+
+  &.btn-primary { background: $accent; color: #fff; &:hover { background: $accent-hover; } }
+  &.btn-outline {
+    background: $surface;
+    color: $primary-soft;
+    border: 1px solid $border;
+    &:hover { background: $surface-alt; border-color: $border-strong; }
+  }
+  &.btn-success { background: $success; color: #fff; &:hover { background: color.adjust($success, $lightness: -5%); } }
+  &.btn-warning { background: $warning; color: #fff; &:hover { background: color.adjust($warning, $lightness: -5%); } }
+  &.btn-savings { background: $savings; color: #fff; &:hover { background: color.adjust($savings, $lightness: -5%); } }
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 6px;
+  border-radius: $r-sm;
+  transition: background .15s ease, color .15s ease;
+}

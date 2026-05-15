@@ -6,7 +6,10 @@ const cuotaSchema = new Schema({
     amount: { type: Number, required: true, min: 0 },
     isPaid: { type: Boolean, default: false },
     paidAmount: { type: Number, default: 0, min: 0 },
-    paidAt: { type: Date, default: null }
+    paidAt: { type: Date, default: null },
+    paidByBorrower: { type: Number, default: 0, min: 0 },
+    paidByBorrowerAt: { type: Date, default: null },
+    convertedToLoan: { type: Boolean, default: false }
 }, { _id: true })
 
 const creditPurchaseSchema = new Schema({
@@ -21,7 +24,9 @@ const creditPurchaseSchema = new Schema({
     purchaseDate: { type: Date, required: true },
     installments: { type: Number, default: 1, min: 1 },
     cutoffDayUsed: { type: Number, required: true },
-    cuotas: { type: [cuotaSchema], default: [] }
+    cuotas: { type: [cuotaSchema], default: [] },
+    isShared: { type: Boolean, default: false },
+    borrowerName: { type: String, default: '' }
 }, {
     timestamps: true,
     versionKey: false

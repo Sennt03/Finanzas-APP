@@ -1,1 +1,0 @@
-import{Fb as i,H as t,L as e,Sb as n,U as o}from"./chunk-OHIRE2PR.js";var a=class r{url=`${n.url_api}/user`;userProfile=new o;http=e(i);getProfile(){return this.http.get(this.url)}static \u0275fac=function(s){return new(s||r)};static \u0275prov=t({token:r,factory:r.\u0275fac,providedIn:"root"})};export{a};

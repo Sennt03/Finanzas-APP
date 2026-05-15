@@ -7,6 +7,8 @@ const budgetTemplate = require('../components/budgetTemplate/routes')
 const monthlyStatements = require('../components/monthlyStatement/routes')
 const savingsMovements = require('../components/savingsMovement/routes')
 const purchases = require('../components/creditPurchase/routes')
+const loans = require('../components/loan/routes')
+const activityLogs = require('../components/activityLog/routes')
 
 function routerApp(app) {
     app.use('/api', router)
@@ -17,6 +19,8 @@ function routerApp(app) {
     router.use('/monthly-statements', monthlyStatements)
     router.use('/savings-movements', savingsMovements)
     router.use('/purchases', purchases)
+    router.use('/loans', loans)
+    router.use('/activity-logs', activityLogs)
 }
 
 module.exports = routerApp

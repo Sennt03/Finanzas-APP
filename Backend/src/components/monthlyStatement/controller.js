@@ -4,6 +4,7 @@ const Account = require('../account/model')
 const SavingsMovement = require('../savingsMovement/model')
 const creditPurchaseController = require('../creditPurchase/controller')
 const myError = require('../../libs/myError')
+const log = require('../../libs/activityLog')
 
 function isCreditItem(it) {
     return it && it.paymentMethod === 'credit'
@@ -113,6 +114,33 @@ async function buildEnrichedStatement(stmt, userId) {
     const monthDeposits = movs.filter(m => m.type === 'deposit').reduce((s, m) => s + m.amount, 0)
     const monthWithdrawals = movs.filter(m => m.type === 'withdrawal').reduce((s, m) => s + m.amount, 0)
 
+    const Loan = require('../loan/model')
+    const allCurrentLoans = await Loan.find({ userId, currentStatementId: obj._id })
+
+    // Only non-fromSavings, non-fromCard pending/transferred loans deduct from balance.
+    const balancePendingTotal = allCurrentLoans
+        .filter(l => ['pending', 'transferred'].includes(l.status) && !l.fromSavings && !l.fromCard)
+        .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
+
+    // For the display hint: only genuine pending (not transferred, not fromSavings, not fromCard).
+    const pendingLoansTotal = allCurrentLoans
+        .filter(l => l.status === 'pending' && !l.fromSavings && !l.fromCard)
+        .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
+
+    // fromSavings loans collected: add to balance. When repaid to savings: net = 0.
+    const paidFromSavingsNet = allCurrentLoans
+        .filter(l => l.fromSavings)
+        .reduce((s, l) => {
+            const collected = l.paidAmount || 0
+            const repaid = l.paidBackToSavings ? (l.amount || 0) : 0
+            return s + collected - repaid
+        }, 0)
+
+    // fromCard loans collected: add to balance (card already covered the deduction).
+    const paidFromCardNet = allCurrentLoans
+        .filter(l => l.fromCard)
+        .reduce((s, l) => s + (l.paidAmount || 0), 0)
+
     const nonVirtual = (obj.categories || []).filter(c => !c.isVirtual)
     const budgeted = totalBudgeted(nonVirtual)
     const paid = totalPaidCash(nonVirtual)
@@ -127,8 +155,18 @@ async function buildEnrichedStatement(stmt, userId) {
     const creditPaidAmt = groupPaid ? creditTotal : 0
     const creditPending = creditTotal - creditPaidAmt
 
-    const realBalance = obj.salary - paid - extrasExpense + extrasIncome + monthWithdrawals - creditPaidAmt
-    const availableBalance = obj.salary - paid - extrasExpense + extrasIncome + monthWithdrawals - creditTotal
+    // Shared card cuotas: amount paid back by borrowers adds to balance.
+    const allCuotas = [...tdc, ...diferidos]
+    const paidByBorrowerNet = allCuotas
+        .filter(i => i.isShared)
+        .reduce((s, i) => s + (i.paidByBorrower || 0), 0)
+    const sharedShare = allCuotas
+        .filter(i => i.isShared)
+        .reduce((s, i) => s + i.budgetedAmount, 0)
+
+    const base = obj.salary - paid - extrasExpense + extrasIncome + monthWithdrawals + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
+    const realBalance = base - creditPaidAmt - balancePendingTotal
+    const availableBalance = base - creditTotal - balancePendingTotal
 
     obj.summary = {
         totalBudgeted: budgeted,
@@ -138,6 +176,7 @@ async function buildEnrichedStatement(stmt, userId) {
         remainingSalary: realBalance,
         availableBalance: availableBalance,
         availableToBudget: obj.salary - budgeted,
+        pendingLoansTotal,
         savings: { monthDeposits, monthWithdrawals },
         creditCard: {
             total: creditTotal,
@@ -146,7 +185,9 @@ async function buildEnrichedStatement(stmt, userId) {
             groupPaid,
             tdcShare,
             diferidosShare: difShare,
-            itemsShare
+            itemsShare,
+            sharedShare,
+            ownShare: creditTotal - sharedShare
         }
     }
 
@@ -191,6 +232,9 @@ async function toggleCreditGroup(userId, statementId, { paid }) {
     }
 
     await stmt.save()
+    const action = paid ? 'credit_group_paid' : 'credit_group_unpaid'
+    const desc = paid ? 'Tarjeta de crédito marcada como pagada' : 'Tarjeta de crédito desmarcada'
+    await log(userId, stmt.year, stmt.month, action, desc)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -254,6 +298,11 @@ async function convertMovement(userId, statementId, { source, target }) {
     } else {
         throw myError('Tipo destino inválido', 400)
     }
+
+    const typeLabels = { expense: 'Gasto cash', income: 'Ingreso', tdc: 'TDC', diferido: 'Diferido' }
+    const targetLabel = typeLabels[target.type] || target.type
+    await log(userId, stmt.year, stmt.month, 'item_converted',
+        `Convertido a ${targetLabel}: ${name} $${Number(amount).toFixed(2)}`, amount)
 
     const fresh = await Statement.findById(stmt._id)
     return buildEnrichedStatement(fresh, userId)
@@ -380,6 +429,8 @@ async function updateMeta(userId, id, { salary, categories }) {
     }
 
     await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'budget_updated',
+        `Presupuesto actualizado: sueldo $${stmt.salary.toFixed(2)}`, stmt.salary)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -406,6 +457,9 @@ async function setItemAmount(userId, id, { categoryId, itemId, amount, purchaseI
     if (amt > item.budgetedAmount) {
         throw myError(`No puedes registrar más de ${item.budgetedAmount} en este item`, 400)
     }
+
+    const prevPaid = item.isPaid
+    const prevAmount = item.paidAmount
 
     item.paidAmount = amt
     if (item.budgetedAmount > 0 && amt >= item.budgetedAmount) {
@@ -451,6 +505,20 @@ async function setItemAmount(userId, id, { categoryId, itemId, amount, purchaseI
     }
 
     await stmt.save()
+
+    let logAction, logDesc
+    if (amt === 0 && (prevAmount > 0 || prevPaid)) {
+        logAction = 'item_unpaid'
+        logDesc = `Desmarcado: ${item.name} (${cat.name})`
+    } else if (item.isPaid && !prevPaid) {
+        logAction = 'item_paid'
+        logDesc = `Pagado: ${item.name} (${cat.name}) $${amt.toFixed(2)}`
+    } else if (amt > 0 && amt !== prevAmount) {
+        logAction = 'item_partial'
+        logDesc = `Pago parcial: ${item.name} (${cat.name}) $${amt.toFixed(2)} de $${item.budgetedAmount.toFixed(2)}`
+    }
+    if (logAction) await log(userId, stmt.year, stmt.month, logAction, logDesc, amt || null)
+
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -459,6 +527,9 @@ async function addExtra(userId, id, data) {
     if (!stmt) throw myError('Statement not found', 404)
     stmt.extras.push(data)
     await stmt.save()
+    const typeLabel = data.type === 'income' ? 'Ingreso extra' : 'Gasto extra'
+    await log(userId, stmt.year, stmt.month, 'extra_added',
+        `${typeLabel}: ${data.name} $${Number(data.amount).toFixed(2)}`, data.amount)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -467,8 +538,12 @@ async function removeExtra(userId, id, extraId) {
     if (!stmt) throw myError('Statement not found', 404)
     const extra = stmt.extras.id(extraId)
     if (!extra) throw myError('Extra no encontrado', 404)
+    const extraName = extra.name
+    const extraAmount = extra.amount
     extra.deleteOne()
     await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'extra_deleted',
+        `Eliminado: ${extraName} $${Number(extraAmount).toFixed(2)}`, extraAmount)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -506,6 +581,9 @@ async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount,
         paymentMethod: pm
     })
     await stmt.save()
+    const pmLabel = pm === 'credit' ? ' (tarjeta)' : ''
+    await log(userId, stmt.year, stmt.month, 'item_added',
+        `Item añadido: ${name} (${cat.name})${pmLabel} $${amount.toFixed(2)}`, amount)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -518,8 +596,13 @@ async function removeItemFromCategory(userId, id, categoryId, itemId) {
     const item = cat.items.id(itemId)
     if (!item) throw myError('Item no encontrado', 404)
 
+    const itemName = item.name
+    const itemAmount = item.budgetedAmount
+    const catName = cat.name
     item.deleteOne()
     await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'item_deleted',
+        `Eliminado: ${itemName} (${catName}) $${Number(itemAmount).toFixed(2)}`, itemAmount)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -559,6 +642,13 @@ async function remove(userId, id) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
     await SavingsMovement.deleteMany({ userId, monthlyStatementId: stmt._id })
+    const Loan = require('../loan/model')
+    await Loan.deleteMany({
+        userId,
+        $or: [{ currentStatementId: stmt._id }, { originStatementId: stmt._id }]
+    })
+    const ActivityLog = require('../activityLog/model')
+    await ActivityLog.deleteMany({ userId, year: stmt.year, month: stmt.month })
     await stmt.deleteOne()
     return { _id: id }
 }

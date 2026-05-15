@@ -1,6 +1,7 @@
 const CreditPurchase = require('./model')
 const Template = require('../budgetTemplate/model')
 const myError = require('../../libs/myError')
+const log = require('../../libs/activityLog')
 
 function calculateCuotas(purchaseDate, installments, totalAmount, cutoffDay) {
     const d = new Date(purchaseDate)
@@ -48,7 +49,11 @@ async function findCuotasForMonth(userId, year, month) {
                     paidAmount: c.paidAmount,
                     paidAt: c.paidAt,
                     purchaseId: p._id,
-                    cuotaId: c._id
+                    cuotaId: c._id,
+                    isShared: p.isShared || false,
+                    borrowerName: p.borrowerName || '',
+                    paidByBorrower: c.paidByBorrower || 0,
+                    convertedToLoan: c.convertedToLoan || false
                 }
                 if (p.installments > 1) diferidos.push(display)
                 else tdc.push(display)
@@ -59,20 +64,91 @@ async function findCuotasForMonth(userId, year, month) {
     return { tdc, diferidos }
 }
 
-async function create(userId, { name, totalAmount, purchaseDate, installments }) {
+async function create(userId, { name, totalAmount, purchaseDate, installments, isShared, borrowerName }) {
     const tpl = await Template.findOne({ userId })
     const cutoffDay = tpl?.cutoffDay || 12
     const inst = installments && installments > 0 ? Math.floor(installments) : 1
     const cuotas = calculateCuotas(purchaseDate, inst, totalAmount, cutoffDay)
-    return CreditPurchase.create({
+    const purchase = await CreditPurchase.create({
         userId,
         name,
         totalAmount,
         purchaseDate,
         installments: inst,
         cutoffDayUsed: cutoffDay,
-        cuotas
+        cuotas,
+        isShared: !!isShared,
+        borrowerName: isShared ? (borrowerName || '').trim() : ''
     })
+    if (purchase.cuotas.length > 0) {
+        const first = purchase.cuotas[0]
+        const action = inst > 1 ? 'diferido_created' : 'tdc_created'
+        const label = inst > 1 ? `Diferido ${inst} cuotas` : 'Compra TDC'
+        const sharedNote = isShared ? ` (prestado a ${(borrowerName || '').trim()})` : ''
+        await log(userId, first.year, first.month, action,
+            `${label}: ${name}${sharedNote} $${Number(totalAmount).toFixed(2)}`, totalAmount)
+    }
+    return purchase
+}
+
+async function payBorrowerCuota(userId, purchaseId, cuotaId, amount) {
+    const p = await CreditPurchase.findOne({ _id: purchaseId, userId })
+    if (!p) throw myError('Compra no encontrada', 404)
+    if (!p.isShared) throw myError('Esta compra no es compartida', 400)
+
+    const c = p.cuotas.id(cuotaId)
+    if (!c) throw myError('Cuota no encontrada', 404)
+    if (c.convertedToLoan) throw myError('Esta cuota ya se convirtió en préstamo', 400)
+
+    const remaining = c.amount - (c.paidByBorrower || 0)
+    const amt = Number(amount) || 0
+    if (amt <= 0) throw myError('Monto inválido', 400)
+    if (amt > remaining) throw myError(`No puedes cobrar más de lo pendiente ($${remaining.toFixed(2)})`, 400)
+
+    c.paidByBorrower = (c.paidByBorrower || 0) + amt
+    c.paidByBorrowerAt = new Date()
+    await p.save()
+    await log(userId, c.year, c.month, 'borrower_paid',
+        `Cobrado a ${p.borrowerName}: ${p.name} $${amt.toFixed(2)}`, amt)
+    return p
+}
+
+async function convertCuotaToLoan(userId, purchaseId, cuotaId) {
+    const p = await CreditPurchase.findOne({ _id: purchaseId, userId })
+    if (!p) throw myError('Compra no encontrada', 404)
+    if (!p.isShared) throw myError('Esta compra no es compartida', 400)
+
+    const c = p.cuotas.id(cuotaId)
+    if (!c) throw myError('Cuota no encontrada', 404)
+    if (c.convertedToLoan) throw myError('Esta cuota ya se convirtió en préstamo', 400)
+
+    const remaining = c.amount - (c.paidByBorrower || 0)
+    if (remaining <= 0) throw myError('La cuota ya fue pagada completamente', 400)
+
+    const Statement = require('../monthlyStatement/model')
+    const stmt = await Statement.findOne({ userId, year: c.year, month: c.month })
+    if (!stmt) throw myError('No se encontró el mes para esta cuota', 404)
+
+    const Loan = require('../loan/model')
+    const loan = await Loan.create({
+        userId,
+        borrowerName: p.borrowerName,
+        amount: remaining,
+        lentDate: new Date(),
+        originStatementId: stmt._id,
+        currentStatementId: stmt._id,
+        status: 'pending',
+        fromCard: true,
+        cardPurchaseId: p._id,
+        history: [{ type: 'lent', date: new Date() }]
+    })
+
+    c.convertedToLoan = true
+    await p.save()
+    await log(userId, c.year, c.month, 'cuota_to_loan',
+        `Cuota convertida a préstamo: ${p.name} (${p.borrowerName}) $${remaining.toFixed(2)}`, remaining)
+
+    return { purchase: p, loan }
 }
 
 async function setCuotaAmount(userId, purchaseId, cuotaId, amount) {
@@ -136,5 +212,7 @@ module.exports = {
     update,
     findCuotasForMonth,
     setCuotaAmount,
+    payBorrowerCuota,
+    convertCuotaToLoan,
     remove
 }

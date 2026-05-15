@@ -27,6 +27,21 @@ router.put('/:id', updateValidator, async (req, res, next) => {
     } catch (e) { next(e) }
 })
 
+router.patch('/:id/cuota/:cuotaId/pay-borrower', async (req, res, next) => {
+    try {
+        const { amount } = req.body
+        const data = await controller.payBorrowerCuota(req.user._id, req.params.id, req.params.cuotaId, amount)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.patch('/:id/cuota/:cuotaId/convert-to-loan', async (req, res, next) => {
+    try {
+        const data = await controller.convertCuotaToLoan(req.user._id, req.params.id, req.params.cuotaId)
+        response.success(req, res, data, 201)
+    } catch (e) { next(e) }
+})
+
 router.delete('/:id', async (req, res, next) => {
     try {
         const data = await controller.remove(req.user._id, req.params.id)

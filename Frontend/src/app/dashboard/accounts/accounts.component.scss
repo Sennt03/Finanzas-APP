@@ -78,17 +78,59 @@
 
     &.savings-card .card-head .badge { background: $savings-soft; color: $savings; }
 
+    .balance-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .balance-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px dashed $border;
+      gap: 12px;
+
+      &:first-child { padding-top: 0; }
+      &:last-child { border-bottom: none; padding-bottom: 0; }
+
+      .bal-label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        span { font-size: 12.5px; font-weight: 600; color: $primary-soft; }
+        small { font-size: 11px; color: $primary-muted; }
+      }
+
+      strong {
+        font-size: 22px;
+        font-weight: 700;
+        color: $info;
+        letter-spacing: -0.3px;
+        white-space: nowrap;
+      }
+
+      &:first-child strong { font-size: 28px; }
+
+      .loans-total { color: $success; }
+      .available-total { color: $primary-soft; font-size: 20px !important; }
+
+      &.loans-row {
+        background: rgba($success, 0.04);
+        border-radius: $r-sm;
+        padding: 8px 6px;
+        margin: 0 -6px;
+        border-bottom: none;
+        + .secondary-row { border-top: 1px dashed $border; padding-top: 10px; }
+      }
+    }
+
+    // Savings card keeps old style (single balance)
     .balance {
       .label { font-size: 11px; color: $primary-muted; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
       strong { display: block; font-size: 30px; font-weight: 700; margin-top: 4px; color: $info; letter-spacing: -0.4px; }
       small { display: block; font-size: 11.5px; color: $primary-muted; margin-top: 2px; }
-
-      &.secondary {
-        margin-top: 14px;
-        padding-top: 14px;
-        border-top: 1px dashed $border;
-        strong { font-size: 22px; color: $primary-soft; }
-      }
     }
 
     &.savings-card .balance strong { color: $savings; }

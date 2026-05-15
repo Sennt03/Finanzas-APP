@@ -1,0 +1,47 @@
+<div class="activity-log">
+  <header class="page-header">
+    <div>
+      <a [routerLink]="['/months', statementId()]" class="back">
+        <i class="bx bx-arrow-back"></i> {{ monthLabel() }}
+      </a>
+      <h1>Estado de cuenta</h1>
+    </div>
+    <span class="month-chip">{{ monthLabel() }}</span>
+  </header>
+
+  <app-loading [show]="loading()"></app-loading>
+
+  @if (!loading()) {
+    @if (days().length === 0) {
+      <div class="empty-state">
+        <i class="bx bx-history"></i>
+        <p>Sin movimientos registrados en este mes.</p>
+        <small>Los movimientos aparecerán aquí a medida que realices acciones en el mes.</small>
+      </div>
+    } @else {
+      @for (day of days(); track day.dateLabel) {
+        <div class="day-group">
+          <div class="day-label">{{ day.dateLabel }}</div>
+          <div class="day-entries">
+            @for (entry of day.entries; track entry._id) {
+              <div class="log-entry" [class]="'color-' + colorFor(entry.action)">
+                <div class="log-icon">
+                  <i class="bx" [class]="iconFor(entry.action)"></i>
+                </div>
+                <div class="log-body">
+                  <span class="log-desc">{{ entry.description }}</span>
+                  <span class="log-time">{{ entry.createdAt | date:'HH:mm' }}</span>
+                </div>
+                @if (entry.amount !== null && entry.amount !== undefined) {
+                  <div class="log-amount" [class]="'color-' + colorFor(entry.action)">
+                    ${{ entry.amount | number:'1.2-2' }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+</div>

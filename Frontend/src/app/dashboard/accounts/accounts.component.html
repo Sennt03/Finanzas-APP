@@ -27,15 +27,30 @@
             <button class="btn-icon" (click)="startEdit(t)" title="Editar"><i class="bx bx-edit"></i></button>
           }
         </div>
-        <div class="balance">
-          <span class="label">Saldo cuenta (en banco)</span>
-          <strong>{{ t.balance | number:'1.2-2' }}</strong>
-          <small class="muted">incluye TDC pendiente</small>
-        </div>
-        <div class="balance secondary">
-          <span class="label">Saldo disponible</span>
-          <strong>{{ t.availableBalance | number:'1.2-2' }}</strong>
-          <small class="muted">descuenta TDC pendiente</small>
+        <div class="balance-group">
+          <div class="balance-row">
+            <div class="bal-label">
+              <span>Saldo cuenta</span>
+              <small>dinero real en banco</small>
+            </div>
+            <strong>{{ t.balance | number:'1.2-2' }}</strong>
+          </div>
+          @if (t.pendingLoansTotal > 0) {
+            <div class="balance-row loans-row">
+              <div class="bal-label">
+                <span>Con deudas cobradas</span>
+                <small>{{ t.pendingLoansTotal | number:'1.2-2' }} en préstamos pendientes</small>
+              </div>
+              <strong class="loans-total">{{ t.balance + t.pendingLoansTotal | number:'1.2-2' }}</strong>
+            </div>
+          }
+          <div class="balance-row secondary-row">
+            <div class="bal-label">
+              <span>Saldo disponible</span>
+              <small>descuenta TDC pendiente</small>
+            </div>
+            <strong class="available-total">{{ t.availableBalance | number:'1.2-2' }}</strong>
+          </div>
         </div>
       </div>
     }

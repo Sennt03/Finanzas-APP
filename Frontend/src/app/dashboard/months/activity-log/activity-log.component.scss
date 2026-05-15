@@ -1,0 +1,167 @@
+@use 'sass:color';
+@use 'vars' as *;
+
+.activity-log {
+  max-width: 760px;
+  margin: 0 auto;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: $accent;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      transition: color .15s ease;
+      &:hover { color: $accent-hover; }
+    }
+
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
+
+    .month-chip {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: $primary-muted;
+      background: $surface-alt;
+      border: 1px solid $border;
+      padding: 5px 14px;
+      border-radius: 999px;
+    }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: $primary-muted;
+
+  i {
+    font-size: 52px;
+    color: $border-strong;
+    display: block;
+    margin-bottom: 14px;
+  }
+
+  p { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  small { font-size: 13px; }
+}
+
+.day-group {
+  margin-bottom: 24px;
+
+  .day-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: $primary-muted;
+    margin-bottom: 8px;
+    padding-left: 2px;
+    &::first-letter { text-transform: uppercase; }
+  }
+
+  .day-entries {
+    background: $surface;
+    border-radius: $r-lg;
+    border: 1px solid $border;
+    box-shadow: $shadow-sm;
+    overflow: hidden;
+  }
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid $border;
+  transition: background .1s ease;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: $surface-alt; }
+
+  .log-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 17px;
+    background: $surface-alt;
+    color: $primary-muted;
+  }
+
+  .log-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .log-desc {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: $primary;
+      line-height: 1.35;
+    }
+
+    .log-time {
+      font-size: 11px;
+      color: $primary-faint;
+      font-weight: 600;
+    }
+  }
+
+  .log-amount {
+    font-size: 13.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: $primary-muted;
+  }
+
+  // Color variants
+  &.color-success {
+    .log-icon { background: $success-soft; color: $success; }
+    .log-amount { color: $success; }
+  }
+  &.color-warning {
+    .log-icon { background: $warning-soft; color: color.adjust($warning, $lightness: -10%); }
+    .log-amount { color: color.adjust($warning, $lightness: -10%); }
+  }
+  &.color-danger {
+    .log-icon { background: $danger-soft; color: $danger; }
+    .log-amount { color: $danger; }
+  }
+  &.color-accent {
+    .log-icon { background: $accent-soft; color: $accent; }
+    .log-amount { color: $accent; }
+  }
+  &.color-credit {
+    .log-icon { background: $credit-soft; color: $credit; }
+    .log-amount { color: $credit; }
+  }
+  &.color-loan {
+    $loan-color: #8b5cf6;
+    .log-icon { background: color.adjust($loan-color, $lightness: 38%); color: $loan-color; }
+    .log-amount { color: $loan-color; }
+  }
+  &.color-muted {
+    .log-icon { background: $border; color: $primary-faint; }
+  }
+  &.color-soft {
+    .log-icon { background: $surface-alt; color: $primary-muted; }
+  }
+}

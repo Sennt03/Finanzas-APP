@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from 'environments/environment';
-import { LsCreditPurchase } from '@models/finance.models';
+import { LsCreditPurchase, LsLoan } from '@models/finance.models';
 
 @Injectable({ providedIn: 'root' })
 export class CreditPurchaseService {
@@ -18,12 +18,28 @@ export class CreditPurchaseService {
         totalAmount: number;
         purchaseDate: string;
         installments: number;
+        isShared?: boolean;
+        borrowerName?: string;
     }): Observable<LsCreditPurchase> {
         return this.http.post<LsCreditPurchase>(this.url, data);
     }
 
     update(id: string, data: { name?: string; totalAmount?: number }): Observable<LsCreditPurchase> {
         return this.http.put<LsCreditPurchase>(`${this.url}/${id}`, data);
+    }
+
+    payBorrowerCuota(purchaseId: string, cuotaId: string, amount: number): Observable<LsCreditPurchase> {
+        return this.http.patch<LsCreditPurchase>(
+            `${this.url}/${purchaseId}/cuota/${cuotaId}/pay-borrower`,
+            { amount }
+        );
+    }
+
+    convertCuotaToLoan(purchaseId: string, cuotaId: string): Observable<{ purchase: LsCreditPurchase; loan: LsLoan }> {
+        return this.http.patch<{ purchase: LsCreditPurchase; loan: LsLoan }>(
+            `${this.url}/${purchaseId}/cuota/${cuotaId}/convert-to-loan`,
+            {}
+        );
     }
 
     remove(id: string): Observable<{ _id: string }> {

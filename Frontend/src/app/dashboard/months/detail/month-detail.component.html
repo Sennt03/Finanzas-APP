@@ -7,6 +7,9 @@
       </div>
       <div class="actions">
         @if (!editMode()) {
+          <a [routerLink]="['/months', s._id, 'activity']" [queryParams]="{ year: s.year, month: s.month }" class="btn btn-outline">
+            <i class="bx bx-history"></i> Estado de cuenta
+          </a>
           <button class="btn btn-outline" (click)="enterEdit()">
             <i class="bx bx-edit"></i> Editar presupuesto
           </button>
@@ -24,7 +27,14 @@
             <span class="hint">en banco</span>
           </div>
           <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
-          <small>Incluye TDC no pagada aún</small>
+          @if (s.summary.pendingLoansTotal > 0) {
+            <small class="loans-hint">
+              Con préstamos cobrados: <strong>{{ s.summary.remainingSalary + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong>
+            </small>
+            <small>{{ s.summary.pendingLoansTotal | number:'1.2-2' }} en préstamos pendientes</small>
+          } @else {
+            <small>Incluye TDC no pagada aún</small>
+          }
         </div>
         <div class="card available">
           <div class="card-top">
@@ -32,7 +42,7 @@
             <span class="hint">real</span>
           </div>
           <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
-          <small>Descuenta TDC pendiente</small>
+          <small>Descuenta TDC pendiente y préstamos</small>
         </div>
       </div>
     </div>
@@ -181,6 +191,12 @@
               <div class="cat-budget credit-total" [class.paid]="cat.categoryPaid">
                 <span class="label">total a pagar</span>
                 <span class="total">{{ (cat.totalAll || 0) | number:'1.2-2' }}</span>
+                @if (s.summary.creditCard.sharedShare > 0) {
+                  <span class="sep">·</span>
+                  <span class="own-share" title="Tuyo">yo: {{ s.summary.creditCard.ownShare | number:'1.2-2' }}</span>
+                  <span class="sep">|</span>
+                  <span class="shared-share" title="Otros">otros: {{ s.summary.creditCard.sharedShare | number:'1.2-2' }}</span>
+                }
               </div>
             }
           </div>
@@ -188,6 +204,16 @@
           @if (!cat.isVirtual && cat.totalAmount > 0) {
             <div class="cat-progress">
               <div class="bar" [style.width.%]="(itemsSum(cat) / cat.totalAmount) * 100"></div>
+            </div>
+          }
+
+          @if (showSpentIndicator(cat)) {
+            <div class="cat-spent-row">
+              <span class="spent-label">Gastado: <strong>{{ categoryPaidSum(cat) | number:'1.2-2' }}</strong></span>
+              <span class="sep">·</span>
+              <span class="remaining-label" [class.all-paid]="categoryRemainingToPay(cat) <= 0">
+                Queda: <strong>{{ categoryRemainingToPay(cat) | number:'1.2-2' }}</strong>
+              </span>
             </div>
           }
 
@@ -205,20 +231,65 @@
                 [class.credit-item]="!cat.isVirtual && isCreditItem(it)">
 
                 @if (cat.isVirtual) {
-                  <div class="item-readonly">
-                    <span class="name">{{ it.name }}</span>
-                    @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
-                  </div>
-                  <div class="amounts">
-                    <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
-                    <select class="convert-select" (change)="convertCuota(it, $any($event.target).value); $any($event.target).value=''">
-                      <option value="" disabled selected>⋮</option>
-                      <option value="expense">→ Gasto cash</option>
-                      <option value="income">→ Ingreso</option>
-                      @if (it.subType === 'diferido') { <option value="tdc">→ TDC 1 cuota</option> }
-                      @if (it.subType === 'tdc') { <option value="diferido">→ Diferido N cuotas</option> }
-                    </select>
-                  </div>
+                  @if (it.isShared) {
+                    <!-- Cuota prestada a otra persona -->
+                    <div class="item-readonly">
+                      <span class="name">{{ it.name }}</span>
+                      <span class="sub-tag shared-tag">{{ it.borrowerName }}</span>
+                      @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
+                      @if (it.convertedToLoan) { <span class="sub-tag loan-ref-tag">préstamo</span> }
+                    </div>
+                    <div class="amounts shared-amounts">
+                      @if (it.convertedToLoan) {
+                        <span class="shared-label">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+                      } @else {
+                        <div class="shared-col">
+                          <span class="paid-amount">-{{ borrowerRemaining(it) | number:'1.2-2' }}</span>
+                          @if ((it.paidByBorrower || 0) > 0) {
+                            <small class="shared-paid-note">{{ it.paidByBorrower | number:'1.2-2' }} cobrado</small>
+                          }
+                        </div>
+                        @if (isPayingBorrower(it)) {
+                          <div class="borrower-pay-form">
+                            <input
+                              type="number"
+                              min="0.01"
+                              [max]="borrowerRemaining(it)"
+                              [ngModel]="borrowerPayAmount()"
+                              (ngModelChange)="borrowerPayAmount.set($event)"
+                              (keydown.enter)="submitPayBorrower(it)"
+                              (keydown.escape)="closePayBorrower()"
+                              placeholder="Monto">
+                            <button class="btn btn-success btn-sm" (click)="submitPayBorrower(it)"><i class="bx bx-check"></i></button>
+                            <button class="btn-icon mini" (click)="closePayBorrower()"><i class="bx bx-x"></i></button>
+                          </div>
+                        } @else if (borrowerRemaining(it) > 0) {
+                          <button class="btn btn-outline btn-sm" (click)="openPayBorrower(it)">
+                            <i class="bx bx-dollar"></i> Cobrar
+                          </button>
+                          <button class="btn-icon mini" title="Convertir a préstamo" (click)="convertCuotaToLoan(it)">
+                            <i class="bx bx-transfer-alt"></i>
+                          </button>
+                        }
+                      }
+                    </div>
+                  } @else {
+                    <!-- Cuota propia normal -->
+                    <div class="item-readonly">
+                      <span class="name">{{ it.name }}</span>
+                      @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
+                    </div>
+                    <div class="amounts">
+                      <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+                      <select class="convert-select" (change)="convertCuota(it, $any($event.target).value); $any($event.target).value=''">
+                        <option value="" disabled selected>⋮</option>
+                        <option value="expense">→ Gasto cash</option>
+                        <option value="income">→ Ingreso</option>
+                        @if (it.subType === 'diferido') { <option value="tdc">→ TDC 1 cuota</option> }
+                        @if (it.subType === 'tdc') { <option value="diferido">→ Diferido N cuotas</option> }
+                      </select>
+                    </div>
+                  }
                 } @else if (isCreditItem(it)) {
                   <div class="credit-info"
                     [title]="s.summary.creditCard.groupPaid ? 'Pagada junto con la tarjeta del mes' : 'Se paga al marcar la tarjeta del mes como pagada'">
@@ -382,6 +453,18 @@
                 <input type="number" min="2" max="60" [ngModel]="txInstallments()" (ngModelChange)="txInstallments.set($event)">
               </label>
             }
+            @if (txType() === 'tdc' || txType() === 'diferido') {
+              <label class="span-full shared-toggle-label">
+                <input type="checkbox" [checked]="txIsShared()" (change)="txIsShared.set($any($event.target).checked)">
+                Tarjeta prestada a otra persona
+              </label>
+              @if (txIsShared()) {
+                <label class="span-full">
+                  Nombre de quien usó la tarjeta
+                  <input type="text" [ngModel]="txBorrowerName()" (ngModelChange)="txBorrowerName.set($event)" placeholder="Ej: Mamá, Juan...">
+                </label>
+              }
+            }
             <div class="form-actions span-full">
               <button class="btn btn-outline btn-sm" (click)="closeTx()">Cancelar</button>
               <button class="btn btn-primary btn-sm" (click)="submitTx()">Guardar</button>
@@ -414,6 +497,118 @@
               </select>
               <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
             </div>
+          </div>
+        }
+      </section>
+
+      <!-- Préstamos del mes -->
+      <section class="category loans-section">
+        <div class="cat-head">
+          <h3><i class="bx bx-dollar"></i> Préstamos</h3>
+          <div class="tx-buttons">
+            @if (!showLoanForm()) {
+              <button class="btn btn-outline btn-sm" (click)="openLoanForm()">
+                <i class="bx bx-plus"></i> Nuevo préstamo
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (showLoanForm()) {
+          <div class="loan-form">
+            <input type="text" placeholder="A quién prestas" [ngModel]="loanBorrower()" (ngModelChange)="loanBorrower.set($event)">
+            <input type="number" min="0" placeholder="Monto" [ngModel]="loanAmount()" (ngModelChange)="loanAmount.set($event)" (keydown.enter)="submitLoan()">
+            <input type="date" [ngModel]="loanDate()" (ngModelChange)="loanDate.set($event)">
+            <button class="btn btn-primary btn-sm" (click)="submitLoan()">Registrar</button>
+            <button class="btn btn-outline btn-sm" (click)="closeLoanForm()">Cancelar</button>
+          </div>
+        }
+
+        @if (monthLoans().length === 0 && !showLoanForm()) {
+          <p class="muted small">Sin préstamos en este mes</p>
+        }
+
+        @for (loan of monthLoans(); track loan._id) {
+          <div class="item loan-item"
+            [class.loan-paid]="loan.status === 'paid'"
+            [class.loan-transferred]="loan.status === 'transferred'">
+
+            <!-- Info principal -->
+            <div class="loan-info">
+              @if (loan.status === 'paid') {
+                <i class="bx bx-check-circle loan-status paid"></i>
+              } @else if (loan.status === 'transferred') {
+                <i class="bx bx-right-arrow-alt loan-status transferred"></i>
+              } @else {
+                <i class="bx bx-time loan-status pending"></i>
+              }
+              <div class="loan-text">
+                <span class="name">{{ loan.borrowerName }}</span>
+                @if (loan.status === 'transferred') {
+                  <span class="loan-tag transferred-tag">transferido →</span>
+                }
+                @if (loan.fromSavings && loan.status === 'paid' && !loan.paidBackToSavings) {
+                  <span class="loan-tag warn">devolver a ahorros</span>
+                }
+              </div>
+            </div>
+
+            <!-- Monto + acciones -->
+            <div class="amounts">
+              @if (loan.status === 'transferred') {
+                <!-- Transferido: no se elimina del mes, sigue descontando, cubierto por ahorros -->
+                <div class="loan-amounts-col">
+                  <span class="paid-amount">-{{ loan.amount | number:'1.2-2' }}</span>
+                  <span class="loan-covered-note"><i class="bx bx-transfer-alt"></i> cubierto por ahorros</span>
+                </div>
+              } @else if (loan.status === 'paid') {
+                <span class="income-amount">+{{ loan.paidAmount | number:'1.2-2' }}</span>
+              } @else {
+                <!-- Pendiente: monto total y parcial si aplica -->
+                <div class="loan-amounts-col">
+                  <span class="paid-amount">-{{ loanRemaining(loan) | number:'1.2-2' }}</span>
+                  @if ((loan.paidAmount || 0) > 0) {
+                    <span class="loan-partial-note">{{ loan.paidAmount | number:'1.2-2' }} cobrado de {{ loan.amount | number:'1.2-2' }}</span>
+                  }
+                </div>
+              }
+
+              <!-- Form pago parcial inline -->
+              @if (isPayingLoan(loan)) {
+                <div class="loan-pay-form">
+                  <input
+                    type="number"
+                    min="0.01"
+                    [max]="loanRemaining(loan)"
+                    [ngModel]="loanPayAmount()"
+                    (ngModelChange)="loanPayAmount.set($event)"
+                    (keydown.enter)="submitPayLoan(loan)"
+                    (keydown.escape)="closePayLoan()"
+                    placeholder="Monto">
+                  <button class="btn btn-primary btn-sm" (click)="submitPayLoan(loan)">
+                    <i class="bx bx-check"></i>
+                  </button>
+                  <button class="btn-icon mini" (click)="closePayLoan()">
+                    <i class="bx bx-x"></i>
+                  </button>
+                </div>
+              } @else if (loan.status === 'pending') {
+                <button class="btn btn-outline btn-sm" (click)="openPayLoan(loan)">
+                  <i class="bx bx-dollar"></i> Cobrar
+                </button>
+                @if (!loan.fromSavings) {
+                  <button class="btn-icon mini" (click)="deleteLoanInDetail(loan)" title="Eliminar préstamo">
+                    <i class="bx bx-x"></i>
+                  </button>
+                }
+              }
+            </div>
+          </div>
+        }
+
+        @if (pendingLoans().length > 0) {
+          <div class="loans-hint-link">
+            <a routerLink="/loans"><i class="bx bx-right-arrow-alt"></i> Transferir al sig. mes en Préstamos</a>
           </div>
         }
       </section>

@@ -5,7 +5,9 @@ const createSchema = Joi.object({
     name: Joi.string().min(1).max(120).required(),
     totalAmount: Joi.number().min(0).required(),
     purchaseDate: Joi.date().required(),
-    installments: Joi.number().integer().min(1).max(60).default(1)
+    installments: Joi.number().integer().min(1).max(60).default(1),
+    isShared: Joi.boolean().default(false),
+    borrowerName: Joi.string().max(80).allow('').default('')
 })
 
 const updateSchema = Joi.object({

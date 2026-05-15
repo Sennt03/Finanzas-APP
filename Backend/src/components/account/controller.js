@@ -54,12 +54,19 @@ async function computeBalances(account) {
     const stmt = await MonthlyStatement.findOne({ userId: account.userId, year, month })
     if (!stmt) return { balance: 0, availableBalance: 0 }
 
-    let paid = 0
+    // Separate cash-paid items from credit items (mirrors buildEnrichedStatement logic)
+    let paidCash = 0
+    let itemsShare = 0
     for (const cat of stmt.categories) {
         for (const it of cat.items) {
-            paid += it.paidAmount || 0
+            if (it.paymentMethod === 'credit') {
+                itemsShare += it.budgetedAmount || 0
+            } else {
+                paidCash += it.paidAmount || 0
+            }
         }
     }
+
     const extrasExpense = (stmt.extras || [])
         .filter(e => (e.type || 'expense') === 'expense')
         .reduce((s, e) => s + (e.amount || 0), 0)
@@ -92,11 +99,48 @@ async function computeBalances(account) {
         }
     }
 
-    const base = stmt.salary - paid - extrasExpense + extrasIncome + wSum
-    const realBalance = base - tdcPaid - difPaid           // físico en el banco
-    const availableBalance = base - tdcTotal - difTotal     // tecnicamente disponible
+    const creditTotal = tdcTotal + difTotal + itemsShare
+    const creditPaid = cs.tdcPaid ? creditTotal : 0
 
-    return { balance: realBalance, availableBalance }
+    const Loan = require('../loan/model')
+    const allCurrentLoans = await Loan.find({ userId: account.userId, currentStatementId: stmt._id })
+
+    const balancePendingTotal = allCurrentLoans
+        .filter(l => ['pending', 'transferred'].includes(l.status) && !l.fromSavings && !l.fromCard)
+        .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
+
+    const pendingLoansTotal = allCurrentLoans
+        .filter(l => l.status === 'pending' && !l.fromSavings && !l.fromCard)
+        .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
+
+    const paidFromSavingsNet = allCurrentLoans
+        .filter(l => l.fromSavings)
+        .reduce((s, l) => {
+            const collected = l.paidAmount || 0
+            const repaid = l.paidBackToSavings ? (l.amount || 0) : 0
+            return s + collected - repaid
+        }, 0)
+
+    const paidFromCardNet = allCurrentLoans
+        .filter(l => l.fromCard)
+        .reduce((s, l) => s + (l.paidAmount || 0), 0)
+
+    // Shared credit purchases: amount paid back by borrowers
+    let paidByBorrowerNet = 0
+    for (const p of purchases) {
+        if (!p.isShared) continue
+        for (const c of p.cuotas) {
+            if (c.year === year && c.month === month) {
+                paidByBorrowerNet += c.paidByBorrower || 0
+            }
+        }
+    }
+
+    const base = stmt.salary - paidCash - extrasExpense + extrasIncome + wSum + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
+    const realBalance = base - creditPaid - balancePendingTotal
+    const availableBalance = base - creditTotal - balancePendingTotal
+
+    return { balance: realBalance, availableBalance, pendingLoansTotal }
 }
 
 module.exports = {

@@ -1,0 +1,186 @@
+<div class="loans-page">
+  <header class="page-header">
+    <div>
+      <h1><i class="bx bx-dollar"></i> Préstamos</h1>
+      <p class="muted">Dinero prestado a otras personas y su estado de cobro.</p>
+    </div>
+  </header>
+
+  <!-- Alerta: pendiente de devolver a ahorros -->
+  @if (needsSavingsRepayment().length > 0) {
+    <div class="savings-alert">
+      <i class="bx bx-error"></i>
+      <span>
+        <strong>{{ needsSavingsRepayment().length }} préstamo{{ needsSavingsRepayment().length > 1 ? 's' : '' }} cobrado{{ needsSavingsRepayment().length > 1 ? 's' : '' }}</strong>
+        con dinero de ahorros — debes devolver ese monto a Produbanco.
+      </span>
+    </div>
+  }
+
+  <!-- Pendientes -->
+  <section class="loan-section">
+    <div class="section-label">Pendientes ({{ pending().length }})</div>
+
+    @if (pending().length === 0) {
+      <div class="empty">
+        <i class="bx bx-check-circle"></i>
+        <span>Sin préstamos pendientes</span>
+      </div>
+    }
+
+    @for (loan of pending(); track loan._id) {
+      <div class="loan-card pending">
+        <div class="loan-header">
+          <div class="borrower">
+            <i class="bx bx-user"></i>
+            <strong>{{ loan.borrowerName }}</strong>
+            @if (loan.fromSavings) {
+              <span class="tag savings-tag">de ahorros</span>
+            }
+          </div>
+          <div class="amount-col">
+            <span class="amount">${{ loanRemaining(loan) | number:'1.2-2' }}</span>
+            @if ((loan.paidAmount || 0) > 0) {
+              <small class="partial-note">{{ loan.paidAmount | number:'1.2-2' }} cobrado de {{ loan.amount | number:'1.2-2' }}</small>
+            }
+          </div>
+        </div>
+
+        <div class="loan-meta">
+          <span><i class="bx bx-calendar"></i> Prestado: {{ loan.lentDate | date:'d MMM yyyy' }}</span>
+          <span><i class="bx bx-folder"></i> Mes: {{ stmtLabel(loan, 'current') }}</span>
+          @if (loan.originStatementId !== loan.currentStatementId) {
+            <span class="origin-hint"><i class="bx bx-transfer"></i> Origen: {{ stmtLabel(loan, 'origin') }}</span>
+          }
+        </div>
+
+        @if (isPayingLoan(loan)) {
+          <div class="pay-form">
+            <input
+              type="number"
+              min="0.01"
+              [max]="loanRemaining(loan)"
+              [ngModel]="loanPayAmount()"
+              (ngModelChange)="loanPayAmount.set($event)"
+              (keydown.enter)="submitPayLoan(loan)"
+              (keydown.escape)="closePayLoan()"
+              placeholder="Monto a cobrar">
+            <button class="btn btn-success btn-sm" (click)="submitPayLoan(loan)">
+              <i class="bx bx-check"></i> Confirmar
+            </button>
+            <button class="btn btn-outline btn-sm" (click)="closePayLoan()">Cancelar</button>
+          </div>
+        }
+
+        @if (isTransfering(loan)) {
+          <div class="transfer-form">
+            <label>
+              <i class="bx bx-right-arrow-alt"></i> Transferir al mes:
+              <select [ngModel]="transferTargetId()" (ngModelChange)="transferTargetId.set($event)">
+                <option value="" disabled>Selecciona mes</option>
+                @for (s of availableTargets(loan); track s._id) {
+                  <option [value]="s._id">{{ monthNames[s.month - 1] }} {{ s.year }}</option>
+                }
+              </select>
+            </label>
+            <div class="transfer-note">
+              <i class="bx bx-info-circle"></i>
+              Se hará un retiro de <strong>${{ loan.amount | number:'1.2-2' }}</strong> de tus ahorros para cubrir el mes actual.
+            </div>
+            <div class="transfer-actions">
+              <button class="btn btn-outline btn-sm" (click)="closeTransfer()">Cancelar</button>
+              <button class="btn btn-warning btn-sm" (click)="submitTransfer(loan)">
+                <i class="bx bx-transfer"></i> Confirmar transferencia
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (!isPayingLoan(loan) && !isTransfering(loan)) {
+          <div class="loan-actions">
+            <button class="btn btn-success btn-sm" (click)="openPayLoan(loan)">
+              <i class="bx bx-dollar"></i> Cobrar
+            </button>
+            <button class="btn btn-outline btn-sm" (click)="openTransfer(loan)">
+              <i class="bx bx-right-arrow-alt"></i> Transferir al sig. mes
+            </button>
+            <button class="btn-icon danger" (click)="deleteLoan(loan)" title="Eliminar préstamo">
+              <i class="bx bx-trash"></i>
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Cobrados -->
+  <section class="loan-section">
+    <div class="section-label">Cobrados ({{ paid().length }})</div>
+
+    @if (paid().length === 0) {
+      <div class="empty"><span>Sin préstamos cobrados aún</span></div>
+    }
+
+    @for (loan of paid(); track loan._id) {
+      <div class="loan-card paid" [class.needs-repay]="loan.fromSavings && !loan.paidBackToSavings">
+        <div class="loan-header">
+          <div class="borrower">
+            <i class="bx bx-check-circle"></i>
+            <strong>{{ loan.borrowerName }}</strong>
+            @if (loan.fromSavings && !loan.paidBackToSavings) {
+              <span class="tag warn-tag">devolver a ahorros</span>
+            }
+            @if (loan.paidBackToSavings) {
+              <span class="tag ok-tag">ahorros restaurados</span>
+            }
+          </div>
+          <span class="amount paid-amount">${{ loan.amount | number:'1.2-2' }}</span>
+        </div>
+
+        <div class="loan-meta">
+          <span><i class="bx bx-calendar"></i> Prestado: {{ loan.lentDate | date:'d MMM yyyy' }}</span>
+          @if (loan.paidAt) {
+            <span><i class="bx bx-check"></i> Cobrado: {{ loan.paidAt | date:'d MMM yyyy' }}</span>
+          }
+          <span><i class="bx bx-folder"></i> Mes: {{ stmtLabel(loan, 'current') }}</span>
+        </div>
+
+        @if (loan.fromSavings && !loan.paidBackToSavings) {
+          <div class="repay-alert">
+            <i class="bx bx-error-circle"></i>
+            <span>Este préstamo fue cubierto con ahorros. Debes devolver <strong>${{ loan.amount | number:'1.2-2' }}</strong> a Produbanco.</span>
+            <button class="btn btn-savings btn-sm" (click)="repaySavings(loan)">
+              <i class="bx bx-transfer-alt"></i> Devolver a ahorros
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Transferidos -->
+  @if (transferred().length > 0) {
+    <section class="loan-section">
+      <div class="section-label">Transferidos ({{ transferred().length }})</div>
+
+      @for (loan of transferred(); track loan._id) {
+        <div class="loan-card transferred">
+          <div class="loan-header">
+            <div class="borrower">
+              <i class="bx bx-right-arrow-alt"></i>
+              <strong>{{ loan.borrowerName }}</strong>
+              <span class="tag trans-tag">transferido</span>
+            </div>
+            <span class="amount">${{ loan.amount | number:'1.2-2' }}</span>
+          </div>
+          <div class="loan-meta">
+            <span><i class="bx bx-calendar"></i> {{ loan.lentDate | date:'d MMM yyyy' }}</span>
+            <span><i class="bx bx-folder"></i> {{ stmtLabel(loan, 'origin') }} → transferido</span>
+          </div>
+        </div>
+      }
+    </section>
+  }
+</div>
+
+<app-loading [show]="loading()"></app-loading>

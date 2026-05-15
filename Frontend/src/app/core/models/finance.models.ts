@@ -11,6 +11,7 @@ export interface LsAccount {
     initialBalance: number;
     balance: number;
     availableBalance: number;
+    pendingLoansTotal: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -49,6 +50,10 @@ export interface LsStatementItem {
     purchaseId?: string;
     cuotaId?: string;
     subType?: 'tdc' | 'diferido';
+    isShared?: boolean;
+    borrowerName?: string;
+    paidByBorrower?: number;
+    convertedToLoan?: boolean;
 }
 
 export interface LsExternalCreditItem {
@@ -91,6 +96,7 @@ export interface LsStatementSummary {
     remainingSalary: number;
     availableBalance: number;
     availableToBudget: number;
+    pendingLoansTotal: number;
     savings: {
         monthDeposits: number;
         monthWithdrawals: number;
@@ -103,6 +109,8 @@ export interface LsStatementSummary {
         tdcShare: number;
         diferidosShare: number;
         itemsShare: number;
+        sharedShare: number;
+        ownShare: number;
     };
 }
 
@@ -138,6 +146,9 @@ export interface LsCuota {
     isPaid: boolean;
     paidAmount: number;
     paidAt: string | null;
+    paidByBorrower?: number;
+    paidByBorrowerAt?: string | null;
+    convertedToLoan?: boolean;
 }
 
 export interface LsCreditPurchase {
@@ -148,6 +159,8 @@ export interface LsCreditPurchase {
     installments: number;
     cutoffDayUsed: number;
     cuotas: LsCuota[];
+    isShared?: boolean;
+    borrowerName?: string;
     createdAt?: string;
 }
 
@@ -155,3 +168,51 @@ export const MONTH_NAMES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
+
+export type LoanStatus = 'pending' | 'paid' | 'transferred';
+
+export interface LsLoanHistoryEntry {
+    type: 'lent' | 'transferred' | 'paid' | 'partial_payment' | 'repaid_savings';
+    date: string;
+    toStatementId?: string;
+    savingsMovementId?: string;
+    amount?: number;
+}
+
+export interface LsLoanStatementRef {
+    year: number;
+    month: number;
+}
+
+export interface LsLoan {
+    _id: string;
+    borrowerName: string;
+    amount: number;
+    paidAmount: number;
+    lentDate: string;
+    originStatementId: string;
+    currentStatementId: string;
+    status: LoanStatus;
+    paidAt: string | null;
+    history: LsLoanHistoryEntry[];
+    fromSavings: boolean;
+    savingsWithdrawalId: string | null;
+    paidBackToSavings: boolean;
+    savingsDepositId: string | null;
+    fromCard: boolean;
+    cardPurchaseId: string | null;
+    originStatement: LsLoanStatementRef | null;
+    currentStatement: LsLoanStatementRef | null;
+    createdAt?: string;
+}
+
+export interface LsActivityLog {
+    _id: string;
+    year: number;
+    month: number;
+    action: string;
+    description: string;
+    amount: number | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+}
