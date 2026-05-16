@@ -127,18 +127,20 @@ async function computeBalances(account) {
 
     // Shared credit purchases: amount paid back by borrowers
     let paidByBorrowerNet = 0
+    let sharedShare = 0
     for (const p of purchases) {
         if (!p.isShared) continue
         for (const c of p.cuotas) {
             if (c.year === year && c.month === month) {
                 paidByBorrowerNet += c.paidByBorrower || 0
+                sharedShare += c.amount
             }
         }
     }
 
     const base = stmt.salary - paidCash - extrasExpense + extrasIncome + wSum + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
     const realBalance = base - creditPaid - balancePendingTotal
-    const availableBalance = base - creditTotal - balancePendingTotal
+    const availableBalance = base - paidByBorrowerNet - (creditTotal - sharedShare) - balancePendingTotal
 
     return { balance: realBalance, availableBalance, pendingLoansTotal }
 }

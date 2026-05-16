@@ -166,7 +166,7 @@ async function buildEnrichedStatement(stmt, userId) {
 
     const base = obj.salary - paid - extrasExpense + extrasIncome + monthWithdrawals + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
     const realBalance = base - creditPaidAmt - balancePendingTotal
-    const availableBalance = base - creditTotal - balancePendingTotal
+    const availableBalance = base - paidByBorrowerNet - (creditTotal - sharedShare) - balancePendingTotal
 
     obj.summary = {
         totalBudgeted: budgeted,
