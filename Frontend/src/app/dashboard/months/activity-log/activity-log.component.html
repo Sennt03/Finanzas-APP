@@ -37,6 +37,20 @@
                     ${{ entry.amount | number:'1.2-2' }}
                   </div>
                 }
+                @if (entry.deletable) {
+                  <button
+                    class="log-undo"
+                    (click)="deleteEntry(entry)"
+                    [disabled]="isDeleting(entry._id)"
+                    title="Deshacer movimiento"
+                    aria-label="Deshacer movimiento">
+                    @if (isDeleting(entry._id)) {
+                      <i class="bx bx-loader-alt bx-spin"></i>
+                    } @else {
+                      <i class="bx bx-undo"></i>
+                    }
+                  </button>
+                }
               </div>
             }
           </div>

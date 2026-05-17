@@ -162,6 +162,7 @@ export class MonthDetailComponent {
   commitAmount(item: LsStatementItem, cat: LsStatementCategory) {
     const draft = this.itemDrafts()[item._id!];
     if (draft === undefined || draft === null) return;
+    if (this.isSaving(item)) return;
     if (Number(draft) === item.paidAmount) {
       this.clearDraft(item._id!);
       return;

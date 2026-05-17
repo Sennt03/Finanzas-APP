@@ -15,4 +15,11 @@ router.get('/', async (req, res, next) => {
     } catch (e) { next(e) }
 })
 
+router.delete('/:id', async (req, res, next) => {
+    try {
+        const data = await ctrl.remove(req.user._id, req.params.id)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
 module.exports = router

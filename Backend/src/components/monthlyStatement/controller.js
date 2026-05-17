@@ -478,29 +478,29 @@ async function setItemAmount(userId, id, { categoryId, itemId, amount, purchaseI
             savingsAcc = await Account.findOne({ userId, type: 'savings' })
         }
 
-        const existing = await SavingsMovement.findOne({
-            userId,
-            monthlyStatementId: stmt._id,
-            'itemRef.itemId': item._id
-        })
-
         if (amt === 0) {
-            if (existing) await existing.deleteOne()
-        } else if (existing) {
-            existing.amount = amt
-            existing.description = `${cat.name} / ${item.name}`
-            await existing.save()
+            // Eliminar todos los movimientos vinculados a este item (limpia duplicados accidentales)
+            await SavingsMovement.deleteMany({ userId, monthlyStatementId: stmt._id, 'itemRef.itemId': item._id })
         } else if (savingsAcc) {
-            await SavingsMovement.create({
-                userId,
-                accountId: savingsAcc._id,
-                type: 'deposit',
-                amount: amt,
-                description: `${cat.name} / ${item.name}`,
-                monthlyStatementId: stmt._id,
-                itemRef: { categoryId: cat._id, itemId: item._id },
-                date: new Date(stmt.year, stmt.month - 1, new Date().getDate())
-            })
+            // Upsert atómico: si existe uno lo actualiza, si no lo crea — previene duplicados por requests simultáneos
+            await SavingsMovement.findOneAndUpdate(
+                { userId, monthlyStatementId: stmt._id, 'itemRef.itemId': item._id },
+                {
+                    $set: {
+                        accountId: savingsAcc._id,
+                        type: 'deposit',
+                        amount: amt,
+                        description: `${cat.name} / ${item.name}`,
+                        date: new Date(stmt.year, stmt.month - 1, new Date().getDate())
+                    },
+                    $setOnInsert: {
+                        userId,
+                        monthlyStatementId: stmt._id,
+                        itemRef: { categoryId: cat._id, itemId: item._id }
+                    }
+                },
+                { upsert: true }
+            )
         }
     }
 
@@ -517,7 +517,8 @@ async function setItemAmount(userId, id, { categoryId, itemId, amount, purchaseI
         logAction = 'item_partial'
         logDesc = `Pago parcial: ${item.name} (${cat.name}) $${amt.toFixed(2)} de $${item.budgetedAmount.toFixed(2)}`
     }
-    if (logAction) await log(userId, stmt.year, stmt.month, logAction, logDesc, amt || null)
+    if (logAction) await log(userId, stmt.year, stmt.month, logAction, logDesc, amt || null,
+        { statementId: id, categoryId: String(cat._id), itemId: String(item._id) })
 
     return buildEnrichedStatement(stmt, userId)
 }
@@ -527,9 +528,11 @@ async function addExtra(userId, id, data) {
     if (!stmt) throw myError('Statement not found', 404)
     stmt.extras.push(data)
     await stmt.save()
+    const savedExtra = stmt.extras[stmt.extras.length - 1]
     const typeLabel = data.type === 'income' ? 'Ingreso extra' : 'Gasto extra'
     await log(userId, stmt.year, stmt.month, 'extra_added',
-        `${typeLabel}: ${data.name} $${Number(data.amount).toFixed(2)}`, data.amount)
+        `${typeLabel}: ${data.name} $${Number(data.amount).toFixed(2)}`, data.amount,
+        { statementId: id, extraId: String(savedExtra._id) })
     return buildEnrichedStatement(stmt, userId)
 }
 

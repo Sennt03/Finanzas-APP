@@ -67,7 +67,8 @@ async function create(userId, { borrowerName, amount, lentDate, statementId }) {
     })
 
     await log(userId, stmt.year, stmt.month, 'loan_created',
-        `Préstamo a ${borrowerName}: $${Number(amount).toFixed(2)}`, amount)
+        `Préstamo a ${borrowerName}: $${Number(amount).toFixed(2)}`, amount,
+        { loanId: String(loan._id) })
 
     const stmtMap = new Map([[String(statementId), { year: stmt.year, month: stmt.month }]])
     return enrichLoan(loan, stmtMap)
@@ -130,6 +131,9 @@ async function transfer(userId, loanId, { toStatementId }) {
         if (targetKey <= originKey) throw myError('Solo puedes transferir a un mes posterior', 400)
     }
 
+    // Solo se transfiere el saldo pendiente, no el total original
+    const remaining = loan.amount - (loan.paidAmount || 0)
+
     let withdrawal = null
     if (!loan.fromCard) {
         // fromCard loans are covered by card payment — no savings withdrawal needed
@@ -138,7 +142,7 @@ async function transfer(userId, loanId, { toStatementId }) {
             userId,
             accountId: savingsAcc._id,
             type: 'withdrawal',
-            amount: loan.amount,
+            amount: remaining,
             description: `Préstamo a ${loan.borrowerName} → transferido a ${targetStmt.year}/${String(targetStmt.month).padStart(2, '0')}`,
             monthlyStatementId: loan.currentStatementId,
             date: new Date()
@@ -150,11 +154,11 @@ async function transfer(userId, loanId, { toStatementId }) {
     loan.history.push({ type: 'transferred', date: new Date(), toStatementId, savingsMovementId: withdrawal ? withdrawal._id : null })
     await loan.save()
 
-    // Nuevo préstamo en el mes destino
+    // Nuevo préstamo en el mes destino por el monto restante
     const newLoan = await Loan.create({
         userId,
         borrowerName: loan.borrowerName,
-        amount: loan.amount,
+        amount: remaining,
         lentDate: loan.lentDate,
         originStatementId: loan.originStatementId,
         currentStatementId: toStatementId,
@@ -167,8 +171,8 @@ async function transfer(userId, loanId, { toStatementId }) {
     })
 
     await log(userId, originStmt.year, originStmt.month, 'loan_transferred',
-        `Préstamo transferido: ${loan.borrowerName} $${loan.amount.toFixed(2)} → ${targetStmt.year}/${String(targetStmt.month).padStart(2, '0')}`,
-        loan.amount)
+        `Préstamo transferido: ${loan.borrowerName} $${remaining.toFixed(2)} → ${targetStmt.year}/${String(targetStmt.month).padStart(2, '0')}`,
+        remaining)
 
     const allLoans = [loan, newLoan]
     const stmtMap = await buildStmtMap(allLoans)

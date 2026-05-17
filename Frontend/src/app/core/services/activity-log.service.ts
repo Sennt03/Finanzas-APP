@@ -12,4 +12,8 @@ export class ActivityLogService {
     listByMonth(year: number, month: number): Observable<LsActivityLog[]> {
         return this.http.get<LsActivityLog[]>(this.url, { params: { year, month } });
     }
+
+    delete(id: string): Observable<{ _id: string }> {
+        return this.http.delete<{ _id: string }>(`${this.url}/${id}`);
+    }
 }

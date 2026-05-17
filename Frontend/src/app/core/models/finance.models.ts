@@ -214,5 +214,6 @@ export interface LsActivityLog {
     description: string;
     amount: number | null;
     metadata: Record<string, unknown>;
+    deletable?: boolean;
     createdAt: string;
 }

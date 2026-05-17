@@ -132,6 +132,33 @@
     color: $primary-muted;
   }
 
+  .log-undo {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: $primary-faint;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: background .15s, color .15s;
+    margin-left: 2px;
+
+    &:hover:not(:disabled) {
+      background: $danger-soft;
+      color: $danger;
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+  }
+
   // Color variants
   &.color-success {
     .log-icon { background: $success-soft; color: $success; }

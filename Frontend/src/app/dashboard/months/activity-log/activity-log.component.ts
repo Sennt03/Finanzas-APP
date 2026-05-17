@@ -4,6 +4,7 @@ import { ActivityLogService } from '@services/activity-log.service';
 import { LsActivityLog, MONTH_NAMES } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import { DatePipe } from '@angular/common';
+import toastr from '@shared/utils/toastr';
 
 interface LogDay {
     dateLabel: string;
@@ -26,6 +27,7 @@ export class ActivityLogComponent {
     readonly statementId = signal('');
     readonly loading = signal(true);
     readonly logs = signal<LsActivityLog[]>([]);
+    readonly deleting = signal<Set<string>>(new Set());
 
     readonly monthLabel = computed(() => {
         const m = this.month();
@@ -59,6 +61,28 @@ export class ActivityLogComponent {
         this.svc.listByMonth(this.year(), this.month()).subscribe({
             next: data => { this.logs.set(data); this.loading.set(false); },
             error: () => this.loading.set(false)
+        });
+    }
+
+    isDeleting(id: string): boolean {
+        return this.deleting().has(id);
+    }
+
+    deleteEntry(entry: LsActivityLog) {
+        if (!entry.deletable || this.isDeleting(entry._id)) return;
+        if (!confirm('¿Deshacer este movimiento? Se revertirá el cambio en la cuenta.')) return;
+
+        this.deleting.update(s => new Set([...s, entry._id]));
+        this.svc.delete(entry._id).subscribe({
+            next: () => {
+                this.logs.update(list => list.filter(e => e._id !== entry._id));
+                this.deleting.update(s => { const n = new Set(s); n.delete(entry._id); return n; });
+                toastr.success('Movimiento deshecho', '');
+            },
+            error: (err) => {
+                this.deleting.update(s => { const n = new Set(s); n.delete(entry._id); return n; });
+                toastr.error(err.error?.message ?? 'Error al deshacer', '');
+            }
         });
     }
 
