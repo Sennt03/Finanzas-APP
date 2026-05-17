@@ -115,6 +115,7 @@
 
       .loans-total { color: $success; }
       .available-total { color: $primary-soft; font-size: 20px !important; }
+      .loans-available-total { color: $success; font-size: 18px !important; }
 
       &.loans-row {
         background: rgba($success, 0.04);
@@ -123,6 +124,15 @@
         margin: 0 -6px;
         border-bottom: none;
         + .secondary-row { border-top: 1px dashed $border; padding-top: 10px; }
+      }
+
+      &.loans-available-row {
+        background: rgba($success, 0.04);
+        border-radius: $r-sm;
+        padding: 8px 6px;
+        margin: 0 -6px;
+        border-top: 1px dashed $border;
+        border-bottom: none;
       }
     }
 
