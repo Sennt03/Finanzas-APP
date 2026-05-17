@@ -42,6 +42,11 @@
             <span class="hint">real</span>
           </div>
           <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
+          @if (s.summary.pendingLoansTotal > 0) {
+            <small class="loans-hint">
+              Con cobros: <strong>{{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong>
+            </small>
+          }
           <small>Descuenta TDC pendiente y préstamos</small>
         </div>
       </div>
