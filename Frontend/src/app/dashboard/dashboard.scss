@@ -248,12 +248,47 @@ $topbar-h: 60px;
 // RESPONSIVE
 // =====================================================
 @media (max-width: 768px) {
-    .topbar { display: flex; }
+    .topbar {
+        display: flex;
+        height: 56px;
+
+        .hamburger,
+        .ghost {
+            min-width: 44px;
+            min-height: 44px;
+            padding: 8px;
+        }
+
+        .brand {
+            font-size: 16px;
+            i { font-size: 20px; }
+        }
+    }
 
     .sidebar {
         transform: translateX(-100%);
         transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
         width: 280px;
+        padding: 20px 12px 16px;
+
+        .nav-list a {
+            padding: 14px 14px;
+            font-size: 15px;
+            min-height: 48px;
+            i { font-size: 22px; }
+        }
+
+        .profile {
+            padding: 14px;
+            .avatar { width: 40px; height: 40px; font-size: 16px; }
+            .name { font-size: 14px; }
+            .email { font-size: 11.5px; }
+            .logout {
+                min-width: 40px;
+                min-height: 40px;
+                font-size: 20px;
+            }
+        }
     }
 
     .layout.sidebar-open .sidebar {
@@ -262,6 +297,12 @@ $topbar-h: 60px;
 
     .home-section {
         margin-left: 0;
-        padding: 20px 16px;
+        padding: 16px 12px 32px;
+    }
+}
+
+@media (max-width: 420px) {
+    .home-section {
+        padding: 14px 10px 28px;
     }
 }

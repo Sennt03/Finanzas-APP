@@ -1122,3 +1122,452 @@
     }
   }
 }
+
+// =====================================================
+// 📱 MOBILE — Diseño optimizado para celular
+// =====================================================
+@media (max-width: 768px) {
+  .month-detail {
+    .page-header {
+      align-items: flex-start;
+      margin-bottom: 14px;
+      h1 { font-size: 20px; line-height: 1.2; }
+      .back { font-size: 14px; }
+      .actions {
+        width: 100%;
+        display: flex;
+        gap: 8px;
+        .btn { flex: 1; justify-content: center; }
+      }
+    }
+
+    .section { margin-bottom: 16px; }
+    .section .section-label { font-size: 11px; margin-bottom: 8px; }
+
+    .cards {
+      gap: 10px;
+      &.balances {
+        grid-template-columns: 1fr;
+        .card { padding: 16px 18px; strong { font-size: 26px; } }
+      }
+      &.summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .card {
+      padding: 14px 16px;
+      strong { font-size: 20px; }
+      .label { font-size: 11px; }
+      small { font-size: 11px; }
+    }
+
+    .category {
+      padding: 14px 14px 16px;
+      border-radius: $r-md;
+
+      h3 {
+        font-size: 14.5px;
+        flex-wrap: wrap;
+        i { font-size: 20px; }
+      }
+
+      .cat-head {
+        gap: 6px;
+        margin-bottom: 8px;
+        .cat-budget {
+          font-size: 12px;
+          padding: 5px 10px;
+          flex-wrap: wrap;
+          .free { font-size: 10px; }
+        }
+      }
+
+      // Items: 2 filas en móvil — primera el nombre/check, segunda monto + acciones
+      .item {
+        padding: 12px 0;
+        gap: 10px;
+        flex-wrap: wrap;
+
+        .check {
+          width: 100%;
+          input[type="checkbox"] { width: 22px; height: 22px; }
+          .name { font-size: 15px; white-space: normal; }
+        }
+
+        .item-readonly {
+          width: 100%;
+          .name { font-size: 15px; }
+        }
+
+        .credit-info {
+          width: 100%;
+          .name { font-size: 15px; white-space: normal; }
+        }
+
+        .amounts {
+          width: 100%;
+          justify-content: flex-end;
+          gap: 10px;
+
+          .amount-input {
+            flex: 1;
+            input[type="number"] {
+              width: 100%;
+              max-width: 140px;
+              padding: 10px 12px;
+              font-size: 15px;
+              min-height: 44px;
+            }
+            .of { font-size: 13px; }
+          }
+
+          .paid-amount,
+          .income-amount { font-size: 15px; }
+        }
+      }
+
+      .item.partial,
+      .item.credit-item,
+      .extra-item.income {
+        margin: 0 -6px;
+        padding: 12px 10px;
+      }
+
+      // Add item button — más grande y visible
+      .add-item-btn {
+        padding: 14px 16px;
+        font-size: 14px;
+        min-height: 48px;
+        border-style: solid;
+        background: $accent-soft;
+        i { font-size: 18px; }
+        small { display: block; width: 100%; margin: 4px 0 0; }
+      }
+
+      // Add item form — apilado en una columna
+      .add-item-form {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+        padding: 12px;
+
+        input[type="text"] {
+          grid-column: span 2;
+          padding: 12px 14px;
+          font-size: 16px;
+          min-height: 48px;
+        }
+        input[type="number"] {
+          grid-column: span 1;
+          padding: 12px 14px;
+          font-size: 16px;
+          min-height: 48px;
+        }
+        .credit-toggle {
+          grid-column: span 1;
+          justify-self: stretch;
+          width: 100%;
+          min-height: 48px;
+          font-size: 20px;
+        }
+        .btn {
+          grid-column: span 2;
+          width: 100%;
+          justify-content: center;
+          min-height: 44px;
+          font-size: 14px;
+        }
+        .btn.btn-primary { order: 5; }
+        .btn.btn-outline { order: 6; }
+      }
+
+      // Botones de acción en cat-head (TDC, ingreso, gasto, etc)
+      .tx-buttons {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        .btn {
+          width: 100%;
+          justify-content: center;
+          min-height: 44px;
+          font-size: 13px;
+        }
+      }
+
+      // Form de transacción extras — 1 columna en móvil
+      .tx-form {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 14px;
+
+        label {
+          font-size: 13px;
+          &.span-full { grid-column: span 1; }
+          &.shared-toggle-label {
+            padding: 6px 0;
+            font-size: 14px;
+            input[type="checkbox"] { width: 20px; height: 20px; }
+          }
+        }
+
+        input, select {
+          padding: 12px 14px;
+          font-size: 16px;
+          min-height: 48px;
+        }
+
+        .form-actions {
+          .btn {
+            flex: 1;
+            justify-content: center;
+            min-height: 44px;
+          }
+        }
+      }
+
+      // Convert select más grande y visible
+      .convert-select {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+        padding: 0;
+      }
+    }
+
+    .extra-item {
+      .extra-info {
+        strong { font-size: 14.5px; }
+      }
+    }
+
+    .edit-block {
+      padding: 16px 14px;
+      border-radius: $r-md;
+
+      h3 { font-size: 15px; margin-bottom: 12px; }
+
+      .edit-row {
+        gap: 12px;
+        label {
+          width: 100%;
+          input {
+            max-width: none;
+            padding: 12px 14px;
+            font-size: 16px;
+            min-height: 48px;
+          }
+        }
+        .balance {
+          width: 100%;
+          margin-left: 0;
+          padding: 10px 14px;
+          background: $surface-alt;
+          border-radius: $r-sm;
+          text-align: center;
+        }
+      }
+
+      .edit-cat {
+        padding: 12px;
+        margin-bottom: 14px;
+
+        .edit-cat-head {
+          flex-wrap: wrap;
+          gap: 8px;
+
+          input[type="text"] {
+            flex: 1 1 100%;
+            min-height: 44px;
+            font-size: 16px;
+            padding: 10px 12px;
+          }
+          select {
+            flex: 1 1 calc(50% - 8px);
+            min-height: 44px;
+            padding: 10px 12px;
+            font-size: 15px;
+          }
+          .cat-total-input {
+            flex: 1 1 calc(50% - 44px) !important;
+            width: auto !important;
+            min-height: 44px;
+            padding: 10px 12px;
+            font-size: 15px !important;
+          }
+          .btn-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
+            background: $danger-soft;
+            color: $danger;
+          }
+        }
+
+        .edit-item {
+          grid-template-columns: 1fr 110px 44px 44px !important;
+          gap: 6px;
+          align-items: center;
+          margin: 10px 0;
+
+          input {
+            padding: 10px 12px;
+            font-size: 15px;
+            min-height: 44px;
+          }
+          .btn-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+          }
+        }
+
+        .btn-link {
+          width: 100%;
+          padding: 10px 0;
+          margin-top: 6px;
+          justify-content: center;
+          border: 1px dashed $border-strong;
+          border-radius: $r-sm;
+          background: $surface;
+        }
+      }
+
+      .edit-actions {
+        position: sticky;
+        bottom: 0;
+        background: $surface;
+        margin: 16px -14px -16px;
+        padding: 12px 14px;
+        border-top: 1px solid $border;
+        gap: 10px;
+        z-index: 5;
+
+        .btn {
+          flex: 1;
+          justify-content: center;
+          min-height: 48px;
+          font-size: 14px;
+        }
+      }
+    }
+
+    // ---- Cuotas compartidas / borrower / TDC virtual ----
+    .shared-amounts {
+      width: 100%;
+      flex-wrap: wrap;
+      .shared-col { align-items: flex-start; flex: 1; }
+      .btn { min-height: 40px; }
+    }
+
+    .borrower-pay-form,
+    .loan-pay-form {
+      width: 100%;
+      flex-wrap: wrap;
+
+      input[type="number"] {
+        flex: 1;
+        width: auto;
+        padding: 12px 14px;
+        font-size: 16px;
+        min-height: 44px;
+      }
+
+      .btn {
+        min-height: 44px;
+        flex: 0 0 auto;
+      }
+    }
+
+    // ---- Loan form (préstamos) ----
+    .loans-section {
+      .loan-form {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+        padding: 12px;
+
+        input {
+          padding: 12px 14px;
+          font-size: 16px;
+          min-height: 48px;
+        }
+        .btn {
+          width: 100%;
+          justify-content: center;
+          min-height: 44px;
+        }
+      }
+
+      .loan-item {
+        .loan-info {
+          flex: 1 1 100%;
+        }
+        .amounts {
+          width: 100%;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 8px;
+          .btn {
+            flex: 1;
+            justify-content: center;
+            min-height: 40px;
+          }
+        }
+      }
+    }
+
+    // ---- Bloque "También en tarjeta" ----
+    .ext-credit-block {
+      padding: 10px 12px;
+      .ext-credit-head {
+        flex-wrap: wrap;
+        font-size: 11px;
+        .muted { margin-left: 0; width: 100%; font-size: 11px; }
+      }
+      .ext-credit-item {
+        flex-wrap: wrap;
+        gap: 8px;
+        .name { flex: 1 1 auto; }
+        .from-cat { font-size: 11px; }
+        .amount { margin-left: 0; }
+      }
+    }
+
+    // ---- Botones generales más cómodos ----
+    .btn { min-height: 40px; }
+    .btn-icon {
+      min-width: 40px;
+      min-height: 40px;
+      font-size: 20px;
+      &.mini { min-width: 36px; min-height: 36px; font-size: 17px; }
+    }
+
+    // ---- Undo toast ----
+    .undo-toast {
+      left: 12px;
+      right: 12px;
+      transform: none;
+      bottom: 16px;
+      width: auto;
+      padding: 12px 14px;
+      .undo-btn { padding: 8px 14px; min-height: 40px; }
+    }
+  }
+}
+
+// =====================================================
+// 📱 MOBILE EXTRA SMALL (< 420px)
+// =====================================================
+@media (max-width: 420px) {
+  .month-detail {
+    .cards.summary { grid-template-columns: 1fr; }
+    .category {
+      .tx-buttons { grid-template-columns: 1fr 1fr; }
+      .add-item-form {
+        grid-template-columns: 1fr !important;
+        input, button { grid-column: span 1 !important; }
+      }
+      .convert-select { width: 36px; height: 36px; }
+    }
+  }
+}

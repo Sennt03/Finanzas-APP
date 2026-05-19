@@ -297,3 +297,136 @@ $loan-soft: #f5f3ff;
   border-radius: $r-sm;
   transition: background .15s ease, color .15s ease;
 }
+
+// =====================================================
+// 📱 MOBILE — Loans
+// =====================================================
+@media (max-width: 768px) {
+  .loans-page {
+    .page-header {
+      margin-bottom: 16px;
+      h1 { font-size: 22px; i { font-size: 24px; } }
+      .muted { font-size: 13px; }
+    }
+
+    .savings-alert {
+      font-size: 13px;
+      padding: 12px 14px;
+      align-items: flex-start;
+      i { font-size: 22px; margin-top: 2px; }
+    }
+
+    .loan-section {
+      margin-bottom: 22px;
+    }
+
+    .loan-card {
+      padding: 14px 16px;
+      border-radius: $r-md;
+    }
+
+    .loan-header {
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .borrower {
+        flex: 1 1 100%;
+        strong { font-size: 15px; }
+      }
+
+      .amount-col {
+        align-items: flex-start;
+        flex: 1 1 100%;
+        .partial-note { white-space: normal; }
+      }
+
+      .amount { font-size: 20px; }
+      .paid-amount { font-size: 18px; }
+    }
+
+    .loan-meta {
+      gap: 8px 14px;
+      font-size: 12.5px;
+      span { width: 100%; }
+    }
+
+    .pay-form {
+      padding: 12px;
+
+      input[type="number"] {
+        flex: 1 1 100%;
+        min-width: 0;
+        padding: 12px 14px;
+        font-size: 16px;
+        min-height: 48px;
+      }
+
+      .btn {
+        flex: 1;
+        justify-content: center;
+        min-height: 44px;
+      }
+    }
+
+    .transfer-form {
+      padding: 12px;
+
+      label {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+
+        select {
+          padding: 12px 14px;
+          font-size: 16px;
+          min-height: 48px;
+          width: 100%;
+        }
+      }
+
+      .transfer-actions {
+        flex-direction: column-reverse;
+        gap: 8px;
+
+        .btn {
+          width: 100%;
+          justify-content: center;
+          min-height: 44px;
+        }
+      }
+    }
+
+    .loan-actions {
+      gap: 8px;
+
+      .btn {
+        flex: 1;
+        justify-content: center;
+        min-height: 44px;
+        font-size: 13px;
+      }
+
+      .btn-icon.danger {
+        margin-left: 0;
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 22px;
+        background: $danger-soft;
+        color: $danger;
+      }
+    }
+
+    .repay-alert {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 12px;
+      font-size: 13px;
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+      }
+    }
+  }
+}

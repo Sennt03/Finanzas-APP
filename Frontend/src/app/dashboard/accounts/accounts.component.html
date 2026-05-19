@@ -148,19 +148,19 @@
         <tbody>
           @for (m of movements(); track m._id) {
             <tr>
-              <td>{{ m.date | date:'mediumDate' }}</td>
-              <td>
+              <td data-label="Fecha">{{ m.date | date:'mediumDate' }}</td>
+              <td data-label="Tipo">
                 @if (m.type === 'deposit') {
                   <span class="tag deposit">Depósito</span>
                 } @else {
                   <span class="tag withdrawal">Egreso</span>
                 }
               </td>
-              <td>{{ m.description || '—' }}</td>
-              <td class="right" [class.positive]="m.type === 'deposit'" [class.negative]="m.type === 'withdrawal'">
+              <td data-label="Descripción">{{ m.description || '—' }}</td>
+              <td class="right" data-label="Monto" [class.positive]="m.type === 'deposit'" [class.negative]="m.type === 'withdrawal'">
                 {{ m.type === 'deposit' ? '+' : '-' }}{{ m.amount | number:'1.2-2' }}
               </td>
-              <td>
+              <td class="actions-cell">
                 @if (!m.itemRef?.itemId) {
                   <button class="btn-icon" (click)="removeMovement(m)"><i class="bx bx-trash"></i></button>
                 }

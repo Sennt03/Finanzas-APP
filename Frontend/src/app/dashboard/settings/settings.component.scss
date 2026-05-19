@@ -193,3 +193,139 @@
   gap: 4px;
   &:hover { color: $accent-hover; }
 }
+
+// =====================================================
+// 📱 MOBILE — Settings
+// =====================================================
+@media (max-width: 768px) {
+  .settings {
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      margin-bottom: 16px;
+
+      h1 { font-size: 22px; }
+      .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+        font-size: 15px;
+      }
+    }
+
+    .edit-block {
+      padding: 14px 12px;
+      border-radius: $r-md;
+
+      .edit-row {
+        gap: 10px;
+        margin-bottom: 14px;
+
+        label {
+          width: 100%;
+          font-size: 12px;
+          input {
+            max-width: none;
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 16px;
+            min-height: 48px;
+          }
+        }
+        .balance {
+          width: 100%;
+          margin-left: 0;
+          padding: 10px 14px;
+          background: $surface-alt;
+          border-radius: $r-sm;
+          text-align: center;
+          font-size: 13px;
+        }
+      }
+
+      .edit-cat {
+        padding: 12px;
+        margin-bottom: 14px;
+
+        .edit-cat-head {
+          gap: 8px;
+
+          input[type="text"] {
+            flex: 1 1 100%;
+            min-width: 0;
+            min-height: 44px;
+            font-size: 16px;
+            padding: 10px 12px;
+          }
+          select {
+            flex: 1 1 calc(50% - 8px);
+            min-height: 44px;
+            padding: 10px 12px;
+            font-size: 15px;
+          }
+          .cat-total-input {
+            flex: 1 1 calc(50% - 44px - 8px) !important;
+            width: auto !important;
+            min-height: 44px;
+            padding: 10px 12px;
+            font-size: 15px !important;
+          }
+          .btn-icon {
+            min-width: 44px;
+            min-height: 44px;
+            font-size: 20px;
+            background: $danger-soft;
+            color: $danger;
+          }
+        }
+
+        .edit-item {
+          grid-template-columns: 1fr 110px 44px 44px;
+          gap: 6px;
+          align-items: center;
+          margin: 10px 0;
+
+          input {
+            padding: 10px 12px;
+            font-size: 15px;
+            min-height: 44px;
+          }
+          .btn-icon {
+            min-width: 44px;
+            min-height: 44px;
+            font-size: 18px;
+          }
+        }
+
+        .btn-link {
+          width: 100%;
+          padding: 12px 0;
+          margin-top: 8px;
+          justify-content: center;
+          border: 1px dashed $border-strong;
+          border-radius: $r-sm;
+          background: $accent-soft;
+          color: $accent;
+          font-size: 14px;
+          min-height: 44px;
+        }
+      }
+
+      > .btn-outline {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+        font-size: 14px;
+        margin-top: 4px;
+      }
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .settings .edit-block .edit-cat .edit-item {
+    grid-template-columns: 1fr 90px 40px 40px;
+    gap: 4px;
+  }
+}
