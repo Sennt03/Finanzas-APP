@@ -37,6 +37,63 @@
     }
   }
 
+  .monthly-summary {
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .month-card {
+      background: $surface;
+      border: 1px solid $border;
+      border-top: 3px solid $accent;
+      border-radius: $r-lg;
+      padding: 14px 16px;
+      box-shadow: $shadow-sm;
+
+      .month-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid $border;
+
+        .month-name { font-weight: 700; font-size: 14px; text-transform: capitalize; }
+        .month-total { font-size: 18px; font-weight: 800; color: $primary; }
+      }
+
+      .split { display: flex; flex-direction: column; gap: 6px; }
+
+      .split-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+
+        .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+        .t { flex: 1; color: $primary-soft; }
+        .v { font-weight: 700; color: $primary; }
+
+        &.mine .dot { background: $success; }
+        &.others .dot { background: $credit; }
+      }
+
+      .borrower-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        padding-left: 17px;
+        color: $primary-muted;
+
+        .v { font-weight: 600; }
+      }
+    }
+  }
+
   .purchase-card {
     background: $surface;
     border-radius: $r-lg;
@@ -220,6 +277,10 @@
     .block {
       margin-bottom: 20px;
       h2 { font-size: 15px; margin-bottom: 10px; }
+    }
+
+    .monthly-summary .month-grid {
+      grid-template-columns: 1fr;
     }
 
     .purchase-card {

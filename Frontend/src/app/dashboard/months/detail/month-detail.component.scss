@@ -1571,3 +1571,120 @@
     }
   }
 }
+
+// =====================================================
+// 📤 Exportar mes (modal)
+// =====================================================
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1600;
+  animation: exportFadeIn .15s ease-out;
+}
+
+.export-modal {
+  background: $surface;
+  border-radius: $r-lg;
+  box-shadow: $shadow-lg;
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: exportSlideIn .18s ease-out;
+
+  .export-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid $border;
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      i { color: $accent; font-size: 20px; }
+    }
+  }
+
+  .export-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 14px 18px 0;
+
+    .tab {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: $primary-muted;
+      background: $surface-alt;
+      border: 1px solid $border;
+      border-radius: $r-md;
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+
+      &:hover { background: $accent-soft; color: $primary; }
+
+      &.active {
+        background: $accent;
+        border-color: $accent;
+        color: #fff;
+      }
+    }
+  }
+
+  .export-preview {
+    margin: 14px 18px;
+    padding: 14px 16px;
+    flex: 1;
+    overflow: auto;
+    background: $surface-alt;
+    border: 1px solid $border;
+    border-radius: $r-md;
+    font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: $primary;
+    white-space: pre;
+    tab-size: 2;
+  }
+
+  .export-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 0 18px 18px;
+  }
+}
+
+@keyframes exportFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes exportSlideIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 560px) {
+  .export-modal {
+    max-height: 92vh;
+    .export-preview { font-size: 11.5px; white-space: pre-wrap; word-break: break-word; }
+    .export-actions {
+      .btn { flex: 1; justify-content: center; }
+    }
+  }
+}

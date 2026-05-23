@@ -13,6 +13,42 @@
     </div>
   }
 
+  @if (monthlyTotals().length > 0) {
+    <section class="block monthly-summary">
+      <h2><i class="bx bx-calendar"></i> Pago por mes</h2>
+      <div class="month-grid">
+        @for (m of monthlyTotals(); track m.label) {
+          <article class="month-card">
+            <div class="month-head">
+              <span class="month-name">{{ m.label }}</span>
+              <strong class="month-total">{{ m.total | number:'1.2-2' }}</strong>
+            </div>
+            <div class="split">
+              <div class="split-row mine">
+                <span class="dot"></span>
+                <span class="t">Mío</span>
+                <span class="v">{{ m.mine | number:'1.2-2' }}</span>
+              </div>
+              @if (m.others > 0) {
+                <div class="split-row others">
+                  <span class="dot"></span>
+                  <span class="t">Otras personas</span>
+                  <span class="v">{{ m.others | number:'1.2-2' }}</span>
+                </div>
+                @for (b of m.byBorrower; track b.name) {
+                  <div class="borrower-row">
+                    <span class="t">{{ b.name }}</span>
+                    <span class="v">{{ b.amount | number:'1.2-2' }}</span>
+                  </div>
+                }
+              }
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
+
   @if (diferidos().length > 0) {
     <section class="block">
       <h2><i class="bx bx-list-plus"></i> Diferidos</h2>

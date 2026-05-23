@@ -21,6 +21,9 @@ const extraSchema = new Schema({
     amount: { type: Number, default: 0, min: 0 },
     type: { type: String, enum: ['expense', 'income'], default: 'expense' },
     categoryName: { type: String, default: '' },
+    // Si el ingreso proviene de un egreso de ahorros (retiro a transaccional),
+    // queda vinculado a ese movimiento para mantenerlos sincronizados al borrar.
+    linkedSavingsId: { type: Types.ObjectId, ref: 'savingsMovements', default: null },
     date: { type: Date, default: Date.now }
 }, { _id: true })
 

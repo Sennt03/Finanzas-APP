@@ -85,6 +85,7 @@ export interface LsStatementExtra {
     amount: number;
     type: ExtraType;
     categoryName: string;
+    linkedSavingsId?: string | null;
     date: string;
 }
 

@@ -78,7 +78,14 @@ async function computeBalances(account) {
         userId: account.userId, type: 'withdrawal',
         date: { $gte: new Date(year, month - 1, 1), $lt: new Date(year, month, 1) }
     })
-    const wSum = withdrawalsThisMonth.reduce((s, m) => s + m.amount, 0)
+    // Excluir egresos ya registrados como ingreso vinculado en el mes (su +saldo lo
+    // aporta extrasIncome), para no contarlos dos veces. Mismo criterio que buildEnrichedStatement.
+    const linkedSavingsIds = new Set(
+        (stmt.extras || []).filter(e => e.linkedSavingsId).map(e => String(e.linkedSavingsId))
+    )
+    const wSum = withdrawalsThisMonth
+        .filter(m => !linkedSavingsIds.has(String(m._id)))
+        .reduce((s, m) => s + m.amount, 0)
 
     // TDC/diferidos del mes
     const purchases = await CreditPurchase.find({ userId: account.userId })

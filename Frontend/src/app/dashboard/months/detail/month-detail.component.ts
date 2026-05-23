@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MonthlyStatementService } from '@services/monthly-statement.service';
 import { CreditPurchaseService } from '@services/credit-purchase.service';
 import { LoanService } from '@services/loan.service';
+import { AccountService } from '@services/account.service';
 import {
   CategoryKind, ExtraType, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementItem, MONTH_NAMES
 } from '@models/finance.models';
@@ -39,8 +40,11 @@ export class MonthDetailComponent {
   private svc = inject(MonthlyStatementService);
   private purchaseSvc = inject(CreditPurchaseService);
   private loanSvc = inject(LoanService);
+  private accountSvc = inject(AccountService);
 
   stmt = signal<LsMonthlyStatement | null>(null);
+  // Saldo real de la cuenta de ahorros (histórico, no asumido)
+  savingsBalance = signal<number | null>(null);
   loading = signal(false);
   editMode = signal(false);
 
@@ -94,6 +98,18 @@ export class MonthDetailComponent {
 
   private readonly UNDO_DELAY_MS = 5000;
 
+  // ----- Exportar mes -----
+  showExport = signal(false);
+  exportFormat = signal<'mine' | 'structured'>('mine');
+
+  exportText = computed(() => {
+    const s = this.stmt();
+    if (!s) return '';
+    return this.exportFormat() === 'mine'
+      ? this.buildMineFormat(s, this.monthLoans())
+      : this.buildStructuredFormat(s, this.monthLoans());
+  });
+
   monthLabel = computed(() => {
     const s = this.stmt();
     return s ? `${MONTH_NAMES[s.month - 1]} ${s.year}` : '';
@@ -112,6 +128,7 @@ export class MonthDetailComponent {
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.load(id);
+    this.refreshSavings();
   }
 
   private todayIso(): string {
@@ -727,9 +744,20 @@ export class MonthDetailComponent {
     this.svc.removeExtra(s._id, extraId).subscribe({
       next: (updated) => {
         this.stmt.set(updated);
+        this.refreshSavings();
         toastr.info('Eliminado', '');
       },
       error: (err) => toastr.error(err.error?.message ?? 'Error', '')
+    });
+  }
+
+  private refreshSavings() {
+    this.accountSvc.list().subscribe({
+      next: (accs) => {
+        const sav = accs.find(a => a.type === 'savings');
+        this.savingsBalance.set(sav ? sav.balance : null);
+      },
+      error: () => {}
     });
   }
 
@@ -790,8 +818,12 @@ export class MonthDetailComponent {
     });
   }
 
-  convertExtra(extra: { _id?: string }, newType: 'expense' | 'income' | 'tdc' | 'diferido') {
+  convertExtra(extra: { _id?: string; linkedSavingsId?: string | null }, newType: 'expense' | 'income' | 'tdc' | 'diferido') {
     if (!extra._id) return;
+    if (extra.linkedSavingsId) {
+      toastr.error('Este ingreso proviene de un egreso de ahorros. Gestiónalo desde Cuentas.', '');
+      return;
+    }
     let installments = 1;
     if (newType === 'diferido') {
       const n = this.askInstallments();
@@ -817,5 +849,267 @@ export class MonthDetailComponent {
       source: { kind: 'purchase', purchaseId: item.purchaseId },
       target: { type: newType, installments }
     });
+  }
+
+  // ----- Exportar mes (.txt / portapapeles) -----
+  openExport() { this.showExport.set(true); }
+  closeExport() { this.showExport.set(false); }
+  setExportFormat(f: 'mine' | 'structured') { this.exportFormat.set(f); }
+
+  copyExport() {
+    const text = this.exportText();
+    if (!text) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => toastr.success('Copiado al portapapeles', ''),
+        () => this.fallbackCopy(text)
+      );
+    } else {
+      this.fallbackCopy(text);
+    }
+  }
+
+  private fallbackCopy(text: string) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toastr.success('Copiado al portapapeles', '');
+    } catch {
+      toastr.error('No se pudo copiar', '');
+    }
+  }
+
+  downloadExport() {
+    const s = this.stmt();
+    const text = this.exportText();
+    if (!s || !text) return;
+    const fileName = `plan-${MONTH_NAMES[s.month - 1].toLowerCase()}-${s.year}.txt`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toastr.success('Archivo descargado', '');
+  }
+
+  // Formatea montos: enteros sin decimales, resto con 2 (matchea el estilo manual)
+  private fmt(n: number): string {
+    const r = Math.round((Number(n) || 0) * 100) / 100;
+    return Number.isInteger(r) ? String(r) : r.toFixed(2);
+  }
+
+  // Alinea "right" a la derecha en un ancho fijo (formato estructurado monoespaciado)
+  private row(left: string, right: string, total = 36): string {
+    const space = Math.max(1, total - left.length - right.length);
+    return left + ' '.repeat(space) + right;
+  }
+
+  private isItemFullyPaid(it: LsStatementItem): boolean {
+    return it.isPaid || (it.paidAmount > 0 && it.paidAmount >= it.budgetedAmount);
+  }
+
+  // Reconciliación de ahorros anclada al saldo REAL de la cuenta de ahorros.
+  // prev = saldoReal - (depósitos - retiros del mes); así refleja cualquier
+  // transferencia/retiro y nunca asume una suma acumulada mes a mes.
+  private savingsInfo(s: LsMonthlyStatement): { now: number; prev: number; deposits: number; withdrawals: number } | null {
+    const now = this.savingsBalance();
+    if (now == null) return null;
+    const deposits = s.summary.savings.monthDeposits || 0;
+    const withdrawals = s.summary.savings.monthWithdrawals || 0;
+    const prev = now - (deposits - withdrawals);
+    return { now, prev, deposits, withdrawals };
+  }
+
+  // ---- Formato fiel al estilo manual de David ----
+  private buildMineFormat(s: LsMonthlyStatement, loans: LsLoan[]): string {
+    const L: string[] = [];
+    L.push(`PLAN ${MONTH_NAMES[s.month - 1].toUpperCase()} ${s.year}`);
+    L.push(`SUELDO: ${this.fmt(s.salary)}`);
+    L.push('');
+
+    for (const cat of s.categories) {
+      if (cat.isVirtual) {
+        const estado = cat.categoryPaid ? 'pagada' : 'pendiente';
+        L.push(`* ${cat.name.toUpperCase()}: ${this.fmt(cat.totalAll || 0)} (${estado})`);
+        for (const it of cat.items) {
+          const tag = it.isShared && it.borrowerName ? ` [${it.borrowerName}]` : '';
+          const dif = it.subType === 'diferido' ? ' (diferido)' : '';
+          L.push(`${it.name}: ${this.fmt(it.budgetedAmount)}${tag}${dif}`);
+        }
+        for (const ext of cat.externalCreditItems || []) {
+          L.push(`${ext.name}: ${this.fmt(ext.amount)} (${ext.categoryName})`);
+        }
+        L.push('');
+        continue;
+      }
+
+      const budget = this.categoryBudget(cat);
+      const paid = this.categoryPaidSum(cat);
+      L.push(`* ${cat.name.toUpperCase()}: ${this.fmt(budget)}`);
+      for (const it of cat.items) {
+        L.push(this.mineItemLine(it));
+      }
+      L.push(`RESTANTE: ${this.fmt(budget - paid)}`);
+      L.push('');
+    }
+
+    if (s.extras.length) {
+      L.push('*EXTRAS');
+      for (const e of s.extras.filter(x => x.type === 'expense')) {
+        L.push(`-${e.name}: ${this.fmt(e.amount)}`);
+      }
+      for (const e of s.extras.filter(x => x.type === 'income')) {
+        L.push(`+${e.name}: ${this.fmt(e.amount)}`);
+      }
+      L.push('');
+    }
+
+    if (loans.length) {
+      L.push('*PRÉSTAMOS');
+      for (const ln of loans) {
+        const remaining = ln.amount - (ln.paidAmount || 0);
+        if (ln.status === 'paid') {
+          L.push(`${ln.borrowerName}: pagado (${this.fmt(ln.paidAmount)})`);
+        } else if ((ln.paidAmount || 0) > 0) {
+          L.push(`${ln.borrowerName} debe: ${this.fmt(ln.amount)} - (${this.fmt(ln.paidAmount)})`);
+        } else {
+          L.push(`${ln.borrowerName} debe: ${this.fmt(remaining)}`);
+        }
+      }
+      L.push('');
+    }
+
+    L.push('--- RESUMEN ---');
+    L.push(`Presupuestado: ${this.fmt(s.summary.totalBudgeted)}`);
+    L.push(`Gastado: ${this.fmt(s.summary.totalPaid + s.summary.totalExtras)}`);
+    if (s.summary.creditCard.total > 0) {
+      L.push(`Tarjeta: ${this.fmt(s.summary.creditCard.total)} (${s.summary.creditCard.groupPaid ? 'pagada' : 'pendiente'})`);
+    }
+    L.push(`Saldo cuenta: ${this.fmt(s.summary.remainingSalary)}`);
+    L.push(`Saldo disponible: ${this.fmt(s.summary.availableBalance)}`);
+
+    const sav = this.savingsInfo(s);
+    if (sav) {
+      L.push('');
+      L.push(`AHORROS mes anterior: ${this.fmt(sav.prev)}`);
+      L.push(`+ Ahorro este mes: ${this.fmt(sav.deposits)}`);
+      if (sav.withdrawals > 0) {
+        L.push(`- Retirado de ahorros: ${this.fmt(sav.withdrawals)}`);
+      }
+      L.push(`AHORROS total (real): ${this.fmt(sav.now)}`);
+    } else if (s.summary.savings.monthDeposits > 0) {
+      L.push(`Ahorro este mes: +${this.fmt(s.summary.savings.monthDeposits)}`);
+    }
+
+    return L.join('\n');
+  }
+
+  private mineItemLine(it: LsStatementItem): string {
+    const credit = it.paymentMethod === 'credit' ? ' [tarjeta]' : '';
+    const base = `${it.name}: ${this.fmt(it.budgetedAmount)}${credit}`;
+    if (this.isItemFullyPaid(it)) return `${base} - X`;
+    if (it.paidAmount > 0) return `${base} - (${this.fmt(it.paidAmount)})`;
+    return base;
+  }
+
+  // ---- Formato estructurado (alineado, con símbolos de estado) ----
+  private buildStructuredFormat(s: LsMonthlyStatement, loans: LsLoan[]): string {
+    const L: string[] = [];
+    L.push(`==== ${MONTH_NAMES[s.month - 1].toUpperCase()} ${s.year} ====`);
+    L.push(this.row('Sueldo', this.fmt(s.salary)));
+    L.push(this.row('Presupuestado', this.fmt(s.summary.totalBudgeted)));
+    L.push(this.row('Gastado', this.fmt(s.summary.totalPaid + s.summary.totalExtras)));
+    L.push(this.row('Saldo cuenta', this.fmt(s.summary.remainingSalary)));
+    L.push(this.row('Saldo disponible', this.fmt(s.summary.availableBalance)));
+    L.push('');
+
+    for (const cat of s.categories) {
+      if (cat.isVirtual) {
+        const estado = cat.categoryPaid ? 'pagada' : 'pendiente';
+        L.push(this.row(`■ ${cat.name.toUpperCase()} · ${estado}`, `(${this.fmt(cat.totalAll || 0)})`));
+        for (const it of cat.items) {
+          const tag = it.isShared && it.borrowerName ? ` [${it.borrowerName}]` : '';
+          L.push(this.row(`  · ${it.name}${tag}`, this.fmt(it.budgetedAmount)));
+        }
+        for (const ext of cat.externalCreditItems || []) {
+          L.push(this.row(`  · ${ext.name} (${ext.categoryName})`, this.fmt(ext.amount)));
+        }
+        L.push('');
+        continue;
+      }
+
+      const budget = this.categoryBudget(cat);
+      const paid = this.categoryPaidSum(cat);
+      L.push(this.row(`■ ${cat.name.toUpperCase()}`, `(${this.fmt(budget)})`));
+      for (const it of cat.items) {
+        L.push(this.structuredItemLine(it));
+      }
+      L.push(this.row('  Restante:', this.fmt(budget - paid)));
+      L.push('');
+    }
+
+    if (s.extras.length) {
+      L.push('■ EXTRAS');
+      for (const e of s.extras) {
+        const sign = e.type === 'income' ? '+' : '-';
+        const catName = e.categoryName ? ` (${e.categoryName})` : '';
+        L.push(this.row(`  ${sign} ${e.name}${catName}`, sign + this.fmt(e.amount)));
+      }
+      L.push('');
+    }
+
+    if (loans.length) {
+      L.push('■ PRÉSTAMOS');
+      for (const ln of loans) {
+        const remaining = ln.amount - (ln.paidAmount || 0);
+        const label = ln.status === 'paid'
+          ? 'cobrado'
+          : ((ln.paidAmount || 0) > 0 ? `debe (cobrado ${this.fmt(ln.paidAmount)})` : 'debe');
+        const amount = ln.status === 'paid' ? '+' + this.fmt(ln.paidAmount) : this.fmt(remaining);
+        L.push(this.row(`  ${ln.borrowerName} · ${label}`, amount));
+      }
+      L.push('');
+    }
+
+    const sav = this.savingsInfo(s);
+    if (sav) {
+      L.push('■ AHORROS');
+      L.push(this.row('  Mes anterior', this.fmt(sav.prev)));
+      L.push(this.row('  + Ahorro este mes', '+' + this.fmt(sav.deposits)));
+      if (sav.withdrawals > 0) {
+        L.push(this.row('  - Retirado', '-' + this.fmt(sav.withdrawals)));
+      }
+      L.push(this.row('  Total (real)', this.fmt(sav.now)));
+      L.push('');
+    } else if (s.summary.savings.monthDeposits > 0) {
+      L.push('■ AHORROS');
+      L.push(this.row('  Ahorro este mes', '+' + this.fmt(s.summary.savings.monthDeposits)));
+      L.push('');
+    }
+
+    return L.join('\n').trimEnd();
+  }
+
+  private structuredItemLine(it: LsStatementItem): string {
+    let mark = '·';
+    if (this.isItemFullyPaid(it)) mark = '✓';
+    else if (it.paidAmount > 0) mark = '◐';
+    const credit = it.paymentMethod === 'credit' ? ' [tdc]' : '';
+    const left = `  ${mark} ${it.name}${credit}`;
+    const right = mark === '◐'
+      ? `${this.fmt(it.paidAmount)}/${this.fmt(it.budgetedAmount)}`
+      : this.fmt(it.budgetedAmount);
+    return this.row(left, right);
   }
 }

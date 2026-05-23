@@ -10,6 +10,9 @@
           <a [routerLink]="['/months', s._id, 'activity']" [queryParams]="{ year: s.year, month: s.month }" class="btn btn-outline">
             <i class="bx bx-history"></i> Estado de cuenta
           </a>
+          <button class="btn btn-outline" (click)="openExport()">
+            <i class="bx bx-export"></i> Exportar
+          </button>
           <button class="btn btn-outline" (click)="enterEdit()">
             <i class="bx bx-edit"></i> Editar presupuesto
           </button>
@@ -483,6 +486,7 @@
         @for (e of s.extras; track e._id) {
           <div class="item extra-item" [class.income]="e.type === 'income'">
             <div class="extra-info">
+              @if (e.linkedSavingsId) { <i class="bx bx-piggy-bank"></i> }
               <strong>{{ e.name }}</strong>
               @if (e.categoryName) { <small> · {{ e.categoryName }}</small> }
               <small class="date"> · {{ e.date | date:'d MMM' }}</small>
@@ -493,13 +497,15 @@
               } @else {
                 <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
               }
-              <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
-                <option value="" disabled selected>⋮</option>
-                @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }
-                @if (e.type !== 'income') { <option value="income">→ Ingreso</option> }
-                <option value="tdc">→ TDC</option>
-                <option value="diferido">→ Diferido</option>
-              </select>
+              @if (!e.linkedSavingsId) {
+                <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
+                  <option value="" disabled selected>⋮</option>
+                  @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }
+                  @if (e.type !== 'income') { <option value="income">→ Ingreso</option> }
+                  <option value="tdc">→ TDC</option>
+                  <option value="diferido">→ Diferido</option>
+                </select>
+              }
               <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
             </div>
           </div>
@@ -628,6 +634,47 @@
     <button class="undo-btn" (click)="undoDelete()">
       <i class="bx bx-undo"></i> Deshacer
     </button>
+  </div>
+}
+
+@if (showExport()) {
+  <div class="export-overlay" (click)="closeExport()">
+    <div class="export-modal" (click)="$event.stopPropagation()" role="dialog" aria-label="Exportar mes">
+      <div class="export-head">
+        <h3><i class="bx bx-export"></i> Exportar mes</h3>
+        <button class="btn-icon" (click)="closeExport()" aria-label="Cerrar"><i class="bx bx-x"></i></button>
+      </div>
+
+      <div class="export-tabs" role="tablist">
+        <button
+          class="tab"
+          role="tab"
+          [class.active]="exportFormat() === 'mine'"
+          [attr.aria-selected]="exportFormat() === 'mine'"
+          (click)="setExportFormat('mine')">
+          Mi formato
+        </button>
+        <button
+          class="tab"
+          role="tab"
+          [class.active]="exportFormat() === 'structured'"
+          [attr.aria-selected]="exportFormat() === 'structured'"
+          (click)="setExportFormat('structured')">
+          Estructurado
+        </button>
+      </div>
+
+      <pre class="export-preview">{{ exportText() }}</pre>
+
+      <div class="export-actions">
+        <button class="btn btn-outline" (click)="copyExport()">
+          <i class="bx bx-copy"></i> Copiar
+        </button>
+        <button class="btn btn-primary" (click)="downloadExport()">
+          <i class="bx bx-download"></i> Descargar .txt
+        </button>
+      </div>
+    </div>
   </div>
 }
 

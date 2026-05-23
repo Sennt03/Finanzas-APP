@@ -22,7 +22,7 @@ async function create(userId, data) {
         if (!stmt) throw myError('Estado de cuenta inválido', 400)
     }
 
-    return SavingsMovement.create({
+    const mov = await SavingsMovement.create({
         userId,
         accountId: savingsAcc._id,
         type: data.type,
@@ -31,6 +31,31 @@ async function create(userId, data) {
         monthlyStatementId: data.monthlyStatementId || null,
         date: data.date || new Date()
     })
+
+    // Un egreso de ahorros entra como dinero a la cuenta transaccional del mes:
+    // registramos el ingreso vinculado en el estado de cuenta de ese mes para que
+    // sea visible y se mantenga sincronizado al borrar (desde aquí o desde el mes).
+    if (mov.type === 'withdrawal') {
+        const d = mov.date
+        const stmt = await Statement.findOne({ userId, year: d.getFullYear(), month: d.getMonth() + 1 })
+        if (stmt) {
+            stmt.extras.push({
+                name: (mov.description || '').trim() || 'Retiro de ahorros',
+                amount: mov.amount,
+                type: 'income',
+                categoryName: 'Ahorros',
+                linkedSavingsId: mov._id,
+                date: mov.date
+            })
+            await stmt.save()
+            if (!mov.monthlyStatementId) {
+                mov.monthlyStatementId = stmt._id
+                await mov.save()
+            }
+        }
+    }
+
+    return mov
 }
 
 async function remove(userId, id) {
@@ -39,6 +64,17 @@ async function remove(userId, id) {
     // Bloquear borrado de movimientos auto-generados desde items pagados
     if (mov.itemRef?.itemId) {
         throw myError('Este movimiento se generó al marcar un item como pagado. Desmárcalo desde el estado de cuenta.', 400)
+    }
+    // Si el egreso registró un ingreso vinculado en el mes, quitarlo también
+    if (mov.type === 'withdrawal' && mov.monthlyStatementId) {
+        const stmt = await Statement.findOne({ _id: mov.monthlyStatementId, userId })
+        if (stmt) {
+            const linked = stmt.extras.find(e => e.linkedSavingsId && String(e.linkedSavingsId) === String(mov._id))
+            if (linked) {
+                linked.deleteOne()
+                await stmt.save()
+            }
+        }
     }
     await mov.deleteOne()
     return { _id: id }

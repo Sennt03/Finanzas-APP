@@ -114,6 +114,16 @@ async function buildEnrichedStatement(stmt, userId) {
     const monthDeposits = movs.filter(m => m.type === 'deposit').reduce((s, m) => s + m.amount, 0)
     const monthWithdrawals = movs.filter(m => m.type === 'withdrawal').reduce((s, m) => s + m.amount, 0)
 
+    // Egresos de ahorros que ya están registrados como ingreso vinculado en este mes:
+    // su aporte al saldo lo aporta el extra (extrasIncome), así que no se cuentan aquí
+    // para evitar doble conteo. Se siguen mostrando en summary.savings.monthWithdrawals.
+    const linkedSavingsIds = new Set(
+        (obj.extras || []).filter(e => e.linkedSavingsId).map(e => String(e.linkedSavingsId))
+    )
+    const withdrawalsForBalance = movs
+        .filter(m => m.type === 'withdrawal' && !linkedSavingsIds.has(String(m._id)))
+        .reduce((s, m) => s + m.amount, 0)
+
     const Loan = require('../loan/model')
     const allCurrentLoans = await Loan.find({ userId, currentStatementId: obj._id })
 
@@ -164,7 +174,7 @@ async function buildEnrichedStatement(stmt, userId) {
         .filter(i => i.isShared)
         .reduce((s, i) => s + i.budgetedAmount, 0)
 
-    const base = obj.salary - paid - extrasExpense + extrasIncome + monthWithdrawals + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
+    const base = obj.salary - paid - extrasExpense + extrasIncome + withdrawalsForBalance + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
     const realBalance = base - creditPaidAmt - balancePendingTotal
     const availableBalance = base - paidByBorrowerNet - (creditTotal - sharedShare) - balancePendingTotal
 
@@ -259,6 +269,9 @@ async function convertMovement(userId, statementId, { source, target }) {
     } else if (source.kind === 'extra') {
         const extra = stmt.extras.id(source.extraId)
         if (!extra) throw myError('Extra no encontrado', 404)
+        if (extra.linkedSavingsId) {
+            throw myError('Este ingreso proviene de un egreso de ahorros. Gestiónalo desde el movimiento de ahorros.', 400)
+        }
         name = extra.name
         amount = extra.amount
         date = extra.date
@@ -543,6 +556,11 @@ async function removeExtra(userId, id, extraId) {
     if (!extra) throw myError('Extra no encontrado', 404)
     const extraName = extra.name
     const extraAmount = extra.amount
+    // Si el ingreso proviene de un egreso de ahorros, borrar también el movimiento
+    // vinculado para devolver el monto a la cuenta de ahorros.
+    if (extra.linkedSavingsId) {
+        await SavingsMovement.deleteOne({ _id: extra.linkedSavingsId, userId })
+    }
     extra.deleteOne()
     await stmt.save()
     await log(userId, stmt.year, stmt.month, 'extra_deleted',

@@ -14,6 +14,16 @@ interface PurchaseView extends LsCreditPurchase {
   cuotaAmount: number;
 }
 
+interface MonthTotal {
+  year: number;
+  month: number;
+  label: string;
+  total: number;
+  mine: number;
+  others: number;
+  byBorrower: { name: string; amount: number }[];
+}
+
 @Component({
   selector: 'app-purchases',
   imports: [...sharedImports, FormsModule],
@@ -53,6 +63,42 @@ export class PurchasesComponent {
 
   diferidos = computed(() => this.enriched().filter(p => p.installments > 1));
   singles = computed(() => this.enriched().filter(p => p.installments === 1));
+
+  // Total a pagar por cada mes, separando lo mío de lo de otras personas.
+  // En una compra compartida (isShared) la cuota completa es deuda del prestatario.
+  monthlyTotals = computed<MonthTotal[]>(() => {
+    const map = new Map<string, MonthTotal>();
+    for (const p of this.purchases()) {
+      const shared = !!p.isShared;
+      const borrower = (p.borrowerName ?? '').trim() || 'Otra persona';
+      for (const c of p.cuotas) {
+        const key = `${c.year}-${c.month}`;
+        let m = map.get(key);
+        if (!m) {
+          m = {
+            year: c.year,
+            month: c.month,
+            label: `${MONTH_NAMES[c.month - 1]} ${c.year}`,
+            total: 0,
+            mine: 0,
+            others: 0,
+            byBorrower: []
+          };
+          map.set(key, m);
+        }
+        m.total += c.amount;
+        if (shared) {
+          m.others += c.amount;
+          const b = m.byBorrower.find(x => x.name === borrower);
+          if (b) b.amount += c.amount;
+          else m.byBorrower.push({ name: borrower, amount: c.amount });
+        } else {
+          m.mine += c.amount;
+        }
+      }
+    }
+    return [...map.values()].sort((a, b) => (a.year - b.year) || (a.month - b.month));
+  });
 
   ngOnInit() { this.load(); }
 
