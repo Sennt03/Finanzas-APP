@@ -971,7 +971,7 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: $primary;
+  background: $navy; // navy fijo: en claro == $primary, en oscuro no se vuelve claro
   color: #fff;
   padding: 10px 14px 10px 16px;
   border-radius: $r-md;
@@ -1808,6 +1808,84 @@
   0%   { box-shadow: 0 0 0 0 rgba($accent, 0); }
   15%  { box-shadow: 0 0 0 4px rgba($accent, 0.35); }
   100% { box-shadow: 0 0 0 0 rgba($accent, 0); }
+}
+
+// =====================================================
+// AJUSTES SOLO PARA MODO OSCURO (el modo claro queda idéntico)
+// Suaviza los verdes/naranjas neón de la sección de Tarjeta de crédito
+// y mejora la legibilidad del texto rojo. Cubre tema forzado ("dark")
+// y modo "sistema" (prefers-color-scheme).
+// =====================================================
+@mixin month-detail-dark {
+  // Naranja de tarjeta suavizado para oscuro (menos fosforescente, sigue legible)
+  $credit-dk: color.adjust($credit, $lightness: 6%, $saturation: -16%);
+  // Verde de "pagado" desaturado para oscuro
+  $success-dk: color.adjust($success, $lightness: 12%, $saturation: -16%);
+
+  .month-detail {
+    // Bordes neón → translúcidos y suaves
+    .category.credit-cat { border-color: rgba($credit, 0.40); }
+    .category.credit-cat.group-paid {
+      background: rgba($success, 0.08);
+      border-color: rgba($success, 0.38);
+    }
+    .cat-budget.credit-total {
+      border-color: rgba($credit, 0.40);
+      &.paid { border-color: rgba($success, 0.38); }
+    }
+
+    // ---- Bloque "También en tarjeta": era un panel BLANCO hardcodeado ----
+    .ext-credit-block {
+      background: rgba(255, 255, 255, 0.04); // panel oscuro translúcido (no blanco)
+      border-color: rgba($credit, 0.40);
+      .ext-credit-item { border-top-color: $border; } // separadora visible
+    }
+
+    // Píldora "PAGADO": verde sólido fosforescente → tinte suave + texto legible
+    .paid-tag {
+      background: rgba($success, 0.22);
+      color: $success-dk;
+    }
+
+    // Línea separadora invisible sobre fondo oscuro
+    .ext-credit-item { border-top-color: $border; }
+
+    // Naranja de la sección TDC menos fosforescente
+    .credit-cat h3 i,
+    .credit-info .status.pending,
+    .ext-credit-head,
+    .ext-credit-item .status.pending,
+    .ext-credit-item .amount,
+    .credit-badge,
+    .cat-budget.credit-total .total,
+    .cat-budget.credit-total .shared-share {
+      color: $credit-dk;
+    }
+    .credit-badge { background: rgba($credit, 0.22); color: $credit-dk; }
+
+    // Verde de "pagado" menos fosforescente (checks, montos, totales)
+    .credit-info .status.paid,
+    .ext-credit-item .status.paid,
+    .ext-credit-item.paid .amount,
+    .cat-budget.credit-total.paid .total {
+      color: $success-dk;
+    }
+
+    // Texto rojo más claro y legible sobre fondo oscuro
+    .paid-amount,
+    .used,
+    .spent strong,
+    .spent-label strong,
+    .warn {
+      color: color.adjust($danger, $lightness: 12%);
+    }
+  }
+}
+
+:host-context([data-theme="dark"]) { @include month-detail-dark; }
+
+@media (prefers-color-scheme: dark) {
+  :host-context([data-theme="system"]) { @include month-detail-dark; }
 }
 
 @media (max-width: 560px) {
