@@ -52,6 +52,18 @@
             </a>
         </nav>
 
+        <div class="theme-switch" role="group" aria-label="Tema de la aplicación">
+            <button type="button" [class.active]="theme() === 'system'" (click)="setTheme('system')" title="Tema del sistema" aria-label="Tema del sistema">
+                <i class="bx bx-desktop"></i>
+            </button>
+            <button type="button" [class.active]="theme() === 'light'" (click)="setTheme('light')" title="Tema claro" aria-label="Tema claro">
+                <i class="bx bx-sun"></i>
+            </button>
+            <button type="button" [class.active]="theme() === 'dark'" (click)="setTheme('dark')" title="Tema oscuro" aria-label="Tema oscuro">
+                <i class="bx bx-moon"></i>
+            </button>
+        </div>
+
         <div class="profile">
             <div class="avatar">{{ (user().username || '?').charAt(0).toUpperCase() }}</div>
             <div class="profile-details">
@@ -67,6 +79,32 @@
     <section class="home-section">
         <router-outlet></router-outlet>
     </section>
+
+    <!-- Bottom nav (solo móvil): destinos principales al alcance del pulgar -->
+    <nav class="bottom-nav" aria-label="Navegación principal">
+        <div class="bn-grid">
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-grid-alt"></i>
+                <span>Inicio</span>
+            </a>
+            <a routerLink="/months" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-calendar"></i>
+                <span>Meses</span>
+            </a>
+            <a routerLink="/accounts" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-wallet-alt"></i>
+                <span>Cuentas</span>
+            </a>
+            <a routerLink="/purchases" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-credit-card"></i>
+                <span>Compras</span>
+            </a>
+            <a routerLink="/loans" routerLinkActive="active" (click)="closeSidebarOnMobile()">
+                <i class="bx bx-dollar"></i>
+                <span>Préstamos</span>
+            </a>
+        </div>
+    </nav>
 </div>
 
 <app-loading [show]="maskLoad()"></app-loading>

@@ -182,7 +182,7 @@
   }
   &.color-loan {
     $loan-color: #8b5cf6;
-    .log-icon { background: color.adjust($loan-color, $lightness: 38%); color: $loan-color; }
+    .log-icon { background: rgba($loan-color, 0.16); color: $loan-color; }
     .log-amount { color: $loan-color; }
   }
   &.color-muted {

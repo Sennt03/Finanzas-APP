@@ -2,10 +2,11 @@
 @use 'vars' as *;
 
 $sidebar-w: 244px;
-$topbar-h: 60px;
+$topbar-h: 56px;
+$bottomnav-h: 60px;
 
 .layout {
-    min-height: 100vh;
+    min-height: 100dvh; // dvh = solo el alto realmente visible (sin barra del navegador ni isla)
     background: $bg;
     position: relative;
 }
@@ -82,13 +83,17 @@ $topbar-h: 60px;
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100dvh;
     width: $sidebar-w;
-    background: linear-gradient(180deg, $primary 0%, color.adjust($primary, $lightness: 4%) 100%);
+    background: linear-gradient(180deg, $navy 0%, color.adjust($navy, $lightness: 4%) 100%);
     color: #cbd5e1;
     display: flex;
     flex-direction: column;
     padding: 22px 14px 18px;
+    // Respeta isla dinámica / notch arriba y el "home indicator" abajo:
+    padding-top: max(22px, env(safe-area-inset-top));
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    padding-left: max(14px, env(safe-area-inset-left));
     z-index: 100;
     box-shadow: $shadow-md;
 
@@ -99,6 +104,7 @@ $topbar-h: 60px;
         padding: 0 8px 22px;
         margin-bottom: 8px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        flex-shrink: 0;
 
         .icon {
             font-size: 28px;
@@ -127,6 +133,8 @@ $topbar-h: 60px;
         gap: 4px;
         flex: 1;
         margin-top: 8px;
+        overflow-y: auto; // si la pantalla es muy baja, el menú scrollea y el footer no se corta
+        min-height: 0;
 
         a {
             display: flex;
@@ -156,6 +164,11 @@ $topbar-h: 60px;
                 i { color: #fff; }
             }
 
+            &:focus-visible {
+                outline: 2px solid #fff;
+                outline-offset: -2px;
+            }
+
             &.active {
                 background: rgba($accent, 0.18);
                 color: #fff;
@@ -175,6 +188,41 @@ $topbar-h: 60px;
         }
     }
 
+    .theme-switch {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        margin-top: 12px;
+        border-radius: $r-md;
+        background: rgba(0, 0, 0, 0.18);
+        flex-shrink: 0;
+
+        button {
+            flex: 1;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            border-radius: $r-sm;
+            padding: 8px 0;
+            font-size: 17px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s ease, color .15s ease;
+
+            &:hover { color: #fff; }
+
+            &.active {
+                background: rgba($accent, 0.22);
+                color: #fff;
+                box-shadow: inset 0 0 0 1px rgba($accent, 0.5);
+            }
+
+            &:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+        }
+    }
+
     .profile {
         display: flex;
         align-items: center;
@@ -182,7 +230,8 @@ $topbar-h: 60px;
         padding: 12px;
         border-radius: $r-md;
         background: rgba(255, 255, 255, 0.04);
-        margin-top: 12px;
+        margin-top: 10px;
+        flex-shrink: 0; // el footer nunca se comprime ni se empuja fuera de pantalla
 
         .avatar {
             width: 36px;
@@ -239,9 +288,59 @@ $topbar-h: 60px;
 
 .home-section {
     margin-left: $sidebar-w;
-    min-height: 100vh;
+    min-height: 100dvh;
     padding: 28px;
     transition: margin-left .25s ease;
+}
+
+// =====================================================
+// BOTTOM NAV (móvil) — destinos principales al alcance del pulgar
+// =====================================================
+.bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 85; // bajo el backdrop (90): se atenúa cuando el drawer está abierto
+    background: $surface;
+    border-top: 1px solid $border;
+    box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.06);
+    padding-bottom: env(safe-area-inset-bottom); // libra el "home indicator" del iPhone
+
+    .bn-grid {
+        display: flex;
+        align-items: stretch;
+    }
+
+    a {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        min-height: $tap;
+        padding: $sp-2 0 6px;
+        color: $primary-muted;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        transition: color .15s ease;
+
+        i { font-size: 22px; transition: color .15s ease, transform .12s ease; }
+
+        &.active {
+            color: $accent;
+            i { color: $accent; transform: translateY(-1px); }
+        }
+
+        &:focus-visible {
+            outline: 2px solid $accent;
+            outline-offset: -3px;
+            border-radius: $r-sm;
+        }
+    }
 }
 
 // =====================================================
@@ -250,7 +349,11 @@ $topbar-h: 60px;
 @media (max-width: 768px) {
     .topbar {
         display: flex;
-        height: 56px;
+        // Crece para meter la isla/status bar; el contenido se mantiene a $topbar-h.
+        height: calc(#{$topbar-h} + env(safe-area-inset-top));
+        padding-top: env(safe-area-inset-top);
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
 
         .hamburger,
         .ghost {
@@ -270,6 +373,9 @@ $topbar-h: 60px;
         transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
         width: 280px;
         padding: 20px 12px 16px;
+        padding-top: max(20px, env(safe-area-inset-top));
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        padding-left: max(12px, env(safe-area-inset-left));
 
         .nav-list a {
             padding: 14px 14px;
@@ -297,12 +403,15 @@ $topbar-h: 60px;
 
     .home-section {
         margin-left: 0;
-        padding: 16px 12px 32px;
+        // Deja aire para la bottom-nav (alto + safe-area) para que no tape contenido.
+        padding: 16px 12px calc(#{$bottomnav-h} + env(safe-area-inset-bottom) + 16px);
     }
+
+    .bottom-nav { display: block; }
 }
 
 @media (max-width: 420px) {
     .home-section {
-        padding: 14px 10px 28px;
+        padding: 14px 10px calc(#{$bottomnav-h} + env(safe-area-inset-bottom) + 14px);
     }
 }

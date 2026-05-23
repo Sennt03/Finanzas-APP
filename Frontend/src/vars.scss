@@ -1,42 +1,69 @@
-// Marca / Texto
-$primary: #0f172a;
-$primary-soft: #475569;
-$primary-muted: #64748b;
-$primary-faint: #94a3b8;
+// =====================================================
+// TOKENS
+// -----------------------------------------------------
+// Los tokens SEMÁNTICOS (fondos / bordes / texto) apuntan a CSS custom
+// properties definidas en styles.scss (:root + prefers-color-scheme: dark),
+// para que el tema claro/oscuro cambie en runtime SIN recompilar.
+// Los tokens de ACENTO/ESTADO se quedan como hex estático porque se usan
+// dentro de rgba()/color.adjust() (que necesitan un color real en compilación)
+// y su tono no cambia entre temas.
+// =====================================================
 
-// Superficies
-$bg: #f1f5f9;
-$surface: #ffffff;
-$surface-alt: #f8fafc;
-$border: #e2e8f0;
-$border-strong: #cbd5e1;
+// --- Marca / Texto (semánticos → flip claro/oscuro) ---
+$primary: var(--c-text);
+$primary-soft: var(--c-text-soft);
+$primary-muted: var(--c-text-muted);
+$primary-faint: var(--c-text-faint);
 
-// Acentos / Estados
+// Navy fijo: fondos oscuros que NO cambian con el tema (sidebar, auth).
+// Necesario porque color.adjust() requiere un color real en compilación.
+$navy: #0f172a;
+
+// --- Superficies (semánticos → flip) ---
+$bg: var(--c-bg);
+$surface: var(--c-surface);
+$surface-alt: var(--c-surface-alt);
+$border: var(--c-border);
+$border-strong: var(--c-border-strong);
+
+// --- Acentos / Estados (estáticos: usados en rgba()/color.adjust()) ---
 $accent: #6366f1;
 $accent-hover: #4f46e5;
-$accent-soft: #eef2ff;
-
 $success: #10b981;
-$success-soft: #ecfdf5;
 $danger: #ef4444;
-$danger-soft: #fef2f2;
 $warning: #f59e0b;
-$warning-soft: #fffbeb;
 $info: #0ea5e9;
-$info-soft: #f0f9ff;
-
 $savings: #a855f7;
-$savings-soft: #faf5ff;
 $credit: #f97316;
-$credit-soft: #fff7ed;
 
-// Sombras
-$shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
-$shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
-$shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.10);
+// --- Tints suaves (semánticos → flip; en oscuro son overlays translúcidos) ---
+$accent-soft: var(--c-accent-soft);
+$success-soft: var(--c-success-soft);
+$danger-soft: var(--c-danger-soft);
+$warning-soft: var(--c-warning-soft);
+$info-soft: var(--c-info-soft);
+$savings-soft: var(--c-savings-soft);
+$credit-soft: var(--c-credit-soft);
 
-// Radios
+// --- Sombras (semánticas → más profundas en oscuro) ---
+$shadow-sm: var(--c-shadow-sm);
+$shadow-md: var(--c-shadow-md);
+$shadow-lg: var(--c-shadow-lg);
+
+// --- Radios ---
 $r-sm: 6px;
 $r-md: 10px;
 $r-lg: 14px;
 $r-xl: 18px;
+
+// --- Escala de espaciado (consistencia entre módulos) ---
+$sp-1: 4px;
+$sp-2: 8px;
+$sp-3: 12px;
+$sp-4: 16px;
+$sp-5: 20px;
+$sp-6: 24px;
+$sp-8: 32px;
+
+// --- Alto mínimo de target táctil (accesibilidad / móvil) ---
+$tap: 44px;

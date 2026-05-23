@@ -237,7 +237,7 @@ $loan-soft: #f5f3ff;
     display: flex;
     align-items: center;
     gap: 10px;
-    background: color.adjust($warning, $lightness: 38%);
+    background: rgba($warning, 0.14);
     border: 1px solid color.adjust($warning, $lightness: 25%);
     border-radius: $r-md;
     padding: 10px 14px;

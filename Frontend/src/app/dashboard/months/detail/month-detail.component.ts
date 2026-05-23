@@ -53,6 +53,7 @@ export class MonthDetailComponent {
 
   // Transaction form
   showTx = signal(false);
+  flashExtras = signal(false); // resalta la sección al saltar con el botón rápido
   txType = signal<TxType>('expense');
   txName = signal('');
   txAmount = signal<number | null>(null);
@@ -673,6 +674,15 @@ export class MonthDetailComponent {
   }
 
   closeTx() { this.showTx.set(false); }
+
+  /** Acceso rápido: baja con animación a la sección de movimientos extras. */
+  scrollToExtras() {
+    const el = document.getElementById('extras-section');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.flashExtras.set(true);
+    setTimeout(() => this.flashExtras.set(false), 1500);
+  }
 
   submitTx() {
     const s = this.stmt();

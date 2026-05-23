@@ -5,6 +5,7 @@ import { LsResAuth } from '@models/auth.models';
 import { LsUser, LsUserDefault } from '@models/user.models';
 import { AuthService } from '@services/auth.service';
 import { UserService } from '@services/user.service';
+import { ThemeService, ThemePref } from '@services/theme.service';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
 
@@ -18,10 +19,12 @@ import toastr from '@shared/utils/toastr';
 export class Dashboard {
   private authService = inject(AuthService);
   private userService = inject(UserService);
+  private themeService = inject(ThemeService);
 
   maskLoad = signal(false);
   user = signal<LsUser>({ ...LsUserDefault });
   sidebarOpen = signal(false);
+  theme = this.themeService.theme;
 
   private $subUser?: Subscription;
 
@@ -45,6 +48,10 @@ export class Dashboard {
 
   toggleSidebar() {
     this.sidebarOpen.update(v => !v);
+  }
+
+  setTheme(pref: ThemePref) {
+    this.themeService.set(pref);
   }
 
   closeSidebarOnMobile() {

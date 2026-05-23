@@ -4,8 +4,20 @@
   <meta charset="utf-8">
   <title>Finanzas - David Ruiz</title>
   <base href="/">
+  <script>
+    // Fija el tema antes del primer render para evitar parpadeo (FOUC).
+    (function () {
+      try {
+        var t = localStorage.getItem('theme-pref') || 'system';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'system');
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1976d2">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">

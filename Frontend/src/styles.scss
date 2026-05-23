@@ -1,11 +1,87 @@
 @use 'sass:color';
 @use './vars' as *;
 
+// =====================================================
+// THEME TOKENS
+// Definidos en el stylesheet GLOBAL (no en vars.scss) porque los estilos
+// de componente Angular están encapsulados y :root quedaría scopeado.
+//
+// Resolución del tema (atributo data-theme en <html>, fijado por ThemeService
+// y por el script inline de index.html):
+//   - data-theme="light"  → claro forzado
+//   - data-theme="dark"   → oscuro forzado
+//   - data-theme="system" → sigue prefers-color-scheme del SO
+// =====================================================
+@mixin dark-tokens {
+    color-scheme: dark;
+
+    --c-bg: #0b1120;
+    --c-surface: #131c2e;
+    --c-surface-alt: #1c2740;
+    --c-border: #2a3650;
+    --c-border-strong: #3b496b;
+
+    --c-text: #e7ecf3;
+    --c-text-soft: #c2ccdb;
+    --c-text-muted: #93a1b8;
+    --c-text-faint: #6b7a93;
+
+    // Tints translúcidos: se mezclan con la superficie oscura de fondo.
+    --c-accent-soft: rgba(99, 102, 241, 0.18);
+    --c-success-soft: rgba(16, 185, 129, 0.16);
+    --c-danger-soft: rgba(239, 68, 68, 0.16);
+    --c-warning-soft: rgba(245, 158, 11, 0.16);
+    --c-info-soft: rgba(14, 165, 233, 0.16);
+    --c-savings-soft: rgba(168, 85, 247, 0.16);
+    --c-credit-soft: rgba(249, 115, 22, 0.16);
+
+    --c-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+    --c-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.40);
+    --c-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+:root {
+    color-scheme: light dark;
+
+    --c-bg: #f1f5f9;
+    --c-surface: #ffffff;
+    --c-surface-alt: #f8fafc;
+    --c-border: #e2e8f0;
+    --c-border-strong: #cbd5e1;
+
+    --c-text: #0f172a;
+    --c-text-soft: #475569;
+    --c-text-muted: #64748b;
+    --c-text-faint: #94a3b8;
+
+    --c-accent-soft: #eef2ff;
+    --c-success-soft: #ecfdf5;
+    --c-danger-soft: #fef2f2;
+    --c-warning-soft: #fffbeb;
+    --c-info-soft: #f0f9ff;
+    --c-savings-soft: #faf5ff;
+    --c-credit-soft: #fff7ed;
+
+    --c-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+    --c-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
+    --c-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.10);
+}
+
+// Sistema (o sin atributo aún): sigue al SO.
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) { @include dark-tokens; }
+}
+
+// Forzado por el usuario.
+:root[data-theme="dark"] { @include dark-tokens; }
+:root[data-theme="light"] { color-scheme: light; }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
     margin: 0;
     padding: 0;
+    overscroll-behavior-y: none; // evita el rebote/pull-to-refresh raro en móvil
 }
 
 body {
@@ -32,9 +108,20 @@ h1, h2, h3, h4, h5, h6 {
 
 p { margin: 0; }
 
+// =====================================================
+// FOCO ACCESIBLE (WCAG AA) — anillo visible solo con teclado
+// =====================================================
+:focus-visible {
+    outline: 2px solid $accent;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+// El mouse no dispara :focus-visible, así que no molesta al clickear.
+
 #toast-container > div {
     padding: 12px 28px 12px 50px !important;
-    width: 320px;
+    width: auto !important;
+    max-width: min(360px, calc(100vw - 24px)); // no desborda en pantallas chicas
     border-radius: $r-md !important;
     box-shadow: $shadow-lg !important;
     opacity: 0.98 !important;
@@ -43,15 +130,29 @@ p { margin: 0; }
 .toast-close-button { top: 0; }
 
 // =====================================================
-// AUTH (login / register)
+// AUTH (login / register) — SIEMPRE en claro, aunque el SO esté en oscuro
 // =====================================================
 .auth {
-    height: 100vh;
+    color-scheme: light;
+
+    // Re-fija los tokens a sus valores claros para todo el subárbol de auth.
+    --c-bg: #f1f5f9;
+    --c-surface: #ffffff;
+    --c-surface-alt: #f8fafc;
+    --c-border: #e2e8f0;
+    --c-border-strong: #cbd5e1;
+    --c-text: #0f172a;
+    --c-text-soft: #475569;
+    --c-text-muted: #64748b;
+    --c-text-faint: #94a3b8;
+
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, $primary 0%, color.adjust($primary, $lightness: 8%) 50%, $accent 100%);
+    background: linear-gradient(135deg, $navy 0%, color.adjust($navy, $lightness: 8%) 50%, $accent 100%);
     padding: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 
 .auth .container-xl {
@@ -112,8 +213,8 @@ p { margin: 0; }
 }
 
 .btn-dark {
-    background: $primary !important;
-    border-color: $primary !important;
+    background: $navy !important;
+    border-color: $navy !important;
     border-radius: $r-md !important;
     font-weight: 600;
     padding: 12px 16px;
