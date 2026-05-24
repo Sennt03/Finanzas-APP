@@ -89,7 +89,8 @@ $loan-soft: #f5f3ff;
 
     &.transferred {
       border-left: 3px solid $primary-faint;
-      opacity: 0.6;
+      // Atenuamos solo el contenido informativo, no las acciones (revertir)
+      .loan-header, .loan-meta { opacity: 0.65; }
     }
   }
 
@@ -191,7 +192,49 @@ $loan-soft: #f5f3ff;
     padding: 14px;
     margin-bottom: 12px;
 
-    label {
+    .tf-step-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: $primary-soft;
+      margin-bottom: 8px;
+    }
+
+    .mode-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .mode-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      text-align: left;
+      background: $surface;
+      border: 1.5px solid $border;
+      border-radius: $r-md;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+
+      i { font-size: 22px; color: $primary-muted; transition: color .15s ease; }
+      .mo-title { font-size: 13px; font-weight: 700; color: $primary; line-height: 1.2; }
+      .mo-desc { font-size: 11.5px; color: $primary-muted; line-height: 1.35; }
+
+      &:hover { border-color: $border-strong; }
+
+      &.selected {
+        border-color: $loan-color;
+        background: rgba($loan-color, 0.08);
+        box-shadow: 0 0 0 1px $loan-color inset;
+        i { color: $loan-color; }
+        .mo-title { color: $loan-color; }
+      }
+    }
+
+    .tf-month {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -216,21 +259,52 @@ $loan-soft: #f5f3ff;
       display: flex;
       align-items: flex-start;
       gap: 6px;
-      background: $warning-soft;
-      border: 1px solid color.adjust($warning, $lightness: 25%);
       border-radius: $r-sm;
       padding: 8px 12px;
       font-size: 12.5px;
       color: $primary-soft;
       margin-bottom: 10px;
-      i { color: $warning; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+      i { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+      &.savings {
+        background: $savings-soft;
+        border: 1px solid color.adjust($savings, $lightness: 25%);
+        i { color: $savings; }
+      }
+      &.debt {
+        background: rgba($accent, 0.1);
+        border: 1px solid color.adjust($accent, $lightness: 22%);
+        i { color: $accent; }
+      }
+      &.hint {
+        background: $surface;
+        border: 1px dashed $border-strong;
+        color: $primary-muted;
+        i { color: $primary-muted; }
+      }
     }
 
     .transfer-actions {
       display: flex;
       gap: 8px;
       justify-content: flex-end;
+
+      .btn[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+        &:hover { background: $warning; }
+      }
     }
+  }
+
+  .btn.revert {
+    color: $loan-color;
+    border-color: color.adjust($loan-color, $lightness: 22%);
+    &:hover { background: rgba($loan-color, 0.1); border-color: $loan-color; }
+  }
+
+  .loan-card.transferred {
+    .loan-actions { margin-top: 10px; }
   }
 
   .repay-alert {
@@ -256,6 +330,7 @@ $loan-soft: #f5f3ff;
     letter-spacing: 0.4px;
     text-transform: uppercase;
     &.savings-tag { background: $savings-soft; color: $savings; }
+    &.debt-tag { background: rgba($accent, 0.14); color: $accent; }
     &.warn-tag { background: $warning-soft; color: color.adjust($warning, $lightness: -15%); }
     &.ok-tag { background: $success-soft; color: color.adjust($success, $lightness: -10%); }
     &.trans-tag { background: $border; color: $primary-soft; }
@@ -371,7 +446,18 @@ $loan-soft: #f5f3ff;
     .transfer-form {
       padding: 12px;
 
-      label {
+      .mode-options {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .mode-opt {
+        padding: 14px;
+        .mo-title { font-size: 14px; }
+        .mo-desc { font-size: 12.5px; }
+      }
+
+      .tf-month {
         flex-direction: column;
         align-items: stretch;
         gap: 6px;

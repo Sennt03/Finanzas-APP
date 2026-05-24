@@ -2,175 +2,125 @@
   <header class="page-header">
     <div>
       <h1>Compras con tarjeta</h1>
-      <p class="muted">Diferidos y compras TDC. Edita o elimina aquí.</p>
+      <p class="muted">Diferidos y compras TDC, agrupados por mes de pago. Edita o elimina aquí.</p>
     </div>
   </header>
 
-  @if (diferidos().length === 0 && singles().length === 0 && !loading()) {
+  @if (months().length === 0 && !loading()) {
     <div class="empty">
       <i class="bx bx-credit-card"></i>
       <p>Aún no tienes compras con tarjeta. Crea una desde el detalle de un mes.</p>
     </div>
   }
 
-  @if (monthlyTotals().length > 0) {
-    <section class="block monthly-summary">
-      <h2><i class="bx bx-calendar"></i> Pago por mes</h2>
-      <div class="month-grid">
-        @for (m of monthlyTotals(); track m.label) {
-          <article class="month-card">
-            <div class="month-head">
-              <span class="month-name">{{ m.label }}</span>
-              <strong class="month-total">{{ m.total | number:'1.2-2' }}</strong>
-            </div>
-            <div class="split">
-              <div class="split-row mine">
-                <span class="dot"></span>
-                <span class="t">Mío</span>
-                <span class="v">{{ m.mine | number:'1.2-2' }}</span>
-              </div>
-              @if (m.others > 0) {
-                <div class="split-row others">
-                  <span class="dot"></span>
-                  <span class="t">Otras personas</span>
-                  <span class="v">{{ m.others | number:'1.2-2' }}</span>
-                </div>
-                @for (b of m.byBorrower; track b.name) {
-                  <div class="borrower-row">
-                    <span class="t">{{ b.name }}</span>
-                    <span class="v">{{ b.amount | number:'1.2-2' }}</span>
+  @for (m of months(); track m.label) {
+    <section class="month-block">
+      <header class="month-inline">
+        <span class="m-name">{{ m.label }}</span>
+        <span class="m-purchases">Compras <strong>{{ m.total | number:'1.2-2' }}</strong></span>
+        <span class="m-split">
+          <span class="mine">mío {{ m.mine | number:'1.2-2' }}</span>
+          @if (m.others > 0) {
+            <span class="sep">·</span>
+            <span class="others">otros {{ m.others | number:'1.2-2' }}</span>
+            @for (b of m.byBorrower; track b.name) {
+              <span class="borrower">{{ b.name }} {{ b.amount | number:'1.2-2' }}</span>
+            }
+          }
+        </span>
+        @if (m.realTotal !== null) {
+          <span class="m-real" title="Total real de la tarjeta este mes: incluye estos diferidos/TDC más las compras a crédito registradas en las categorías del mes.">
+            <i class="bx bx-info-circle"></i> Total real tarjeta <strong>{{ m.realTotal | number:'1.2-2' }}</strong>
+          </span>
+        }
+      </header>
+
+      <ul class="month-rows">
+        @for (r of m.rows; track r.view._id + '-' + r.cuotaIndex) {
+          <li class="row" [class.paid]="r.isPaid">
+            <details>
+              <summary>
+                <span class="r-name">{{ r.name }}</span>
+                @if (r.isDiferido) {
+                  <span class="badge diferido">diferido {{ r.cuotaIndex }}/{{ r.totalCuotas }}</span>
+                } @else {
+                  <span class="badge tdc">TDC</span>
+                }
+                @if (r.isShared) {
+                  <span class="badge shared"><i class="bx bx-user"></i> {{ r.borrowerName }}</span>
+                }
+                <span class="r-amount">{{ r.amount | number:'1.2-2' }}</span>
+                @if (r.isPaid) {
+                  <span class="tag paid">pagada</span>
+                } @else {
+                  <span class="tag pending">pendiente</span>
+                }
+              </summary>
+
+              <div class="row-detail">
+                @if (editingId() === r.view._id) {
+                  <div class="edit-fields">
+                    <label>Nombre
+                      <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
+                    </label>
+                    <label>Total compra
+                      <input type="number" min="0" class="edit-input small" [ngModel]="editTotal()" (ngModelChange)="editTotal.set($event)">
+                    </label>
+                  </div>
+                  <div class="actions">
+                    <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
+                    <button class="btn btn-primary btn-sm" (click)="saveEdit(r.view)">Guardar</button>
+                  </div>
+                } @else {
+                  <div class="meta">
+                    <div>
+                      <span class="label">Total compra</span>
+                      <strong>{{ r.view.totalAmount | number:'1.2-2' }}</strong>
+                    </div>
+                    <div>
+                      <span class="label">Pendiente</span>
+                      <strong class="pending">{{ r.view.remainingAmount | number:'1.2-2' }}</strong>
+                    </div>
+                    <div>
+                      <span class="label">Cuotas</span>
+                      <strong>{{ r.view.paidCuotas }} / {{ r.view.totalCuotas }}</strong>
+                    </div>
+                    <div>
+                      <span class="label">Periodo</span>
+                      <strong>{{ r.view.startLabel }} → {{ r.view.endLabel }}</strong>
+                    </div>
+                    <div>
+                      <span class="label">Fecha de compra</span>
+                      <strong>{{ r.view.purchaseDate | date:'mediumDate' }}</strong>
+                    </div>
+                  </div>
+
+                  @if (r.isDiferido) {
+                    <div class="progress">
+                      <div class="bar" [style.width.%]="(r.view.paidCuotas / r.view.totalCuotas) * 100"></div>
+                    </div>
+                    <ul class="cuotas-list">
+                      @for (c of r.view.cuotas; track c._id) {
+                        <li [class.paid]="c.isPaid" [class.current]="c.year === m.year && c.month === m.month">
+                          <span class="m">{{ cuotaLabel(c) }}</span>
+                          <span class="a">{{ c.amount | number:'1.2-2' }}</span>
+                          @if (c.isPaid) { <span class="tag paid">pagada</span> }
+                          @else { <span class="tag pending">pendiente</span> }
+                        </li>
+                      }
+                    </ul>
+                  }
+
+                  <div class="actions">
+                    <button class="btn-icon" (click)="startEdit(r.view)" title="Editar"><i class="bx bx-edit"></i></button>
+                    <button class="btn-icon danger" (click)="remove(r.view)" title="Eliminar"><i class="bx bx-trash"></i></button>
                   </div>
                 }
-              }
-            </div>
-          </article>
+              </div>
+            </details>
+          </li>
         }
-      </div>
-    </section>
-  }
-
-  @if (diferidos().length > 0) {
-    <section class="block">
-      <h2><i class="bx bx-list-plus"></i> Diferidos</h2>
-      @for (p of diferidos(); track p._id) {
-        <article class="purchase-card">
-          <div class="head">
-            @if (editingId() === p._id) {
-              <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
-            } @else {
-              <h3>{{ p.name }}</h3>
-            }
-            <div class="actions">
-              @if (editingId() === p._id) {
-                <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
-                <button class="btn btn-primary btn-sm" (click)="saveEdit(p)">Guardar</button>
-              } @else {
-                <button class="btn-icon" (click)="startEdit(p)" title="Editar"><i class="bx bx-edit"></i></button>
-                <button class="btn-icon danger" (click)="remove(p)" title="Eliminar"><i class="bx bx-trash"></i></button>
-              }
-            </div>
-          </div>
-
-          <div class="meta">
-            <div>
-              <span class="label">Total</span>
-              @if (editingId() === p._id) {
-                <input type="number" min="0" class="edit-input small" [ngModel]="editTotal()" (ngModelChange)="editTotal.set($event)">
-              } @else {
-                <strong>{{ p.totalAmount | number:'1.2-2' }}</strong>
-              }
-            </div>
-            <div>
-              <span class="label">Cuota</span>
-              <strong>{{ p.cuotaAmount | number:'1.2-2' }}</strong>
-            </div>
-            <div>
-              <span class="label">Pendiente</span>
-              <strong class="pending">{{ p.remainingAmount | number:'1.2-2' }}</strong>
-            </div>
-            <div>
-              <span class="label">Cuotas</span>
-              <strong>{{ p.paidCuotas }} / {{ p.totalCuotas }}</strong>
-            </div>
-            <div>
-              <span class="label">Periodo</span>
-              <strong>{{ p.startLabel }} → {{ p.endLabel }}</strong>
-            </div>
-            <div>
-              <span class="label">Fecha de compra</span>
-              <strong>{{ p.purchaseDate | date:'mediumDate' }}</strong>
-            </div>
-          </div>
-
-          <div class="progress">
-            <div class="bar" [style.width.%]="(p.paidCuotas / p.totalCuotas) * 100"></div>
-          </div>
-
-          <details class="cuotas-details">
-            <summary>Ver cuotas</summary>
-            <ul class="cuotas-list">
-              @for (c of p.cuotas; track c._id) {
-                <li [class.paid]="c.isPaid">
-                  <span class="m">{{ cuotaLabel(c) }}</span>
-                  <span class="a">{{ c.amount | number:'1.2-2' }}</span>
-                  @if (c.isPaid) { <span class="tag paid">pagada</span> }
-                  @else { <span class="tag pending">pendiente</span> }
-                </li>
-              }
-            </ul>
-          </details>
-        </article>
-      }
-    </section>
-  }
-
-  @if (singles().length > 0) {
-    <section class="block">
-      <h2><i class="bx bx-credit-card"></i> Compras TDC (1 cuota)</h2>
-      @for (p of singles(); track p._id) {
-        <article class="purchase-card single">
-          <div class="head">
-            @if (editingId() === p._id) {
-              <input class="edit-input" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
-            } @else {
-              <h3>{{ p.name }}</h3>
-            }
-            <div class="actions">
-              @if (editingId() === p._id) {
-                <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>
-                <button class="btn btn-primary btn-sm" (click)="saveEdit(p)">Guardar</button>
-              } @else {
-                <button class="btn-icon" (click)="startEdit(p)" title="Editar"><i class="bx bx-edit"></i></button>
-                <button class="btn-icon danger" (click)="remove(p)" title="Eliminar"><i class="bx bx-trash"></i></button>
-              }
-            </div>
-          </div>
-          <div class="meta">
-            <div>
-              <span class="label">Monto</span>
-              @if (editingId() === p._id) {
-                <input type="number" min="0" class="edit-input small" [ngModel]="editTotal()" (ngModelChange)="editTotal.set($event)">
-              } @else {
-                <strong>{{ p.totalAmount | number:'1.2-2' }}</strong>
-              }
-            </div>
-            <div>
-              <span class="label">Pagar en</span>
-              <strong>{{ p.startLabel }}</strong>
-            </div>
-            <div>
-              <span class="label">Fecha</span>
-              <strong>{{ p.purchaseDate | date:'mediumDate' }}</strong>
-            </div>
-            <div>
-              <span class="label">Estado</span>
-              <strong [class.pending]="p.paidCuotas === 0" [class.positive]="p.paidCuotas > 0">
-                {{ p.paidCuotas > 0 ? 'pagada' : 'pendiente' }}
-              </strong>
-            </div>
-          </div>
-        </article>
-      }
+      </ul>
     </section>
   }
 </div>

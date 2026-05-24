@@ -84,19 +84,44 @@
   .muted { color: $primary-muted; }
   .small { font-size: 13px; }
 
-  // Sección destino del acceso rápido: deja aire bajo el header al saltar.
+  // Destinos del navegador de secciones: dejan aire bajo el header sticky al saltar.
+  #saldos-section,
+  #budget-anchor,
+  #credit-section,
+  #loans-section,
   .category.extras {
     scroll-margin-top: 16px;
-    &.flash { animation: extrasFlash 1.5s ease; }
+  }
+  .category.extras.flash { animation: extrasFlash 1.5s ease; }
+
+  // Ancla invisible para "ir al presupuesto" (no ocupa espacio).
+  .nav-anchor { display: block; height: 0; }
+
+  // ===== Navegador de secciones (FAB + hoja de accesos rápidos) =====
+  // Telón para cerrar tocando fuera.
+  .nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 86; // sobre la bottom-nav (85), bajo la hoja/FAB del navegador
+    background: transparent;
   }
 
-  // FAB: acceso rápido para registrar un movimiento (baja a la sección extras).
-  .fab {
+  .section-nav {
     position: fixed;
     right: 24px;
     bottom: 24px;
     bottom: max(24px, env(safe-area-inset-bottom));
-    z-index: 88; // sobre la bottom-nav (85), bajo el backdrop del drawer (90)
+    z-index: 88;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    pointer-events: none; // solo los hijos interactúan; el resto deja pasar el toque
+  }
+
+  // FAB lanzador (reusa el look del antiguo botón "Registrar").
+  .nav-fab {
+    pointer-events: auto;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -110,18 +135,77 @@
     font-size: 14px;
     cursor: pointer;
     box-shadow: 0 8px 24px rgba($accent, 0.45);
-    animation: fabIn .35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    // Sin fill-mode: tras la entrada, el transform de :hover y .open siguen aplicando.
+    animation: fabIn .35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform .2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow .15s ease, background .15s ease;
 
     i { font-size: 24px; }
 
     &:hover {
       background: $accent-hover;
-      transform: translateY(-2px);
       box-shadow: 0 12px 30px rgba($accent, 0.55);
     }
-    &:active { transform: translateY(0); }
     &:focus-visible { outline: 3px solid rgba($accent, 0.45); outline-offset: 2px; }
+  }
+
+  // Hoja con los accesos: en desktop es un popover vertical anclado al FAB.
+  .nav-sheet {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    min-width: 224px;
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: $r-lg;
+    box-shadow: $shadow-lg;
+
+    // Oculto por defecto, animable en ambos sentidos.
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px) scale(0.97);
+    transform-origin: bottom right;
+    transition: opacity .18s ease, transform .18s ease, visibility .18s;
+  }
+
+  .section-nav.open .nav-sheet {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 14px;
+    border: none;
+    border-radius: $r-md;
+    background: transparent;
+    color: $primary-soft;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+
+    i {
+      font-size: 20px;
+      width: 24px;
+      text-align: center;
+      color: $accent;
+      flex-shrink: 0;
+    }
+
+    &:hover { background: $accent-soft; color: $primary; }
+    &:focus-visible { outline: 2px solid $accent; outline-offset: -2px; }
+
+    &.nav-item-accent {
+      i { color: $success; }
+      &:hover { background: $success-soft; }
+    }
   }
 
   .section {
@@ -607,8 +691,39 @@
         min-width: 0;
         strong { font-size: 14px; }
       }
-      .date { color: $primary-muted; }
       .income-amount { color: $success; font-weight: 700; font-size: 14px; }
+    }
+
+    // Separador de día en movimientos extras: línea sutil + total gastado discreto.
+    .day-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0 4px;
+
+      &:first-of-type { margin-top: 6px; }
+
+      .day-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: $primary-muted;
+        white-space: nowrap;
+      }
+
+      .day-line {
+        flex: 1;
+        height: 1px;
+        background: $border;
+      }
+
+      .day-total {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: $primary-faint;
+        white-space: nowrap;
+      }
     }
   }
 
@@ -947,6 +1062,7 @@
 
   .credit-toggle {
     color: $primary-faint;
+    .credit-label { display: none; } // sólo visible en móvil
     &:hover { background: $credit-soft; color: $credit; }
     &.active {
       color: #fff;
@@ -1148,19 +1264,27 @@
 }
 
 .convert-select {
-  padding: 5px 8px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: $r-sm;
   border: 1px solid $border;
   background: $surface;
-  font-size: 13px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 30px;
   cursor: pointer;
   color: $primary-muted;
-  width: 34px;
   appearance: none;
   -webkit-appearance: none;
+  // Centra el glifo ⋮ tanto horizontal como verticalmente (los <select> con
+  // appearance:none reservan espacio para la flecha y lo dejan descentrado).
   text-align: center;
-  transition: background .15s ease, color .15s ease;
-  &:hover { background: $surface-alt; color: $accent; }
+  text-align-last: center;
+  -moz-text-align-last: center;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+  &:hover { background: $surface-alt; color: $accent; border-color: $accent; }
 }
 
 // ---- Items compartidos (tarjeta prestada) en categoría virtual TDC ----
@@ -1244,17 +1368,71 @@
       }
     }
 
-    .fab {
+    // ===== Navegador de secciones en móvil =====
+    // El contenedor abarca todo el ancho; FAB abajo a la derecha (sobre la
+    // bottom-nav) y la hoja como barra a lo ancho pegada encima de la bottom-nav.
+    .section-nav {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .nav-fab {
+      position: absolute;
       right: 16px;
       bottom: calc(60px + env(safe-area-inset-bottom) + 16px); // sobre la bottom-nav (alto 60px)
       width: 56px;
       height: 56px;
       padding: 0;
       justify-content: center;
-      .fab-label { display: none; }
+      .nav-fab-label { display: none; }
       i { font-size: 27px; }
     }
+    // Al abrir, el FAB sube para no tapar la barra de accesos.
+    .section-nav.open .nav-fab { transform: translateY(-90px); }
 
+    .nav-sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(60px + env(safe-area-inset-bottom)); // pegada encima de la bottom-nav
+      min-width: 0;
+      flex-direction: row;
+      gap: 4px;
+      padding: 10px 8px;
+      padding-bottom: 12px;
+      border-radius: $r-lg $r-lg 0 0;
+      border-bottom: none;
+      box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.14);
+      transform-origin: bottom center;
+      transform: translateY(16px);
+    }
+    .section-nav.open .nav-sheet { transform: translateY(0); }
+
+    .nav-item {
+      flex: 1;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 2px;
+      font-size: 10.5px;
+      font-weight: 600;
+      text-align: center;
+      i { width: auto; font-size: 23px; }
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+    }
+
+    #saldos-section,
+    #budget-anchor,
+    #credit-section,
+    #loans-section,
     .category.extras {
       scroll-margin-top: calc(56px + env(safe-area-inset-top) + 12px); // libra la topbar sticky (56px)
     }
@@ -1301,47 +1479,47 @@
         }
       }
 
-      // Items: 2 filas en móvil — primera el nombre/check, segunda monto + acciones
+      // Items en móvil: una sola fila compacta y centrada por defecto.
+      // Solo los editables (checkbox + input de monto) se apilan en 2 filas,
+      // porque el campo de monto necesita ancho; el resto (extras, cuotas TDC,
+      // items de tarjeta) quedan en una fila con monto + menú + borrar alineados.
       .item {
-        padding: 12px 0;
+        padding: 10px 0;
         gap: 10px;
-        flex-wrap: wrap;
+        align-items: center;
+
+        &:has(.check) {
+          flex-wrap: wrap;
+          .check { width: 100%; }
+          .amounts { width: 100%; justify-content: flex-end; }
+        }
 
         .check {
-          width: 100%;
-          input[type="checkbox"] { width: 22px; height: 22px; }
+          input[type="checkbox"] { width: 20px; height: 20px; }
           .name { font-size: 15px; white-space: normal; }
         }
 
-        .item-readonly {
-          width: 100%;
-          .name { font-size: 15px; }
-        }
-
-        .credit-info {
-          width: 100%;
-          .name { font-size: 15px; white-space: normal; }
-        }
+        .item-readonly .name { font-size: 14.5px; }
+        .credit-info .name { font-size: 14.5px; }
 
         .amounts {
-          width: 100%;
-          justify-content: flex-end;
-          gap: 10px;
+          gap: 8px;
+          align-items: center;
 
           .amount-input {
             flex: 1;
             input[type="number"] {
               width: 100%;
-              max-width: 140px;
-              padding: 10px 12px;
+              max-width: 116px;
+              padding: 8px 11px;
               font-size: 15px;
-              min-height: 44px;
+              min-height: 38px;
             }
-            .of { font-size: 13px; }
+            .of { font-size: 12.5px; }
           }
 
           .paid-amount,
-          .income-amount { font-size: 15px; }
+          .income-amount { font-size: 14.5px; }
         }
       }
 
@@ -1349,51 +1527,57 @@
       .item.credit-item,
       .extra-item.income {
         margin: 0 -6px;
-        padding: 12px 10px;
+        padding: 10px 8px;
       }
 
-      // Add item button — más grande y visible
+      // Add item button — discreto, no estorboso: borde punteado, sin relleno sólido
       .add-item-btn {
-        padding: 14px 16px;
-        font-size: 14px;
-        min-height: 48px;
-        border-style: solid;
-        background: $accent-soft;
-        i { font-size: 18px; }
-        small { display: block; width: 100%; margin: 4px 0 0; }
+        padding: 9px 14px;
+        font-size: 13px;
+        min-height: 38px;
+        border-style: dashed;
+        background: transparent;
+        i { font-size: 16px; }
+        small { display: block; width: 100%; margin: 2px 0 0; }
       }
 
-      // Add item form — apilado en una columna
+      // Add item form — compacto, apilado en una columna
       .add-item-form {
         grid-template-columns: 1fr 1fr !important;
         gap: 8px;
-        padding: 12px;
+        padding: 10px;
 
         input[type="text"] {
           grid-column: span 2;
-          padding: 12px 14px;
+          padding: 9px 12px;
           font-size: 16px;
-          min-height: 48px;
+          min-height: 40px;
         }
         input[type="number"] {
           grid-column: span 1;
-          padding: 12px 14px;
+          padding: 9px 12px;
           font-size: 16px;
-          min-height: 48px;
+          min-height: 40px;
         }
         .credit-toggle {
           grid-column: span 1;
           justify-self: stretch;
           width: 100%;
-          min-height: 48px;
-          font-size: 20px;
+          min-height: 40px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: 1px solid color.adjust($credit, $lightness: 22%);
+          i { font-size: 18px; }
+          .credit-label { display: inline; font-size: 13.5px; font-weight: 600; }
         }
         .btn {
           grid-column: span 2;
           width: 100%;
           justify-content: center;
-          min-height: 44px;
-          font-size: 14px;
+          min-height: 40px;
+          font-size: 13.5px;
         }
         .btn.btn-primary { order: 5; }
         .btn.btn-outline { order: 6; }
@@ -1413,41 +1597,42 @@
         }
       }
 
-      // Form de transacción extras — 1 columna en móvil
+      // Form de transacción extras — 1 columna en móvil, inputs compactos
       .tx-form {
         grid-template-columns: 1fr;
-        gap: 12px;
-        padding: 14px;
+        gap: 10px;
+        padding: 12px;
 
         label {
-          font-size: 13px;
+          font-size: 12.5px;
           &.span-full { grid-column: span 1; }
           &.shared-toggle-label {
-            padding: 6px 0;
-            font-size: 14px;
-            input[type="checkbox"] { width: 20px; height: 20px; }
+            padding: 4px 0;
+            font-size: 13.5px;
+            input[type="checkbox"] { width: 18px; height: 18px; }
           }
         }
 
         input, select {
-          padding: 12px 14px;
+          padding: 9px 12px;
           font-size: 16px;
-          min-height: 48px;
+          min-height: 40px;
         }
 
         .form-actions {
           .btn {
             flex: 1;
             justify-content: center;
-            min-height: 44px;
+            min-height: 40px;
           }
         }
       }
 
-      // Convert select más grande y visible
+      // Menú ⋮ (convertir) — cuadrado táctil y centrado
       .convert-select {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
+        line-height: 34px;
         font-size: 18px;
         padding: 0;
       }
@@ -1455,7 +1640,8 @@
 
     .extra-item {
       .extra-info {
-        strong { font-size: 14.5px; }
+        strong { font-size: 14px; }
+        .date { font-size: 11.5px; }
       }
     }
 
@@ -1502,6 +1688,7 @@
           }
           select {
             flex: 1 1 calc(50% - 8px);
+            min-width: 0;
             min-height: 44px;
             padding: 10px 12px;
             font-size: 15px;
@@ -1509,6 +1696,7 @@
           .cat-total-input {
             flex: 1 1 calc(50% - 44px) !important;
             width: auto !important;
+            min-width: 0;
             min-height: 44px;
             padding: 10px 12px;
             font-size: 15px !important;
@@ -1522,21 +1710,56 @@
           }
         }
 
+        // Tarjeta de 2 filas: nombre arriba a todo el ancho; abajo monto + acciones
         .edit-item {
-          grid-template-columns: 1fr 110px 44px 44px !important;
-          gap: 6px;
+          grid-template-columns: 1fr auto auto !important;
+          grid-template-areas:
+            "name   name   name"
+            "amount credit remove";
+          gap: 8px;
           align-items: center;
-          margin: 10px 0;
+          margin: 12px 0;
+          padding: 10px;
+          border: 1px solid $border;
+          border-radius: $r-md;
+          background: $surface;
+
+          input[type="text"]   { grid-area: name; }
+          input[type="number"] { grid-area: amount; }
+          .credit-toggle                { grid-area: credit; }
+          .btn-icon:not(.credit-toggle) { grid-area: remove; }
 
           input {
+            width: 100%;
+            min-width: 0; // permite que la columna 1fr encoja: evita el overflow
             padding: 10px 12px;
             font-size: 15px;
             min-height: 44px;
           }
-          .btn-icon {
+
+          .credit-toggle {
+            width: auto;
+            min-height: 44px;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            border: 1px solid color.adjust($credit, $lightness: 22%);
+            i { font-size: 18px; }
+            .credit-label { display: inline; font-size: 13.5px; font-weight: 600; }
+          }
+          .btn-icon:not(.credit-toggle) {
             width: 44px;
             height: 44px;
-            font-size: 18px;
+            font-size: 20px;
+          }
+
+          &.is-credit {
+            border-color: color.adjust($credit, $lightness: 22%);
+            background: $credit-soft;
+            input { background: $surface; }
           }
         }
 

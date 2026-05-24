@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from 'environments/environment';
-import { LsLoan } from '@models/finance.models';
+import { LsLoan, LoanTransferType } from '@models/finance.models';
 
 export interface LsPayLoanResult {
     loan: LsLoan;
@@ -13,6 +13,11 @@ export interface LsTransferLoanResult {
     originalLoan: LsLoan;
     newLoan: LsLoan;
     savingsMovementId: string;
+}
+
+export interface LsRevertTransferResult {
+    loan: LsLoan;
+    removedLoanId: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,8 +42,12 @@ export class LoanService {
         return this.http.patch<LsPayLoanResult>(`${this.url}/${id}/pay`, body);
     }
 
-    transfer(id: string, toStatementId: string): Observable<LsTransferLoanResult> {
-        return this.http.patch<LsTransferLoanResult>(`${this.url}/${id}/transfer`, { toStatementId });
+    transfer(id: string, toStatementId: string, mode: LoanTransferType): Observable<LsTransferLoanResult> {
+        return this.http.patch<LsTransferLoanResult>(`${this.url}/${id}/transfer`, { toStatementId, mode });
+    }
+
+    revertTransfer(id: string): Observable<LsRevertTransferResult> {
+        return this.http.patch<LsRevertTransferResult>(`${this.url}/${id}/revert-transfer`, {});
     }
 
     repaySavings(id: string): Observable<LsLoan> {

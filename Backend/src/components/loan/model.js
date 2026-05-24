@@ -2,10 +2,12 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 
 const historySchema = new Schema({
-    type: { type: String, enum: ['lent', 'transferred', 'paid', 'partial_payment', 'repaid_savings'], required: true },
+    type: { type: String, enum: ['lent', 'transferred', 'paid', 'partial_payment', 'repaid_savings', 'transfer_reverted'], required: true },
     date: { type: Date, default: Date.now },
     toStatementId: Schema.Types.ObjectId,
+    fromStatementId: Schema.Types.ObjectId,
     savingsMovementId: Schema.Types.ObjectId,
+    transferType: { type: String, enum: ['savings', 'debt'] },
     amount: Number
 }, { _id: false })
 
@@ -25,7 +27,17 @@ const loanSchema = new Schema({
     paidBackToSavings: { type: Boolean, default: false },
     savingsDepositId: { type: Schema.Types.ObjectId, default: null },
     fromCard: { type: Boolean, default: false },
-    cardPurchaseId: { type: Schema.Types.ObjectId, default: null }
+    cardPurchaseId: { type: Schema.Types.ObjectId, default: null },
+    // Cómo se transfirió este préstamo (origen y destino comparten el valor):
+    //   'savings' → se retiró de ahorros para cubrir el mes actual (el nuevo es fromSavings).
+    //   'debt'    → solo se movió la deuda al siguiente mes (el nuevo es transferDeferred).
+    transferType: { type: String, enum: ['savings', 'debt'], default: null },
+    transferredToLoanId: { type: Schema.Types.ObjectId, default: null },   // en el original transferido → préstamo nuevo
+    transferredFromLoanId: { type: Schema.Types.ObjectId, default: null }, // en el préstamo nuevo → original
+    // Préstamo RECIBIDO por transferencia de deuda: su principal ya se descontó en el mes origen.
+    // NO descuenta del disponible mientras está pendiente; solo SUMA al cobrarse. Flag pegajoso
+    // (se mantiene aunque luego se re-transfiera) para no duplicar el descuento en cadenas.
+    transferDeferred: { type: Boolean, default: false }
 }, { timestamps: true })
 
 loanSchema.index({ userId: 1, currentStatementId: 1 })

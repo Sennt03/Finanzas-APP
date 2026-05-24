@@ -6,7 +6,7 @@ import { CreditPurchaseService } from '@services/credit-purchase.service';
 import { LoanService } from '@services/loan.service';
 import { AccountService } from '@services/account.service';
 import {
-  CategoryKind, ExtraType, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementItem, MONTH_NAMES
+  CategoryKind, ExtraType, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementExtra, LsStatementItem, MONTH_NAMES
 } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
@@ -54,6 +54,9 @@ export class MonthDetailComponent {
   // Transaction form
   showTx = signal(false);
   flashExtras = signal(false); // resalta la sección al saltar con el botón rápido
+
+  // Navegador de secciones (FAB que despliega accesos rápidos dentro del mes)
+  showNav = signal(false);
   txType = signal<TxType>('expense');
   txName = signal('');
   txAmount = signal<number | null>(null);
@@ -115,6 +118,45 @@ export class MonthDetailComponent {
     const s = this.stmt();
     return s ? `${MONTH_NAMES[s.month - 1]} ${s.year}` : '';
   });
+
+  // ¿El mes tiene categoría virtual de tarjeta? (controla el acceso "Tarjeta" del navegador)
+  hasCredit = computed(() => (this.stmt()?.categories || []).some(c => c.isVirtual));
+
+  // Movimientos extras agrupados por día, de más reciente a más viejo.
+  // Cada grupo expone el total gastado (expense) e ingresado (income) de ese día.
+  extrasByDay = computed(() => {
+    const s = this.stmt();
+    if (!s) return [] as { key: string; label: string; spent: number; income: number; items: LsStatementExtra[] }[];
+    const groups = new Map<string, { key: string; label: string; sortKey: number; spent: number; income: number; items: LsStatementExtra[] }>();
+    for (const e of s.extras) {
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { key, label: this.dayLabel(d), sortKey: d.getTime(), spent: 0, income: 0, items: [] };
+        groups.set(key, g);
+      }
+      g.items.push(e);
+      if (e.type === 'income') g.income += e.amount; else g.spent += e.amount;
+    }
+    const arr = [...groups.values()].sort((a, b) => b.sortKey - a.sortKey);
+    for (const g of arr) g.items.reverse(); // dentro del día, lo último agregado arriba
+    return arr;
+  });
+
+  /** Etiqueta amistosa para el separador de día: "Hoy", "Ayer" o "Vie 23 may". */
+  private dayLabel(d: Date): string {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = new Date(d); day.setHours(0, 0, 0, 0);
+    const diff = Math.round((today.getTime() - day.getTime()) / 86400000);
+    if (diff === 0) return 'Hoy';
+    if (diff === 1) return 'Ayer';
+    const txt = new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short' })
+      .format(d)
+      .replace(/\./g, '')
+      .replace(',', '');
+    return txt.charAt(0).toUpperCase() + txt.slice(1);
+  }
 
   draftTotalBudgeted = computed(() =>
     this.draftCategories().reduce((acc, c) => {
@@ -675,13 +717,20 @@ export class MonthDetailComponent {
 
   closeTx() { this.showTx.set(false); }
 
-  /** Acceso rápido: baja con animación a la sección de movimientos extras. */
-  scrollToExtras() {
-    const el = document.getElementById('extras-section');
+  // ----- Navegador de secciones -----
+  toggleNav() { this.showNav.update(v => !v); }
+  closeNav() { this.showNav.set(false); }
+
+  /** Salta a una sección del mes y cierra el navegador. Resalta extras al ir ahí. */
+  navTo(id: string) {
+    this.showNav.set(false);
+    const el = document.getElementById(id);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    this.flashExtras.set(true);
-    setTimeout(() => this.flashExtras.set(false), 1500);
+    if (id === 'extras-section') {
+      this.flashExtras.set(true);
+      setTimeout(() => this.flashExtras.set(false), 1500);
+    }
   }
 
   submitTx() {

@@ -9,7 +9,8 @@ const createLoanSchema = Joi.object({
 })
 
 const transferSchema = Joi.object({
-    toStatementId: Joi.string().hex().length(24).required()
+    toStatementId: Joi.string().hex().length(24).required(),
+    mode: Joi.string().valid('savings', 'debt').required()
 })
 
 module.exports = {

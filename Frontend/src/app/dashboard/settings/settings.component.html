@@ -46,6 +46,7 @@
               (click)="toggleItemCredit(ci, ii)"
               [title]="isCreditItem(it) ? 'Se paga con tarjeta · click para cambiar a efectivo' : 'Marcar como pago con tarjeta'">
               <i class="bx bx-credit-card"></i>
+              <span class="credit-label">Tarjeta</span>
             </button>
             <button class="btn-icon" (click)="removeItem(ci, ii)" title="Eliminar item">
               <i class="bx bx-x"></i>

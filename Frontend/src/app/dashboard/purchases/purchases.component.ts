@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { catchError, forkJoin, of } from 'rxjs';
 import { CreditPurchaseService } from '@services/credit-purchase.service';
-import { LsCreditPurchase, MONTH_NAMES } from '@models/finance.models';
+import { MonthlyStatementService } from '@services/monthly-statement.service';
+import { LsCreditPurchase, LsMonthlyStatement, MONTH_NAMES } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
 
@@ -14,14 +16,30 @@ interface PurchaseView extends LsCreditPurchase {
   cuotaAmount: number;
 }
 
-interface MonthTotal {
+// Una fila = la cuota de una compra que cae en un mes concreto.
+interface MonthRow {
+  view: PurchaseView;
+  name: string;
+  isDiferido: boolean;
+  cuotaIndex: number;   // posición cronológica de la cuota dentro de la compra (1-based)
+  totalCuotas: number;
+  amount: number;       // monto de la cuota de ESE mes
+  isPaid: boolean;
+  isShared: boolean;
+  borrowerName: string;
+}
+
+// Un bloque por mes: cabecera inline (resumen) + filas de cuotas que se pagan ese mes.
+interface MonthBlock {
   year: number;
   month: number;
   label: string;
-  total: number;
+  total: number;            // suma de cuotas de compras de ese mes (mío + otros)
   mine: number;
   others: number;
   byBorrower: { name: string; amount: number }[];
+  realTotal: number | null; // total real a pagar en tarjeta ese mes (incluye items a crédito en categorías)
+  rows: MonthRow[];
 }
 
 @Component({
@@ -33,8 +51,11 @@ interface MonthTotal {
 })
 export class PurchasesComponent {
   private svc = inject(CreditPurchaseService);
+  private stmtSvc = inject(MonthlyStatementService);
 
   purchases = signal<LsCreditPurchase[]>([]);
+  // Total real de tarjeta por mes (`year-month` -> summary.creditCard.total), tomado de cada estado mensual.
+  realTotals = signal<Map<string, number>>(new Map());
   loading = signal(false);
 
   editingId = signal<string | null>(null);
@@ -61,17 +82,19 @@ export class PurchasesComponent {
     })
   );
 
-  diferidos = computed(() => this.enriched().filter(p => p.installments > 1));
-  singles = computed(() => this.enriched().filter(p => p.installments === 1));
+  // Compras agrupadas por mes de pago. Una compra diferida aparece en cada mes que tenga cuota,
+  // mostrando la cuota de ese mes. En una compra compartida la cuota es deuda del prestatario.
+  months = computed<MonthBlock[]>(() => {
+    const realTotals = this.realTotals();
+    const map = new Map<string, MonthBlock>();
 
-  // Total a pagar por cada mes, separando lo mío de lo de otras personas.
-  // En una compra compartida (isShared) la cuota completa es deuda del prestatario.
-  monthlyTotals = computed<MonthTotal[]>(() => {
-    const map = new Map<string, MonthTotal>();
-    for (const p of this.purchases()) {
+    for (const p of this.enriched()) {
       const shared = !!p.isShared;
       const borrower = (p.borrowerName ?? '').trim() || 'Otra persona';
-      for (const c of p.cuotas) {
+      const isDiferido = p.installments > 1;
+      const totalCuotas = p.cuotas.length;
+
+      p.cuotas.forEach((c, idx) => {
         const key = `${c.year}-${c.month}`;
         let m = map.get(key);
         if (!m) {
@@ -82,7 +105,9 @@ export class PurchasesComponent {
             total: 0,
             mine: 0,
             others: 0,
-            byBorrower: []
+            byBorrower: [],
+            realTotal: realTotals.has(key) ? realTotals.get(key)! : null,
+            rows: []
           };
           map.set(key, m);
         }
@@ -95,18 +120,44 @@ export class PurchasesComponent {
         } else {
           m.mine += c.amount;
         }
-      }
+        m.rows.push({
+          view: p,
+          name: p.name,
+          isDiferido,
+          cuotaIndex: idx + 1,
+          totalCuotas,
+          amount: c.amount,
+          isPaid: c.isPaid,
+          isShared: shared,
+          borrowerName: shared ? borrower : ''
+        });
+      });
     }
-    return [...map.values()].sort((a, b) => (a.year - b.year) || (a.month - b.month));
+
+    const blocks = [...map.values()];
+    // Dentro del mes: pendientes primero, luego por monto desc.
+    for (const b of blocks) {
+      b.rows.sort((x, y) => (Number(x.isPaid) - Number(y.isPaid)) || (y.amount - x.amount));
+    }
+    // Meses más recientes primero (junio, mayo, ...).
+    return blocks.sort((a, b) => (b.year - a.year) || (b.month - a.month));
   });
 
   ngOnInit() { this.load(); }
 
   load() {
     this.loading.set(true);
-    this.svc.list().subscribe({
-      next: (data) => {
-        this.purchases.set(data);
+    forkJoin({
+      purchases: this.svc.list(),
+      statements: this.stmtSvc.list().pipe(catchError(() => of([] as LsMonthlyStatement[])))
+    }).subscribe({
+      next: ({ purchases, statements }) => {
+        this.purchases.set(purchases);
+        const rt = new Map<string, number>();
+        for (const s of statements) {
+          rt.set(`${s.year}-${s.month}`, s.summary?.creditCard?.total ?? 0);
+        }
+        this.realTotals.set(rt);
         this.loading.set(false);
       },
       error: () => {

@@ -23,121 +23,186 @@
     i { font-size: 56px; opacity: 0.3; color: $credit; display: block; margin-bottom: 10px; }
   }
 
-  .block {
-    margin-bottom: 28px;
-    h2 {
+  // =====================================================
+  // Bloque por mes: cabecera inline + filas de cuotas
+  // =====================================================
+  .month-block {
+    margin-bottom: 26px;
+  }
+
+  // Línea inline que reemplaza las antiguas cards de "Pago por mes".
+  .month-inline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 8px 4px 10px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid $border-strong;
+
+    .m-name {
+      font-weight: 800;
       font-size: 16px;
-      font-weight: 700;
+      text-transform: capitalize;
+      color: $primary;
+    }
+
+    .m-purchases {
+      font-size: 13px;
+      color: $primary-soft;
+      strong { font-size: 15px; font-weight: 800; color: $primary; margin-left: 2px; }
+    }
+
+    // Desglose mío / otros: pequeño y no intrusivo.
+    .m-split {
+      display: inline-flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11.5px;
+      color: $primary-muted;
+
+      .mine { color: $success; font-weight: 600; }
+      .others { color: $credit; font-weight: 600; }
+      .sep { opacity: 0.5; }
+      .borrower {
+        background: $surface-alt;
+        border: 1px solid $border;
+        border-radius: 999px;
+        padding: 1px 8px;
+        font-weight: 600;
+      }
+    }
+
+    // Total real de tarjeta del mes: info extra, discreta, alineada a la derecha.
+    .m-real {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11.5px;
+      color: $primary-muted;
+      cursor: help;
+      i { font-size: 13px; opacity: 0.7; }
+      strong { font-size: 13px; font-weight: 800; color: $accent; margin-left: 2px; }
+    }
+  }
+
+  .month-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .row {
+    background: $surface;
+    border: 1px solid $border;
+    border-left: 3px solid $savings;
+    border-radius: $r-md;
+    box-shadow: $shadow-sm;
+    transition: box-shadow .15s ease;
+
+    &:hover { box-shadow: $shadow-md; }
+    &.paid { opacity: 0.7; border-left-color: $success; }
+
+    details > summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: 0 0 12px;
-      padding-left: 4px;
-      i { color: $credit; }
-    }
-  }
-
-  .monthly-summary {
-    .month-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 12px;
-    }
-
-    .month-card {
-      background: $surface;
-      border: 1px solid $border;
-      border-top: 3px solid $accent;
-      border-radius: $r-lg;
-      padding: 14px 16px;
-      box-shadow: $shadow-sm;
-
-      .month-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        gap: 10px;
-        margin-bottom: 10px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid $border;
-
-        .month-name { font-weight: 700; font-size: 14px; text-transform: capitalize; }
-        .month-total { font-size: 18px; font-weight: 800; color: $primary; }
-      }
-
-      .split { display: flex; flex-direction: column; gap: 6px; }
-
-      .split-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-
-        .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-        .t { flex: 1; color: $primary-soft; }
-        .v { font-weight: 700; color: $primary; }
-
-        &.mine .dot { background: $success; }
-        &.others .dot { background: $credit; }
-      }
-
-      .borrower-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        font-size: 12px;
-        padding-left: 17px;
+      padding: 11px 14px;
+      &::-webkit-details-marker { display: none; }
+      &::before {
+        content: '▸';
+        font-size: 10px;
         color: $primary-muted;
-
-        .v { font-weight: 600; }
+        flex: none;
+        transition: transform .15s ease;
       }
+    }
+    details[open] > summary::before { transform: rotate(90deg); }
+
+    .r-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: $primary;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .r-amount {
+      margin-left: auto;
+      font-weight: 800;
+      font-size: 14.5px;
+      color: $primary;
+      flex: none;
     }
   }
 
-  .purchase-card {
-    background: $surface;
-    border-radius: $r-lg;
-    padding: 20px 22px;
-    box-shadow: $shadow-sm;
-    border: 1px solid $border;
-    border-left: 4px solid $savings;
-    margin-bottom: 14px;
-    transition: transform .15s ease, box-shadow .15s ease;
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    i { font-size: 11px; }
 
-    &:hover { transform: translateY(-1px); box-shadow: $shadow-md; }
-    &.single { border-left-color: $credit; }
+    &.diferido { background: rgba($savings, 0.14); color: $savings; }
+    &.tdc { background: rgba($credit, 0.14); color: $credit; }
+    &.shared { background: $surface-alt; color: $primary-soft; border: 1px solid $border; text-transform: none; }
+  }
 
-    .head {
+  .row-detail {
+    padding: 0 14px 14px;
+    border-top: 1px solid $border;
+    margin-top: 2px;
+    padding-top: 12px;
+
+    .edit-fields {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
+      flex-wrap: wrap;
       gap: 12px;
-
-      h3 { margin: 0; font-size: 17px; font-weight: 700; }
-      .actions { display: flex; gap: 6px; }
+      margin-bottom: 12px;
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: $primary-muted;
+      }
     }
 
     .edit-input {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
-      padding: 6px 10px;
+      padding: 8px 10px;
       border-radius: $r-sm;
       border: 1px solid $border;
       background: $surface-alt;
-      flex: 1;
-      max-width: 320px;
       transition: border-color .15s ease, box-shadow .15s ease;
       &:focus { outline: none; border-color: $accent; box-shadow: 0 0 0 3px rgba($accent, 0.12); background: $surface; }
-
-      &.small { width: 100px; font-size: 14px; max-width: none; flex: none; }
+      &.small { width: 140px; }
     }
 
     .meta {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 14px;
-      margin-bottom: 14px;
+      gap: 12px;
+      margin-bottom: 12px;
 
       .label {
         display: block;
@@ -163,7 +228,7 @@
       background: $border;
       border-radius: 999px;
       overflow: hidden;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       .bar {
         height: 100%;
         background: $success;
@@ -172,25 +237,10 @@
       }
     }
 
-    .cuotas-details {
-      summary {
-        cursor: pointer;
-        font-size: 13px;
-        color: $accent;
-        font-weight: 600;
-        user-select: none;
-        list-style: none;
-        &::-webkit-details-marker { display: none; }
-        &::before { content: '▸ '; font-size: 10px; }
-        &:hover { color: $accent-hover; }
-      }
-      &[open] summary::before { content: '▾ '; }
-    }
-
     .cuotas-list {
       list-style: none;
-      padding: 10px 0 0;
-      margin: 0;
+      padding: 0;
+      margin: 0 0 12px;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 6px;
@@ -208,7 +258,15 @@
         .m { flex: 1; color: $primary-soft; }
         .a { font-weight: 700; color: $primary; }
         &.paid { opacity: 0.65; }
+        // Resalta la cuota correspondiente al mes del bloque.
+        &.current { border-color: $accent; box-shadow: 0 0 0 1px rgba($accent, 0.25); }
       }
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
     }
   }
 }
@@ -220,6 +278,7 @@
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
+  flex: none;
   &.paid { background: $success-soft; color: $success; }
   &.pending { background: $warning-soft; color: $warning; }
 }
@@ -274,105 +333,54 @@
       h1 { font-size: 22px; }
     }
 
-    .block {
-      margin-bottom: 20px;
-      h2 { font-size: 15px; margin-bottom: 10px; }
+    .month-block { margin-bottom: 20px; }
+
+    .month-inline {
+      gap: 4px 10px;
+      .m-real { margin-left: 0; flex-basis: 100%; }
     }
 
-    .monthly-summary .month-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .purchase-card {
-      padding: 16px;
-      border-radius: $r-md;
-      margin-bottom: 12px;
-
-      .head {
+    .row {
+      details > summary {
         flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 12px;
+        padding: 12px 14px;
+        .r-name { flex: 1 1 auto; min-width: 0; }
+        .r-amount { font-size: 15px; }
+      }
+    }
 
-        h3 {
-          font-size: 16px;
-          flex: 1 1 100%;
-          line-height: 1.3;
-        }
-
-        .edit-input {
-          flex: 1 1 100%;
-          max-width: none;
-          padding: 12px 14px;
-          font-size: 16px;
-          min-height: 44px;
-        }
-
-        .actions {
-          width: 100%;
-          gap: 8px;
-
-          .btn-icon {
-            min-width: 44px;
-            min-height: 44px;
-            font-size: 22px;
-            background: $surface-alt;
-            border-radius: $r-md;
-            flex: 1;
-
-            &.danger {
-              background: $danger-soft;
-              color: $danger;
-            }
-          }
-
-          .btn {
-            min-height: 44px;
-            flex: 1;
-            justify-content: center;
-          }
-        }
+    .row-detail {
+      .edit-fields label { flex: 1 1 100%; }
+      .edit-input {
+        padding: 12px 14px;
+        font-size: 16px;
+        min-height: 44px;
+        &.small { width: 100%; }
       }
 
       .meta {
         grid-template-columns: repeat(2, 1fr);
-        gap: 14px 12px;
-        margin-bottom: 12px;
-
-        .label { font-size: 10.5px; }
-        strong { font-size: 14.5px; }
-
-        // Periodo y Fecha en línea completa
-        > div:nth-child(5),
-        > div:nth-child(6) {
-          grid-column: span 2;
-        }
+        gap: 12px;
+        > div:nth-child(4),
+        > div:nth-child(5) { grid-column: span 2; }
       }
 
-      .edit-input.small {
-        width: 100%;
-        padding: 10px 12px;
-        font-size: 16px;
-        min-height: 44px;
+      .cuotas-list {
+        grid-template-columns: 1fr;
+        li { padding: 12px 14px; font-size: 14px; }
       }
 
-      .cuotas-details {
-        summary {
-          padding: 8px 0;
-          font-size: 14px;
+      .actions {
+        .btn-icon {
+          min-width: 44px;
           min-height: 44px;
-          display: flex;
-          align-items: center;
+          font-size: 22px;
+          background: $surface-alt;
+          border-radius: $r-md;
+          flex: 1;
+          &.danger { background: $danger-soft; color: $danger; }
         }
-
-        .cuotas-list {
-          grid-template-columns: 1fr;
-          gap: 6px;
-
-          li {
-            padding: 12px 14px;
-            font-size: 14px;
-          }
-        }
+        .btn { min-height: 44px; flex: 1; justify-content: center; }
       }
     }
 

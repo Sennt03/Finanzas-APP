@@ -45,9 +45,10 @@ async function listForStatement(userId, statementId) {
 }
 
 async function getPendingTotal(userId, statementId) {
-    // Include 'transferred' (!fromSavings, !fromCard) so savings withdrawal compensates correctly.
-    // Exclude fromSavings/fromCard loans: savings or card already covered them.
-    const loans = await Loan.find({ userId, currentStatementId: statementId, status: { $in: ['pending', 'transferred'] }, fromSavings: { $ne: true }, fromCard: { $ne: true } })
+    // Descuentan del mes: pending/transferred que NO son fromSavings/fromCard/transferDeferred.
+    // (El 'transferred' de origen sigue restando aquí; en savings el retiro lo compensa.
+    //  Los recibidos por transferencia de deuda ya se descontaron en su mes origen.)
+    const loans = await Loan.find({ userId, currentStatementId: statementId, status: { $in: ['pending', 'transferred'] }, fromSavings: { $ne: true }, fromCard: { $ne: true }, transferDeferred: { $ne: true } })
     return loans.reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
 }
 
@@ -113,7 +114,7 @@ async function pay(userId, loanId, { amount } = {}) {
     }
 }
 
-async function transfer(userId, loanId, { toStatementId }) {
+async function transfer(userId, loanId, { toStatementId, mode }) {
     const loan = await Loan.findOne({ _id: loanId, userId })
     if (!loan) throw myError('Préstamo no encontrado', 404)
     if (loan.status !== 'pending') throw myError('Solo se puede transferir un préstamo pendiente', 400)
@@ -131,28 +132,38 @@ async function transfer(userId, loanId, { toStatementId }) {
         if (targetKey <= originKey) throw myError('Solo puedes transferir a un mes posterior', 400)
     }
 
+    // fromCard loans are always covered by the card payment — never touch savings ni cuentan en balance.
+    // Para el resto el usuario elige:
+    //   'savings' → retirar de ahorros para cubrir el mes actual (el nuevo préstamo queda fromSavings).
+    //   'debt'    → solo mover el saldo pendiente al siguiente mes (el nuevo es un préstamo normal).
+    const transferType = loan.fromCard ? null : mode
+    const useSavings = transferType === 'savings'
+
     // Solo se transfiere el saldo pendiente, no el total original
     const remaining = loan.amount - (loan.paidAmount || 0)
+    const targetLabel = `${targetStmt.year}/${String(targetStmt.month).padStart(2, '0')}`
+    const originLabel = originStmt ? `${originStmt.year}/${String(originStmt.month).padStart(2, '0')}` : '—'
 
     let withdrawal = null
-    if (!loan.fromCard) {
-        // fromCard loans are covered by card payment — no savings withdrawal needed
+    if (useSavings && !loan.fromCard) {
         const savingsAcc = await ensureSavingsAccount(userId)
+        // El retiro debe pesar en el MES DE ORIGEN del préstamo (no en el mes calendario de hoy),
+        // porque buildEnrichedStatement suma los retiros por rango de fechas del mes. Así la
+        // compensación (+remaining) cae en el mismo mes que el descuento del préstamo → neto 0
+        // en el origen, y el mes destino nunca recibe nada. (Corrige el descuadre A2.)
+        const withdrawalDate = originStmt
+            ? new Date(originStmt.year, originStmt.month - 1, 15, 12, 0, 0)
+            : new Date()
         withdrawal = await SavingsMovement.create({
             userId,
             accountId: savingsAcc._id,
             type: 'withdrawal',
             amount: remaining,
-            description: `Préstamo a ${loan.borrowerName} → transferido a ${targetStmt.year}/${String(targetStmt.month).padStart(2, '0')}`,
+            description: `Préstamo a ${loan.borrowerName} → transferido a ${targetLabel}`,
             monthlyStatementId: loan.currentStatementId,
-            date: new Date()
+            date: withdrawalDate
         })
     }
-
-    // Marcar original como transferido
-    loan.status = 'transferred'
-    loan.history.push({ type: 'transferred', date: new Date(), toStatementId, savingsMovementId: withdrawal ? withdrawal._id : null })
-    await loan.save()
 
     // Nuevo préstamo en el mes destino por el monto restante
     const newLoan = await Loan.create({
@@ -163,16 +174,34 @@ async function transfer(userId, loanId, { toStatementId }) {
         originStatementId: loan.originStatementId,
         currentStatementId: toStatementId,
         status: 'pending',
-        fromSavings: !loan.fromCard && !!withdrawal,
+        fromSavings: useSavings && !loan.fromCard && !!withdrawal,
         savingsWithdrawalId: withdrawal ? withdrawal._id : null,
         fromCard: loan.fromCard || false,
         cardPurchaseId: loan.cardPurchaseId || null,
-        history: [{ type: 'transferred', date: new Date(), toStatementId }]
+        transferType,
+        // Deuda: el principal ya se descontó en el mes origen (el original transferido lo sigue
+        // restando), así que el nuevo NO descuenta del destino; solo suma al cobrarse.
+        transferDeferred: transferType === 'debt',
+        transferredFromLoanId: loan._id,
+        history: [{ type: 'transferred', date: new Date(), fromStatementId: loan.currentStatementId, transferType }]
     })
 
-    await log(userId, originStmt.year, originStmt.month, 'loan_transferred',
-        `Préstamo transferido: ${loan.borrowerName} $${remaining.toFixed(2)} → ${targetStmt.year}/${String(targetStmt.month).padStart(2, '0')}`,
-        remaining)
+    // Marcar original como transferido y enlazarlo al nuevo (para poder revertir)
+    loan.status = 'transferred'
+    loan.transferType = transferType
+    loan.transferredToLoanId = newLoan._id
+    loan.history.push({ type: 'transferred', date: new Date(), toStatementId, transferType, savingsMovementId: withdrawal ? withdrawal._id : null })
+    await loan.save()
+
+    const modeLabel = loan.fromCard ? 'tarjeta' : (useSavings ? 'cubierto con ahorros' : 'deuda al siguiente mes')
+    if (originStmt) {
+        await log(userId, originStmt.year, originStmt.month, 'loan_transferred',
+            `Préstamo transferido: ${loan.borrowerName} $${remaining.toFixed(2)} → ${targetLabel} (${modeLabel})`,
+            remaining, { loanId: String(newLoan._id), transferType })
+    }
+    await log(userId, targetStmt.year, targetStmt.month, 'loan_transferred',
+        `Préstamo entrante: ${loan.borrowerName} $${remaining.toFixed(2)} desde ${originLabel} (${modeLabel})`,
+        remaining, { loanId: String(newLoan._id), transferType })
 
     const allLoans = [loan, newLoan]
     const stmtMap = await buildStmtMap(allLoans)
@@ -180,6 +209,65 @@ async function transfer(userId, loanId, { toStatementId }) {
         originalLoan: enrichLoan(loan, stmtMap),
         newLoan: enrichLoan(newLoan, stmtMap),
         savingsMovementId: withdrawal ? withdrawal._id : null
+    }
+}
+
+async function revertTransfer(userId, loanId) {
+    // Acepta el id del original transferido o el del préstamo nuevo: resolvemos el par.
+    let original = await Loan.findOne({ _id: loanId, userId })
+    if (!original) throw myError('Préstamo no encontrado', 404)
+
+    if (original.status === 'pending' && original.transferredFromLoanId) {
+        // Nos pasaron el préstamo nuevo → el original es su padre.
+        const parent = await Loan.findOne({ _id: original.transferredFromLoanId, userId })
+        if (!parent) throw myError('No se encontró el préstamo original de la transferencia', 404)
+        original = parent
+    }
+
+    if (original.status !== 'transferred') throw myError('Solo se puede revertir un préstamo transferido', 400)
+    if (!original.transferredToLoanId) throw myError('Esta transferencia es antigua y no se puede revertir automáticamente', 400)
+
+    const newLoan = await Loan.findOne({ _id: original.transferredToLoanId, userId })
+    if (!newLoan) throw myError('No se encontró el préstamo destino de la transferencia', 404)
+    if (newLoan.status === 'transferred') throw myError('El préstamo ya fue transferido de nuevo — revierte esa transferencia primero', 400)
+    if (newLoan.status === 'paid' || (newLoan.paidAmount || 0) > 0) {
+        throw myError('No se puede revertir: el préstamo ya tiene cobros en el mes destino', 400)
+    }
+
+    const targetStmt = await Statement.findById(newLoan.currentStatementId, 'year month').lean()
+    const originStmt = await Statement.findById(original.currentStatementId, 'year month').lean()
+
+    // Deshacer el retiro de ahorros si la transferencia fue 'savings'.
+    // El préstamo nuevo referencia su propio retiro; el historial es el respaldo.
+    if (original.transferType === 'savings') {
+        const fallback = [...original.history].reverse().find(h => h.type === 'transferred' && h.savingsMovementId)
+        const withdrawalId = newLoan.savingsWithdrawalId || (fallback ? fallback.savingsMovementId : null)
+        if (withdrawalId) await SavingsMovement.deleteOne({ _id: withdrawalId, userId })
+    }
+
+    // Borrar el préstamo nuevo y restaurar el original a pendiente
+    await newLoan.deleteOne()
+
+    original.status = 'pending'
+    original.transferType = null
+    original.transferredToLoanId = null
+    original.history.push({ type: 'transfer_reverted', date: new Date() })
+    await original.save()
+
+    const remaining = newLoan.amount
+    if (targetStmt) {
+        await log(userId, targetStmt.year, targetStmt.month, 'loan_transfer_reverted',
+            `Transferencia revertida: ${original.borrowerName} $${remaining.toFixed(2)} retirado de este mes`, remaining)
+    }
+    if (originStmt) {
+        await log(userId, originStmt.year, originStmt.month, 'loan_transfer_reverted',
+            `Transferencia revertida: ${original.borrowerName} $${remaining.toFixed(2)} regresó a este mes`, remaining)
+    }
+
+    const stmtMap = await buildStmtMap([original])
+    return {
+        loan: enrichLoan(original, stmtMap),
+        removedLoanId: String(newLoan._id)
     }
 }
 
@@ -233,4 +321,4 @@ async function remove(userId, loanId) {
     return { _id: loanId }
 }
 
-module.exports = { list, listForStatement, getPendingTotal, create, pay, transfer, repaySavings, remove }
+module.exports = { list, listForStatement, getPendingTotal, create, pay, transfer, revertTransfer, repaySavings, remove }

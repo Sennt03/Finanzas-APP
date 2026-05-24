@@ -37,6 +37,9 @@
             @if (loan.fromSavings) {
               <span class="tag savings-tag">de ahorros</span>
             }
+            @if (loan.transferDeferred) {
+              <span class="tag debt-tag" title="La deuda ya se descontó en el mes origen. No resta este mes; suma cuando la cobres.">deuda transferida</span>
+            }
           </div>
           <div class="amount-col">
             <span class="amount">${{ loanRemaining(loan) | number:'1.2-2' }}</span>
@@ -74,7 +77,37 @@
 
         @if (isTransfering(loan)) {
           <div class="transfer-form">
-            <label>
+            <!-- Paso 1: cómo transferir -->
+            @if (!loan.fromCard) {
+              <div class="tf-step-label">¿Cómo quieres transferirlo?</div>
+              <div class="mode-options" role="radiogroup">
+                <button
+                  type="button"
+                  class="mode-opt"
+                  role="radio"
+                  [attr.aria-checked]="transferMode() === 'debt'"
+                  [class.selected]="transferMode() === 'debt'"
+                  (click)="transferMode.set('debt')">
+                  <i class="bx bx-calendar-plus"></i>
+                  <span class="mo-title">Pasar deuda al siguiente mes</span>
+                  <span class="mo-desc">Mueve el préstamo al mes destino para cobrarlo ahí. El descuento se queda en este mes (ya lo prestaste); el mes destino NO se resta. No toca ahorros.</span>
+                </button>
+                <button
+                  type="button"
+                  class="mode-opt"
+                  role="radio"
+                  [attr.aria-checked]="transferMode() === 'savings'"
+                  [class.selected]="transferMode() === 'savings'"
+                  (click)="transferMode.set('savings')">
+                  <i class="bx bx-piggy-bank"></i>
+                  <span class="mo-title">Sacar de ahorros</span>
+                  <span class="mo-desc">Retira el saldo pendiente de tus ahorros para cubrir este mes. Te recordaré devolverlo cuando cobres.</span>
+                </button>
+              </div>
+            }
+
+            <!-- Paso 2: mes destino -->
+            <label class="tf-month">
               <i class="bx bx-right-arrow-alt"></i> Transferir al mes:
               <select [ngModel]="transferTargetId()" (ngModelChange)="transferTargetId.set($event)">
                 <option value="" disabled>Selecciona mes</option>
@@ -83,13 +116,31 @@
                 }
               </select>
             </label>
-            <div class="transfer-note">
-              <i class="bx bx-info-circle"></i>
-              Se hará un retiro de <strong>${{ loan.amount | number:'1.2-2' }}</strong> de tus ahorros para cubrir el mes actual.
-            </div>
+
+            <!-- Nota dinámica según el modo -->
+            @if (transferMode() === 'savings') {
+              <div class="transfer-note savings">
+                <i class="bx bx-piggy-bank"></i>
+                Se retirará <strong>${{ loanRemaining(loan) | number:'1.2-2' }}</strong> de tus ahorros para cubrir el mes actual. Cuando lo cobres, te avisaré para devolverlo.
+              </div>
+            } @else if (transferMode() === 'debt') {
+              <div class="transfer-note debt">
+                <i class="bx bx-info-circle"></i>
+                El préstamo se mueve al mes destino para cobrarlo ahí. El descuento de <strong>${{ loanRemaining(loan) | number:'1.2-2' }}</strong> se queda en el mes actual; el mes destino NO se resta y, al cobrarlo, suma. Tus ahorros no se tocan.
+              </div>
+            } @else {
+              <div class="transfer-note hint">
+                <i class="bx bx-pointer"></i>
+                Elige una opción arriba para continuar.
+              </div>
+            }
+
             <div class="transfer-actions">
               <button class="btn btn-outline btn-sm" (click)="closeTransfer()">Cancelar</button>
-              <button class="btn btn-warning btn-sm" (click)="submitTransfer(loan)">
+              <button
+                class="btn btn-warning btn-sm"
+                [disabled]="!transferMode() || !transferTargetId()"
+                (click)="submitTransfer(loan)">
                 <i class="bx bx-transfer"></i> Confirmar transferencia
               </button>
             </div>
@@ -104,6 +155,11 @@
             <button class="btn btn-outline btn-sm" (click)="openTransfer(loan)">
               <i class="bx bx-right-arrow-alt"></i> Transferir al sig. mes
             </button>
+            @if (canRevert(loan)) {
+              <button class="btn btn-outline btn-sm revert" (click)="revertTransfer(loan)" title="Deshacer la transferencia que trajo este préstamo">
+                <i class="bx bx-undo"></i> Deshacer transferencia
+              </button>
+            }
             <button class="btn-icon danger" (click)="deleteLoan(loan)" title="Eliminar préstamo">
               <i class="bx bx-trash"></i>
             </button>
@@ -170,13 +226,25 @@
               <i class="bx bx-right-arrow-alt"></i>
               <strong>{{ loan.borrowerName }}</strong>
               <span class="tag trans-tag">transferido</span>
+              @if (loan.transferType === 'savings') {
+                <span class="tag savings-tag">de ahorros</span>
+              } @else if (loan.transferType === 'debt') {
+                <span class="tag debt-tag">deuda</span>
+              }
             </div>
             <span class="amount">${{ loan.amount | number:'1.2-2' }}</span>
           </div>
           <div class="loan-meta">
             <span><i class="bx bx-calendar"></i> {{ loan.lentDate | date:'d MMM yyyy' }}</span>
-            <span><i class="bx bx-folder"></i> {{ stmtLabel(loan, 'origin') }} → transferido</span>
+            <span><i class="bx bx-folder"></i> {{ stmtLabel(loan, 'current') }} → transferido</span>
           </div>
+          @if (canRevert(loan)) {
+            <div class="loan-actions">
+              <button class="btn btn-outline btn-sm revert" (click)="revertTransfer(loan)">
+                <i class="bx bx-undo"></i> Revertir transferencia
+              </button>
+            </div>
+          }
         </div>
       }
     </section>

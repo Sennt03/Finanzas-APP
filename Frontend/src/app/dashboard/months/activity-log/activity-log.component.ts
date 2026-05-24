@@ -106,6 +106,7 @@ export class ActivityLogComponent {
             loan_paid: 'bx-check-circle',
             loan_partial: 'bx-radio-circle-marked',
             loan_transferred: 'bx-right-arrow-alt',
+            loan_transfer_reverted: 'bx-undo',
             loan_repaid_savings: 'bx-piggy-bank',
             loan_deleted: 'bx-trash',
             borrower_paid: 'bx-dollar',
@@ -118,7 +119,7 @@ export class ActivityLogComponent {
         if (['item_paid', 'loan_paid', 'credit_group_paid'].includes(action)) return 'success';
         if (['item_partial', 'loan_partial'].includes(action)) return 'warning';
         if (['item_deleted', 'extra_deleted', 'loan_deleted'].includes(action)) return 'danger';
-        if (['item_unpaid', 'credit_group_unpaid'].includes(action)) return 'muted';
+        if (['item_unpaid', 'credit_group_unpaid', 'loan_transfer_reverted'].includes(action)) return 'muted';
         if (['loan_created', 'loan_transferred', 'loan_repaid_savings', 'cuota_to_loan'].includes(action)) return 'loan';
         if (['tdc_created', 'diferido_created', 'borrower_paid'].includes(action)) return 'credit';
         if (['extra_added', 'item_added'].includes(action)) return 'accent';

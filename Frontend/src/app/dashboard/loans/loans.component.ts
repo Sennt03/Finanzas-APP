@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { LoanService } from '@services/loan.service';
 import { MonthlyStatementService } from '@services/monthly-statement.service';
-import { LsLoan, LsMonthlyStatement, MONTH_NAMES } from '@models/finance.models';
+import { LsLoan, LsMonthlyStatement, LoanTransferType, MONTH_NAMES } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
 
@@ -24,6 +24,7 @@ export class LoansComponent {
 
   transferingLoanId = signal<string | null>(null);
   transferTargetId = signal('');
+  transferMode = signal<LoanTransferType | ''>('');
 
   payingLoanId = signal<string | null>(null);
   loanPayAmount = signal<number | null>(null);
@@ -102,6 +103,8 @@ export class LoansComponent {
   openTransfer(loan: LsLoan) {
     this.transferingLoanId.set(loan._id);
     this.transferTargetId.set('');
+    // fromCard loans always settle through the card → solo aplica el modo 'savings'.
+    this.transferMode.set(loan.fromCard ? 'savings' : '');
     if (!this.statements().length) {
       this.stmtSvc.list().subscribe({
         next: (stmts) => this.statements.set(stmts.map(s => ({ _id: s._id, year: s.year, month: s.month }))),
@@ -113,6 +116,7 @@ export class LoansComponent {
   closeTransfer() {
     this.transferingLoanId.set(null);
     this.transferTargetId.set('');
+    this.transferMode.set('');
   }
 
   availableTargets(loan: LsLoan): Pick<LsMonthlyStatement, '_id' | 'year' | 'month'>[] {
@@ -124,16 +128,40 @@ export class LoansComponent {
 
   submitTransfer(loan: LsLoan) {
     const toId = this.transferTargetId();
+    const mode = this.transferMode();
+    if (!mode) { toastr.error('Elige cómo transferir el préstamo', ''); return; }
     if (!toId) { toastr.error('Selecciona el mes destino', ''); return; }
     this.loading.set(true);
-    this.loanSvc.transfer(loan._id, toId).subscribe({
+    this.loanSvc.transfer(loan._id, toId, mode).subscribe({
       next: ({ originalLoan, newLoan }) => {
         this.loans.update(list =>
           list.map(l => l._id === originalLoan._id ? originalLoan : l).concat(newLoan)
         );
         this.closeTransfer();
         this.loading.set(false);
-        toastr.success('Préstamo transferido. Se hizo un retiro de ahorros para cubrir el mes actual.', '');
+        if (mode === 'savings') {
+          toastr.success('Préstamo transferido. Se retiró de ahorros para cubrir el mes actual.', '');
+        } else {
+          toastr.success('Deuda movida al siguiente mes. El descuento se queda en este mes; la cobras allá.', '');
+        }
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  revertTransfer(loan: LsLoan) {
+    if (!confirm(`¿Revertir la transferencia del préstamo a ${loan.borrowerName}? Volverá a su mes original.`)) return;
+    this.loading.set(true);
+    this.loanSvc.revertTransfer(loan._id).subscribe({
+      next: ({ loan: restored, removedLoanId }) => {
+        this.loans.update(list =>
+          list.filter(l => l._id !== removedLoanId).map(l => l._id === restored._id ? restored : l)
+        );
+        this.loading.set(false);
+        toastr.success('Transferencia revertida', '');
       },
       error: (err) => {
         this.loading.set(false);
@@ -176,5 +204,12 @@ export class LoansComponent {
 
   isTransfering(loan: LsLoan): boolean {
     return this.transferingLoanId() === loan._id;
+  }
+
+  // Un préstamo nuevo (pendiente) sabe de dónde vino; el original transferido sabe a dónde fue.
+  canRevert(loan: LsLoan): boolean {
+    if (loan.status === 'transferred') return !!loan.transferredToLoanId;
+    if (loan.status === 'pending') return !!loan.transferredFromLoanId;
+    return false;
   }
 }

@@ -127,14 +127,22 @@ async function buildEnrichedStatement(stmt, userId) {
     const Loan = require('../loan/model')
     const allCurrentLoans = await Loan.find({ userId, currentStatementId: obj._id })
 
-    // Only non-fromSavings, non-fromCard pending/transferred loans deduct from balance.
+    // Descuentan del disponible mientras viven en este mes: pending/transferred normales.
+    // - 'pending' normal: el préstamo está vivo aquí.
+    // - 'transferred' (origen de una transferencia): SIGUE descontando este mes porque el principal
+    //   se prestó aquí (en savings el retiro de ahorros lo compensa; en debt queda restado).
+    // Excluidos: fromSavings/fromCard y los RECIBIDOS por transferencia (transferDeferred):
+    //   su principal ya se descontó en el mes origen → aquí solo se cobran (suman, ver abajo).
     const balancePendingTotal = allCurrentLoans
-        .filter(l => ['pending', 'transferred'].includes(l.status) && !l.fromSavings && !l.fromCard)
+        .filter(l => {
+            if (l.fromSavings || l.fromCard || l.transferDeferred) return false
+            return l.status === 'pending' || l.status === 'transferred'
+        })
         .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
 
-    // For the display hint: only genuine pending (not transferred, not fromSavings, not fromCard).
+    // For the display hint: only genuine pending (not transferred/savings/card/transferDeferred).
     const pendingLoansTotal = allCurrentLoans
-        .filter(l => l.status === 'pending' && !l.fromSavings && !l.fromCard)
+        .filter(l => l.status === 'pending' && !l.fromSavings && !l.fromCard && !l.transferDeferred)
         .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
 
     // fromSavings loans collected: add to balance. When repaid to savings: net = 0.
@@ -145,6 +153,12 @@ async function buildEnrichedStatement(stmt, userId) {
             const repaid = l.paidBackToSavings ? (l.amount || 0) : 0
             return s + collected - repaid
         }, 0)
+
+    // Préstamos recibidos por transferencia de deuda: no descontaron aquí (ya lo hizo el mes origen),
+    // pero al cobrarlos SUMAN al disponible de este mes ("cuando ya cobre sí me suma").
+    const paidFromTransferNet = allCurrentLoans
+        .filter(l => l.transferDeferred)
+        .reduce((s, l) => s + (l.paidAmount || 0), 0)
 
     // fromCard loans collected: add to balance (card already covered the deduction).
     const paidFromCardNet = allCurrentLoans
@@ -174,7 +188,7 @@ async function buildEnrichedStatement(stmt, userId) {
         .filter(i => i.isShared)
         .reduce((s, i) => s + i.budgetedAmount, 0)
 
-    const base = obj.salary - paid - extrasExpense + extrasIncome + withdrawalsForBalance + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
+    const base = obj.salary - paid - extrasExpense + extrasIncome + withdrawalsForBalance + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet + paidFromTransferNet
     const realBalance = base - creditPaidAmt - balancePendingTotal
     const availableBalance = base - paidByBorrowerNet - (creditTotal - sharedShare) - balancePendingTotal
 

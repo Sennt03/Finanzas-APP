@@ -172,11 +172,15 @@ export const MONTH_NAMES = [
 
 export type LoanStatus = 'pending' | 'paid' | 'transferred';
 
+export type LoanTransferType = 'savings' | 'debt';
+
 export interface LsLoanHistoryEntry {
-    type: 'lent' | 'transferred' | 'paid' | 'partial_payment' | 'repaid_savings';
+    type: 'lent' | 'transferred' | 'paid' | 'partial_payment' | 'repaid_savings' | 'transfer_reverted';
     date: string;
     toStatementId?: string;
+    fromStatementId?: string;
     savingsMovementId?: string;
+    transferType?: LoanTransferType;
     amount?: number;
 }
 
@@ -202,6 +206,10 @@ export interface LsLoan {
     savingsDepositId: string | null;
     fromCard: boolean;
     cardPurchaseId: string | null;
+    transferType: LoanTransferType | null;
+    transferredToLoanId: string | null;
+    transferredFromLoanId: string | null;
+    transferDeferred: boolean;
     originStatement: LsLoanStatementRef | null;
     currentStatement: LsLoanStatementRef | null;
     createdAt?: string;

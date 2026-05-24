@@ -22,7 +22,7 @@
     </header>
 
     <!-- Sección: Saldos -->
-    <div class="section">
+    <div class="section" id="saldos-section">
       <div class="section-label">Saldos</div>
       <div class="cards balances">
         <div class="card real">
@@ -142,6 +142,7 @@
                   (click)="toggleDraftItemCredit(ci, ii)"
                   [title]="isCreditItem(it) ? 'Se paga con tarjeta · click para volver a efectivo' : 'Marcar como pago con tarjeta'">
                   <i class="bx bx-credit-card"></i>
+                  <span class="credit-label">Tarjeta</span>
                 </button>
                 <button class="btn-icon" (click)="removeItem(ci, ii)" title="Eliminar item">
                   <i class="bx bx-x"></i>
@@ -164,9 +165,12 @@
         </div>
       </section>
     } @else {
+      <!-- Ancla para "ir al presupuesto" desde el navegador de secciones -->
+      <span id="budget-anchor" class="nav-anchor" aria-hidden="true"></span>
       <!-- Categorías (template + virtuales) -->
       @for (cat of s.categories; track cat._id) {
         <section class="category"
+          [id]="cat.isVirtual ? 'credit-section' : null"
           [class.savings-cat]="cat.kind === 'savings'"
           [class.credit-cat]="cat.kind === 'credit'"
           [class.group-paid]="cat.isVirtual && cat.categoryPaid">
@@ -390,6 +394,7 @@
                   (click)="toggleNewItemCredit()"
                   [title]="newItemPaymentMethod() === 'credit' ? 'Pago con tarjeta · click para efectivo' : 'Marcar como pago con tarjeta'">
                   <i class="bx bx-credit-card"></i>
+                  <span class="credit-label">Tarjeta</span>
                 </button>
                 <button class="btn btn-primary btn-sm" (click)="submitAddItem(cat)">Agregar</button>
                 <button class="btn btn-outline btn-sm" (click)="closeAddItem()">Cancelar</button>
@@ -484,37 +489,46 @@
         @if (s.extras.length === 0) {
           <p class="muted small">Sin movimientos extras este mes</p>
         }
-        @for (e of s.extras; track e._id) {
-          <div class="item extra-item" [class.income]="e.type === 'income'">
-            <div class="extra-info">
-              @if (e.linkedSavingsId) { <i class="bx bx-piggy-bank"></i> }
-              <strong>{{ e.name }}</strong>
-              @if (e.categoryName) { <small> · {{ e.categoryName }}</small> }
-              <small class="date"> · {{ e.date | date:'d MMM' }}</small>
-            </div>
-            <div class="amounts">
-              @if (e.type === 'income') {
-                <span class="income-amount">+{{ e.amount | number:'1.2-2' }}</span>
-              } @else {
-                <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
-              }
-              @if (!e.linkedSavingsId) {
-                <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
-                  <option value="" disabled selected>⋮</option>
-                  @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }
-                  @if (e.type !== 'income') { <option value="income">→ Ingreso</option> }
-                  <option value="tdc">→ TDC</option>
-                  <option value="diferido">→ Diferido</option>
-                </select>
-              }
-              <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
-            </div>
+        <!-- Agrupados por día, de más reciente a más viejo -->
+        @for (day of extrasByDay(); track day.key) {
+          <div class="day-divider">
+            <span class="day-label">{{ day.label }}</span>
+            <span class="day-line"></span>
+            @if (day.spent > 0) {
+              <span class="day-total">-{{ day.spent | number:'1.2-2' }}</span>
+            }
           </div>
+          @for (e of day.items; track e._id) {
+            <div class="item extra-item" [class.income]="e.type === 'income'">
+              <div class="extra-info">
+                @if (e.linkedSavingsId) { <i class="bx bx-piggy-bank"></i> }
+                <strong>{{ e.name }}</strong>
+                @if (e.categoryName) { <small> · {{ e.categoryName }}</small> }
+              </div>
+              <div class="amounts">
+                @if (e.type === 'income') {
+                  <span class="income-amount">+{{ e.amount | number:'1.2-2' }}</span>
+                } @else {
+                  <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
+                }
+                @if (!e.linkedSavingsId) {
+                  <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
+                    <option value="" disabled selected>⋮</option>
+                    @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }
+                    @if (e.type !== 'income') { <option value="income">→ Ingreso</option> }
+                    <option value="tdc">→ TDC</option>
+                    <option value="diferido">→ Diferido</option>
+                  </select>
+                }
+                <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
+              </div>
+            </div>
+          }
         }
       </section>
 
       <!-- Préstamos del mes -->
-      <section class="category loans-section">
+      <section class="category loans-section" id="loans-section">
         <div class="cat-head">
           <h3><i class="bx bx-dollar"></i> Préstamos</h3>
           <div class="tx-buttons">
@@ -627,10 +641,37 @@
     }
 
     @if (!editMode()) {
-      <button type="button" class="fab" (click)="scrollToExtras()" title="Registrar movimiento" aria-label="Registrar un movimiento">
-        <i class="bx bx-plus"></i>
-        <span class="fab-label">Registrar</span>
-      </button>
+      <!-- Navegador de secciones: botón flotante que despliega accesos rápidos -->
+      @if (showNav()) {
+        <div class="nav-backdrop" (click)="closeNav()"></div>
+      }
+      <div class="section-nav" [class.open]="showNav()">
+        <div class="nav-sheet" role="menu" aria-label="Ir a una sección del mes">
+          <button type="button" class="nav-item" role="menuitem" (click)="navTo('saldos-section')">
+            <i class="bx bx-wallet"></i><span>Saldos</span>
+          </button>
+          <button type="button" class="nav-item" role="menuitem" (click)="navTo('budget-anchor')">
+            <i class="bx bx-list-ul"></i><span>Presupuesto</span>
+          </button>
+          @if (hasCredit()) {
+            <button type="button" class="nav-item" role="menuitem" (click)="navTo('credit-section')">
+              <i class="bx bx-credit-card"></i><span>Tarjeta</span>
+            </button>
+          }
+          <button type="button" class="nav-item nav-item-accent" role="menuitem" (click)="navTo('extras-section')">
+            <i class="bx bx-receipt"></i><span>Movimientos</span>
+          </button>
+          <button type="button" class="nav-item" role="menuitem" (click)="navTo('loans-section')">
+            <i class="bx bx-dollar"></i><span>Préstamos</span>
+          </button>
+        </div>
+
+        <button type="button" class="nav-fab" (click)="toggleNav()"
+                [attr.aria-expanded]="showNav()" aria-label="Ir a una sección del mes">
+          <i class="bx" [class.bx-compass]="!showNav()" [class.bx-x]="showNav()"></i>
+          <span class="nav-fab-label">{{ showNav() ? 'Cerrar' : 'Ir a' }}</span>
+        </button>
+      </div>
     }
   </div>
 }
