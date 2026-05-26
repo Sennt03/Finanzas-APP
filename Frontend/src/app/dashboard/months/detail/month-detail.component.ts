@@ -373,8 +373,9 @@ export class MonthDetailComponent {
 
   openPayLoan(loan: LsLoan) {
     this.payingLoanId.set(loan._id);
-    const remaining = loan.amount - (loan.paidAmount || 0);
-    this.loanPayAmount.set(remaining);
+    // Vacío a propósito: el usuario teclea cuánto cobra (parcial o total).
+    // Pre-rellenar el total hacía fácil cobrar de más sin querer.
+    this.loanPayAmount.set(null);
   }
 
   closePayLoan() {

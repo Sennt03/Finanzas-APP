@@ -67,7 +67,7 @@
               (ngModelChange)="loanPayAmount.set($event)"
               (keydown.enter)="submitPayLoan(loan)"
               (keydown.escape)="closePayLoan()"
-              placeholder="Monto a cobrar">
+              [placeholder]="'Monto a cobrar (máx ' + (loanRemaining(loan) | number:'1.2-2') + ')'">
             <button class="btn btn-success btn-sm" (click)="submitPayLoan(loan)">
               <i class="bx bx-check"></i> Confirmar
             </button>

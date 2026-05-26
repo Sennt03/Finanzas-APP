@@ -1839,19 +1839,33 @@
         }
       }
 
+      // Préstamo en móvil: 2 filas. Arriba el deudor (a quién prestaste, fila
+      // completa para que el nombre se lea); abajo el monto a la izquierda y las
+      // acciones a la derecha, a tamaño normal (no estiradas a todo el ancho).
       .loan-item {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        row-gap: 8px;
+
         .loan-info {
           flex: 1 1 100%;
+          .loan-text .name { white-space: normal; }
         }
         .amounts {
           width: 100%;
           justify-content: flex-end;
+          align-items: center;
           flex-wrap: wrap;
           gap: 8px;
+
+          // El monto queda a la izquierda; las acciones empujadas a la derecha.
+          .loan-amounts-col { margin-right: auto; align-items: flex-start; }
+
           .btn {
-            flex: 1;
+            flex: 0 0 auto;
             justify-content: center;
             min-height: 40px;
+            padding-inline: 16px;
           }
         }
       }

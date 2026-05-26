@@ -5,13 +5,16 @@ import { AccountsComponent } from './accounts/accounts.component';
 import { SettingsComponent } from './settings/settings.component';
 import { PurchasesComponent } from './purchases/purchases.component';
 import { LoansComponent } from './loans/loans.component';
+import { LandingComponent } from './landing.component';
 
 export const DASHBOARD_ROUTES: Routes = [
   {
     path: '',
     component: Dashboard,
     children: [
-      { path: '', component: HomeComponent },
+      // "/" redirige al detalle del mes actual; el dashboard inicial vive en "/home".
+      { path: '', component: LandingComponent },
+      { path: 'home', component: HomeComponent },
       {
         path: 'months',
         loadChildren: () => import('./months/months.routes').then(m => m.MONTHS_ROUTES)

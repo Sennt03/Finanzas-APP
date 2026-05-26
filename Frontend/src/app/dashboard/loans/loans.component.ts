@@ -60,7 +60,9 @@ export class LoansComponent {
 
   openPayLoan(loan: LsLoan) {
     this.payingLoanId.set(loan._id);
-    this.loanPayAmount.set(this.loanRemaining(loan));
+    // Vacío a propósito: el usuario teclea cuánto cobra (parcial o total).
+    // Pre-rellenar el total hacía fácil cobrar de más sin querer.
+    this.loanPayAmount.set(null);
   }
 
   closePayLoan() {
