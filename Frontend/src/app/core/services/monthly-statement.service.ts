@@ -60,7 +60,21 @@ export class MonthlyStatementService {
         return this.http.delete<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items/${itemId}`);
     }
 
-    updateCategoryMeta(id: string, categoryId: string, payload: { name?: string; kind?: CategoryKind; totalAmount?: number }): Observable<LsMonthlyStatement> {
+    updateCategoryMeta(id: string, categoryId: string, payload: { name?: string; kind?: CategoryKind; totalAmount?: number; flexible?: boolean; protected?: boolean }): Observable<LsMonthlyStatement> {
         return this.http.patch<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}`, payload);
+    }
+
+    // Fase 4: compensar sobregiro moviendo presupuesto entre categorías.
+    compensate(id: string, payload: { fromCategoryId: string; toCategoryId: string; amount: number }): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/compensate`, payload);
+    }
+
+    // Fase 4: cierre / reapertura de mes.
+    close(id: string): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/close`, {});
+    }
+
+    reopen(id: string): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/reopen`, {});
     }
 }

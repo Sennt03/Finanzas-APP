@@ -2,7 +2,7 @@
   <header class="hello">
     <div>
       <h1>Hola, {{ user().username }}</h1>
-      <p class="muted">Tu resumen financiero</p>
+      <p class="muted">{{ monthLabel() || 'Tu resumen financiero' }}</p>
     </div>
     @if (months().length > 0) {
       <div class="month-switcher">
@@ -17,104 +17,140 @@
   </header>
 
   @if (selected(); as s) {
-    <h2 class="month-title">{{ monthLabel() }}</h2>
+    <!-- HÉROE: un solo número que importa -->
+    <section class="hero" [class.negative]="s.summary.puedoGastar < 0">
+      <span class="hero-label">PUEDO GASTAR</span>
+      <strong class="hero-amount">$ {{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
+      <span class="hero-sub">restante en categorías flexibles</span>
+    </section>
 
-    <!-- Sección: Saldos (lo más importante) -->
-    <div class="section">
-      <div class="section-label">Saldos</div>
-      <div class="cards balances">
-        <div class="card real">
-          <div class="card-top">
-            <span class="label">Saldo cuenta</span>
-            <span class="hint">en banco</span>
-          </div>
-          <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
-          <small>Incluye TDC no pagada</small>
-        </div>
-        <div class="card available">
-          <div class="card-top">
-            <span class="label">Saldo disponible</span>
-            <span class="hint">real</span>
-          </div>
-          <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
-          @if (s.summary.pendingLoansTotal > 0) {
-            <small class="positive">Con cobros: {{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</small>
-          }
-          <small>Descontando TDC pendiente</small>
-        </div>
+    <!-- Tres secundarios -->
+    <div class="secondary">
+      <div class="sec-card credit">
+        <span class="sec-label">Por pagar</span>
+        <strong>{{ s.summary.porPagar | number:'1.2-2' }}</strong>
+        <small>tarjetas este mes</small>
+      </div>
+      <div class="sec-card apartado" [class.has]="s.summary.apartado > 0">
+        <span class="sec-label">Apartado</span>
+        <strong>{{ s.summary.apartado | number:'1.2-2' }}</strong>
+        <small>comprometido, no tocar</small>
+      </div>
+      <div class="sec-card savings">
+        <span class="sec-label">Ahorro del mes</span>
+        <strong>{{ savingsDone() | number:'1.0-0' }} <span class="goal">/ {{ savingsGoal() | number:'1.0-0' }}</span></strong>
+        <small>depositado</small>
       </div>
     </div>
 
-    <!-- Sección: Resumen del mes -->
-    <div class="section">
-      <div class="section-label">Resumen del mes</div>
-      <div class="cards summary">
-        <div class="card primary">
-          <span class="label">Sueldo</span>
-          <strong>{{ s.salary | number:'1.2-2' }}</strong>
-          @if (s.summary.totalExtrasIncome > 0) {
-            <small class="positive">+ {{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
-          } @else {
-            <small>ingresos del mes</small>
-          }
+    <!-- Detalle plegable: saldos y cupos -->
+    <button class="details-toggle" (click)="toggleDetails()" [attr.aria-expanded]="showDetails()">
+      <i class="bx" [class.bx-chevron-down]="!showDetails()" [class.bx-chevron-up]="showDetails()"></i>
+      {{ showDetails() ? 'Ocultar' : 'Ver saldos y cupos' }}
+    </button>
+    @if (showDetails()) {
+      <div class="details-panel">
+        <div class="detail-grid">
+          <div class="detail-cell">
+            <span class="d-label">Saldo disponible</span>
+            <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
+          </div>
+          <div class="detail-cell">
+            <span class="d-label">Saldo en cuenta</span>
+            <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+          </div>
+          <div class="detail-cell">
+            <span class="d-label">Presupuestado</span>
+            <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
+          </div>
+          <div class="detail-cell">
+            <span class="d-label">Ahorros (real)</span>
+            <strong>{{ (savingsBalance() ?? 0) | number:'1.2-2' }}</strong>
+          </div>
         </div>
-        <div class="card spent">
-          <span class="label">Gastado</span>
-          <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
-          <small>de {{ s.salary | number:'1.2-2' }}</small>
-        </div>
-        @if (s.summary.creditCard.total > 0) {
-          <div class="card credit">
-            <span class="label">Tarjeta de crédito</span>
-            <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
-            @if (s.summary.creditCard.diferidosShare > 0) {
-              <small>{{ s.summary.creditCard.diferidosShare | number:'1.2-2' }} de diferidos</small>
-            } @else {
-              <small>{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente' }}</small>
-            }
-            @if (s.summary.creditCard.diferidosShare > 0) {
-              <small class="status" [class.positive]="s.summary.creditCard.groupPaid">{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente' }}</small>
+
+        @if (s.summary.cardsBreakdown.length > 0) {
+          <div class="cards-cupo">
+            <div class="cc-title">Cupo por tarjeta</div>
+            @for (c of s.summary.cardsBreakdown; track c.cardId) {
+              <div class="cupo-row">
+                <span class="dot" [style.background]="c.color"></span>
+                <span class="c-name">{{ c.name }}</span>
+                <span class="c-pay">a pagar {{ c.total | number:'1.2-2' }}</span>
+                @if (c.others > 0) {
+                  <span class="c-split">yo {{ c.mine | number:'1.2-2' }} · otros {{ c.others | number:'1.2-2' }}</span>
+                }
+                @if (c.creditLimit > 0) {
+                  <span class="c-cupo">cupo {{ c.available | number:'1.0-0' }} / {{ c.creditLimit | number:'1.0-0' }}</span>
+                }
+              </div>
             }
           </div>
         }
-        <div class="card savings">
-          <span class="label">Ahorro del mes</span>
-          <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
-          @if (s.summary.savings.monthWithdrawals > 0) {
-            <small>-{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }} retirado</small>
-          } @else {
-            <small>depositado a ahorros</small>
-          }
-        </div>
       </div>
-    </div>
+    }
 
-    <section class="movements">
-      <div class="section-head">
-        <h2>Últimos movimientos</h2>
-        <a [routerLink]="['/months', s._id]" class="link">Ver mes completo →</a>
+    <!-- Categorías flexibles -->
+    @if (flexibleCats().length > 0) {
+      <div class="section-label">Categorías flexibles</div>
+      <div class="cat-grid">
+        @for (cat of flexibleCats(); track cat._id) {
+          <button class="cat-card" [class.st-ok]="status(cat) === 'ok'" [class.st-warn]="status(cat) === 'warn'" [class.st-over]="status(cat) === 'over'" (click)="openSheet(cat)">
+            <div class="cc-head">
+              <span class="cc-name">{{ cat.name }}</span>
+              <span class="cc-remaining">{{ cat.remaining | number:'1.2-2' }}</span>
+            </div>
+            <div class="cc-bar"><div class="fill" [style.width.%]="pct(cat) > 100 ? 100 : pct(cat)"></div></div>
+            <div class="cc-foot">
+              <span class="cc-spent">{{ cat.spent | number:'1.2-2' }} / {{ budgetOf(cat) | number:'1.2-2' }}</span>
+              <span class="cc-hint">queda</span>
+            </div>
+          </button>
+        }
       </div>
-      @if (recentMovements().length === 0) {
-        <p class="muted small">Sin movimientos registrados aún.</p>
-      } @else {
-        <ul class="mov-list">
-          @for (m of recentMovements(); track $index) {
-            <li>
-              <div class="dot" [class.income]="m.type === 'income'" [class.expense]="m.type !== 'income'">
-                <i class="bx" [class.bx-up-arrow-alt]="m.type === 'income'" [class.bx-down-arrow-alt]="m.type !== 'income'"></i>
-              </div>
-              <div class="info">
-                <strong>{{ m.name }}</strong>
-                <small>{{ m.date | date:'d MMM' }}</small>
-              </div>
-              <span class="amt" [class.income]="m.type === 'income'" [class.expense]="m.type === 'expense' || m.type === 'paid'">
-                {{ m.type === 'income' ? '+' : '-' }}{{ m.amount | number:'1.2-2' }}
-              </span>
-            </li>
-          }
-        </ul>
-      }
-    </section>
+    }
+
+    <!-- Otras categorías (comprometidas) -->
+    @if (otherCats().length > 0) {
+      <div class="section-label">Comprometido</div>
+      <div class="cat-grid">
+        @for (cat of otherCats(); track cat._id) {
+          <button class="cat-card compact" [class.st-ok]="status(cat) === 'ok'" [class.st-warn]="status(cat) === 'warn'" [class.st-over]="status(cat) === 'over'" (click)="openSheet(cat)">
+            <div class="cc-head">
+              <span class="cc-name">{{ cat.name }}</span>
+              <span class="cc-remaining">{{ cat.remaining | number:'1.2-2' }}</span>
+            </div>
+            <div class="cc-bar"><div class="fill" [style.width.%]="pct(cat) > 100 ? 100 : pct(cat)"></div></div>
+            <div class="cc-foot">
+              <span class="cc-spent">{{ cat.spent | number:'1.2-2' }} / {{ budgetOf(cat) | number:'1.2-2' }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Ahorro -->
+    @if (savingsCats().length > 0) {
+      <div class="section-label">Ahorro</div>
+      <div class="cat-grid">
+        @for (cat of savingsCats(); track cat._id) {
+          <button class="cat-card savings-card" (click)="openSheet(cat)">
+            <div class="cc-head">
+              <span class="cc-name"><i class="bx bx-piggy-bank"></i> {{ cat.name }}</span>
+              <span class="cc-remaining">{{ cat.spent | number:'1.2-2' }}</span>
+            </div>
+            <div class="cc-bar savings"><div class="fill" [style.width.%]="pct(cat) > 100 ? 100 : pct(cat)"></div></div>
+            <div class="cc-foot">
+              <span class="cc-spent">meta {{ budgetOf(cat) | number:'1.2-2' }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+
+    <div class="full-link">
+      <a [routerLink]="['/months', s._id]">Ver mes completo →</a>
+    </div>
   } @else {
     <div class="empty">
       <i class="bx bx-calendar"></i>
@@ -122,5 +158,98 @@
     </div>
   }
 </div>
+
+<!-- Bottom sheet de categoría -->
+@if (sheetCat(); as cat) {
+  <div class="sheet-backdrop" (click)="closeSheet()"></div>
+  <div class="sheet" role="dialog" [attr.aria-label]="cat.name">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div>
+        <h3>{{ cat.name }}</h3>
+        <span class="sheet-sub">{{ cat.spent | number:'1.2-2' }} de {{ budgetOf(cat) | number:'1.2-2' }} · queda <strong>{{ cat.remaining | number:'1.2-2' }}</strong></span>
+      </div>
+      <button class="btn-icon" (click)="closeSheet()" aria-label="Cerrar"><i class="bx bx-x"></i></button>
+    </div>
+
+    <div class="sheet-body">
+      @if (cat.items.length === 0) {
+        <p class="muted small">Sin items en esta categoría</p>
+      }
+      @for (it of cat.items; track it._id) {
+        <div class="sheet-item" [class.paid]="it.isPaid">
+          @if (isCredit(it)) {
+            <div class="si-name"><i class="bx bx-credit-card"></i> {{ it.name }} <span class="si-badge">tarjeta</span></div>
+            <span class="si-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+          } @else {
+            <label class="si-check">
+              <input type="checkbox" [checked]="it.isPaid" [disabled]="isSaving(it)" (change)="onCheck(it, cat, $event)">
+              <span class="si-name">{{ it.name }}</span>
+            </label>
+            <div class="si-amount-input" [class.saving]="isSaving(it)">
+              <input type="number" min="0" [max]="it.budgetedAmount" [value]="draftValue(it)" [disabled]="isSaving(it)"
+                (input)="onAmountInput(it, $any($event.target).value)"
+                (blur)="commitAmount(it, cat)"
+                (keydown.enter)="commitAmount(it, cat); $any($event.target).blur()">
+              <span class="of">/ {{ it.budgetedAmount | number:'1.2-2' }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      @if (addingItem()) {
+        <div class="sheet-add">
+          <input type="text" placeholder="Nombre" [ngModel]="newItemName()" (ngModelChange)="newItemName.set($event)">
+          <input type="number" min="0" placeholder="Monto" [ngModel]="newItemAmount()" (ngModelChange)="newItemAmount.set($event)" (keydown.enter)="submitAddItem()">
+          <button class="btn btn-primary btn-sm" (click)="submitAddItem()">Agregar</button>
+          <button class="btn btn-outline btn-sm" (click)="closeAddItem()">Cancelar</button>
+        </div>
+      } @else if (editingTotal()) {
+        <div class="sheet-add">
+          <label class="edit-total-label">Presupuesto de la categoría
+            <input type="number" min="0" [ngModel]="editTotalValue()" (ngModelChange)="editTotalValue.set($event)" (keydown.enter)="saveTotal()">
+          </label>
+          <button class="btn btn-primary btn-sm" (click)="saveTotal()">Guardar</button>
+          <button class="btn btn-outline btn-sm" (click)="closeEditTotal()">Cancelar</button>
+        </div>
+      } @else {
+        <div class="sheet-actions">
+          <button class="btn btn-outline btn-sm" (click)="openAddItem()"><i class="bx bx-plus"></i> Agregar item</button>
+          <button class="btn btn-outline btn-sm" (click)="openEditTotal()"><i class="bx bx-edit"></i> Editar monto</button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Modal de compensación de sobregiro -->
+@if (compTarget(); as target) {
+  <div class="comp-backdrop" (click)="cancelCompensation()"></div>
+  <div class="comp-modal" role="dialog" aria-label="Compensar sobregiro">
+    <div class="comp-head">
+      <i class="bx bx-error-circle"></i>
+      <h3>Vas a pasarte de "{{ target.name }}"</h3>
+    </div>
+    <p class="comp-text">Este gasto excede el presupuesto por <strong>{{ compOverflow() | number:'1.2-2' }}</strong>. ¿De qué categoría lo compensas?</p>
+    @if (compSources().length === 0) {
+      <p class="muted small">No hay categorías con presupuesto fijo libre para compensar. Ajusta el monto o edita los presupuestos en el mes.</p>
+      <div class="comp-actions">
+        <button class="btn btn-outline" (click)="cancelCompensation()">Cancelar</button>
+      </div>
+    } @else {
+      <label class="comp-select">Compensar desde
+        <select [ngModel]="compSourceId()" (ngModelChange)="compSourceId.set($event)">
+          @for (src of compSources(); track src.cat._id) {
+            <option [ngValue]="src.cat._id">{{ src.cat.name }} (libre {{ src.free | number:'1.2-2' }})</option>
+          }
+        </select>
+      </label>
+      <div class="comp-actions">
+        <button class="btn btn-outline" (click)="cancelCompensation()">Cancelar</button>
+        <button class="btn btn-primary" (click)="confirmCompensation()">Compensar y guardar</button>
+      </div>
+    }
+  </div>
+}
 
 <app-loading [show]="loading()"></app-loading>

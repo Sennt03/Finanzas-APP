@@ -2134,3 +2134,115 @@
     }
   }
 }
+
+// ===== Fases 1–4: nuevos elementos =====
+.cards.summary .card.puedo strong { color: $accent; &.neg { color: $danger; } }
+.cards.summary .card.apartado strong { color: $warning; }
+
+.btn-action.act-close i { color: $warning; }
+
+.closed-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: $warning-soft; border: 1px solid color.adjust($warning, $lightness: 20%);
+  border-radius: $r-lg; padding: 12px 16px; margin: 12px 0;
+  .cb-main { display: flex; align-items: center; gap: 10px;
+    i { font-size: 24px; color: $warning; }
+    strong { display: block; font-size: 15px; }
+    span { font-size: 12px; color: $primary-muted; } }
+}
+
+.comp-backdrop {
+  position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 70;
+}
+.comp-modal, .close-modal {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 71; width: min(460px, calc(100vw - 32px));
+  background: $surface; border-radius: $r-xl; box-shadow: $shadow-lg; padding: 22px;
+  max-height: 88vh; overflow-y: auto;
+}
+.comp-modal {
+  .comp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    i { font-size: 26px; color: $warning; } h3 { font-size: 17px; font-weight: 700; } }
+  .comp-text { font-size: 14px; color: $primary-soft; margin-bottom: 14px; }
+  .comp-select { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: $primary-muted; margin-bottom: 18px;
+    select { padding: 10px; border: 1px solid $border; border-radius: $r-md; background: $surface; color: $primary; font-weight: 600; min-height: $tap; } }
+  .comp-actions { display: flex; justify-content: flex-end; gap: 10px; }
+}
+.close-modal {
+  .close-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+    h3 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; i { color: $warning; } } }
+  .close-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid $surface-alt; font-size: 14px;
+    strong.pos { color: $success; } strong.neg { color: $danger; }
+    &.total { border-bottom: 2px solid $border; font-weight: 700; } }
+  .close-chain { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 4px;
+    background: $surface-alt; border-radius: $r-md; padding: 12px;
+    div { display: flex; flex-direction: column; span { font-size: 11px; color: $primary-muted; } strong { font-size: 16px; } }
+    i { font-size: 22px; color: $primary-faint; } }
+  .close-note { font-size: 12px; color: $primary-muted; margin-bottom: 12px; }
+  .close-over { margin-top: 12px; background: $danger-soft; border-radius: $r-md; padding: 12px;
+    .co-title { font-weight: 700; color: $danger; font-size: 13px; margin-bottom: 6px; i { margin-right: 4px; } }
+    .co-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; strong { color: $danger; } } }
+  .close-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+}
+
+// ===== Fase 1/2: desglose por tarjeta + gastos de tarjeta en categoría =====
+.card-breakdown {
+  margin: 10px 0 4px;
+  border: 1px dashed $border;
+  border-radius: $r-md;
+  padding: 8px 10px;
+  background: $surface-alt;
+
+  .cb-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    border-bottom: 1px solid $border;
+    &:last-child { border-bottom: none; }
+    .cb-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .cb-name { font-weight: 600; font-size: 13px; flex: 1; }
+    .cb-nums { display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+      .cb-amount { font-weight: 700; color: $credit; }
+      .cb-split, .cb-cupo { font-size: 11px; color: $primary-muted; } }
+  }
+}
+
+.card-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid; border-radius: 99px; padding: 1px 8px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+  .cchip-dot { width: 7px; height: 7px; border-radius: 50%; }
+}
+
+.cat-assign {
+  border: 1px solid $border; border-radius: $r-sm; background: $surface;
+  color: $primary; font-size: 12px; padding: 3px 6px; max-width: 150px;
+}
+
+.credit-budget-block {
+  margin: 6px 0 4px; border-left: 3px solid $credit; padding-left: 10px;
+
+  .cbb-head { font-size: 12px; font-weight: 700; color: $credit; margin-bottom: 6px;
+    i { margin-right: 4px; } }
+  .cbb-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid $surface-alt;
+    &:last-child { border-bottom: none; }
+    .cbb-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0;
+      .name { font-weight: 600; font-size: 14px; } }
+    .cbb-right { display: flex; align-items: center; gap: 8px;
+      .amount { font-weight: 700; color: $danger; } }
+  }
+}
+
+.pay-badge {
+  font-size: 10px; padding: 1px 7px; border-radius: 99px; font-weight: 600; white-space: nowrap;
+  &.later { background: $warning-soft; color: color.adjust($warning, $lightness: -12%); }
+  &.now { background: $success-soft; color: color.adjust($success, $lightness: -6%); }
+}
+
+// La cuota de tarjeta ahora lleva chip de tarjeta + selector de categoría: que envuelva.
+.category .item .item-readonly { flex-wrap: wrap; gap: 6px; align-items: center; }
+@media (max-width: 768px) {
+  .card-breakdown .cb-row { flex-wrap: wrap; }
+  .credit-budget-block .cbb-item { align-items: flex-start; }
+  .cat-assign { max-width: 100%; }
+}

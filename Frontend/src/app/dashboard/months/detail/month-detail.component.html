@@ -17,6 +17,11 @@
           <button class="btn-action act-edit" (click)="enterEdit()" title="Editar presupuesto" aria-label="Editar presupuesto">
             <i class="bx bx-edit"></i><span>Editar presupuesto</span>
           </button>
+          @if (!isClosed()) {
+            <button class="btn-action act-close" (click)="openClose()" title="Cerrar mes" aria-label="Cerrar mes">
+              <i class="bx bx-lock-alt"></i><span>Cerrar mes</span>
+            </button>
+          }
         }
       </div>
     </header>
@@ -101,8 +106,34 @@
             <small [class.positive]="s.summary.creditCard.groupPaid">{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente de pagar' }}</small>
           </div>
         }
+        <div class="card puedo">
+          <span class="label">Puedo gastar</span>
+          <strong [class.neg]="s.summary.puedoGastar < 0">{{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
+          <small>categorías flexibles</small>
+        </div>
+        @if (s.summary.apartado > 0) {
+          <div class="card apartado">
+            <span class="label">Apartado</span>
+            <strong>{{ s.summary.apartado | number:'1.2-2' }}</strong>
+            <small>comprometido, se paga el próximo mes</small>
+          </div>
+        }
       </div>
     </div>
+
+    <!-- Banner de mes cerrado -->
+    @if (isClosed() && s.closing; as cl) {
+      <div class="closed-banner">
+        <div class="cb-main">
+          <i class="bx bx-lock-alt"></i>
+          <div>
+            <strong>Mes cerrado</strong>
+            <span>Ahorro neto {{ cl.netSavings | number:'1.2-2' }} · Apartado arrastrado {{ cl.apartadoCarried | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" (click)="reopenMonth()">Reabrir</button>
+      </div>
+    }
 
     <!-- Edit budget -->
     @if (editMode()) {
@@ -214,6 +245,26 @@
             }
           </div>
 
+          @if (cat.isVirtual && s.summary.cardsBreakdown.length > 0) {
+            <div class="card-breakdown">
+              @for (cb of s.summary.cardsBreakdown; track cb.cardId) {
+                <div class="cb-row">
+                  <span class="cb-dot" [style.background]="cb.color"></span>
+                  <span class="cb-name">{{ cb.name }}</span>
+                  <div class="cb-nums">
+                    <span class="cb-amount">{{ cb.total | number:'1.2-2' }}</span>
+                    @if (cb.others > 0) {
+                      <span class="cb-split">yo {{ cb.mine | number:'1.2-2' }} · otros {{ cb.others | number:'1.2-2' }}</span>
+                    }
+                    @if (cb.creditLimit > 0) {
+                      <span class="cb-cupo">cupo {{ cb.available | number:'1.0-0' }} / {{ cb.creditLimit | number:'1.0-0' }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
           @if (!cat.isVirtual && cat.totalAmount > 0) {
             <div class="cat-progress">
               <div class="bar" [style.width.%]="(itemsSum(cat) / cat.totalAmount) * 100"></div>
@@ -248,6 +299,9 @@
                     <!-- Cuota prestada a otra persona -->
                     <div class="item-readonly">
                       <span class="name">{{ it.name }}</span>
+                      <span class="card-chip" [style.border-color]="cardColor(it.cardId)" [style.color]="cardColor(it.cardId)">
+                        <span class="cchip-dot" [style.background]="cardColor(it.cardId)"></span>{{ cardName(it.cardId) }}
+                      </span>
                       <span class="sub-tag shared-tag">{{ it.borrowerName }}</span>
                       @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
                       @if (it.convertedToLoan) { <span class="sub-tag loan-ref-tag">préstamo</span> }
@@ -290,7 +344,14 @@
                     <!-- Cuota propia normal -->
                     <div class="item-readonly">
                       <span class="name">{{ it.name }}</span>
+                      <span class="card-chip" [style.border-color]="cardColor(it.cardId)" [style.color]="cardColor(it.cardId)">
+                        <span class="cchip-dot" [style.background]="cardColor(it.cardId)"></span>{{ cardName(it.cardId) }}
+                      </span>
                       @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
+                      <select class="cat-assign" [ngModel]="it.categoryName || ''" (ngModelChange)="reassignCategory(it.purchaseId!, $event)" title="Categoría que consume esta compra">
+                        <option [ngValue]="''">Sin categoría</option>
+                        @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
+                      </select>
                     </div>
                     <div class="amounts">
                       <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
@@ -382,6 +443,34 @@
             </div>
           }
 
+          @if (!cat.isVirtual && cat.creditBudgetItems && cat.creditBudgetItems.length > 0) {
+            <div class="credit-budget-block">
+              <div class="cbb-head"><i class="bx bx-credit-card"></i> Gastos con tarjeta en esta categoría</div>
+              @for (cb of cat.creditBudgetItems; track cb.cuotaId) {
+                <div class="cbb-item">
+                  <div class="cbb-left">
+                    <span class="name">{{ cb.name }}</span>
+                    <span class="card-chip" [style.border-color]="cardColor(cb.cardId)" [style.color]="cardColor(cb.cardId)">
+                      <span class="cchip-dot" [style.background]="cardColor(cb.cardId)"></span>{{ cardName(cb.cardId) }}
+                    </span>
+                    @if (cb.billedLater) {
+                      <span class="pay-badge later">se paga en {{ monthName(cb.billMonth) }}</span>
+                    } @else {
+                      <span class="pay-badge now">se paga este mes</span>
+                    }
+                  </div>
+                  <div class="cbb-right">
+                    <span class="amount">-{{ cb.amount | number:'1.2-2' }}</span>
+                    <select class="cat-assign" [ngModel]="cb.categoryName" (ngModelChange)="reassignCategory(cb.purchaseId, $event)" title="Cambiar o quitar categoría">
+                      <option [ngValue]="''">Quitar de categoría</option>
+                      @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
+                    </select>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
           @if (!cat.isVirtual) {
             @if (isAddingTo(cat)) {
               <div class="add-item-form" [class.is-credit]="newItemPaymentMethod() === 'credit'">
@@ -465,6 +554,26 @@
               <label>
                 Cuotas
                 <input type="number" min="2" max="60" [ngModel]="txInstallments()" (ngModelChange)="txInstallments.set($event)">
+              </label>
+            }
+            @if (txType() === 'tdc' || txType() === 'diferido') {
+              <label>
+                Tarjeta
+                <select [ngModel]="txCardId()" (ngModelChange)="txCardId.set($event)">
+                  @if (activeCards().length === 0) { <option [ngValue]="null">Tarjeta por defecto</option> }
+                  @for (c of activeCards(); track c._id) {
+                    <option [ngValue]="c._id">{{ c.name }}{{ c.bank ? ' · ' + c.bank : '' }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Categoría (consume presupuesto)
+                <select [ngModel]="txPurchaseCategory()" (ngModelChange)="txPurchaseCategory.set($event)" title="El gasto descuenta el presupuesto de esta categoría en el mes de la compra">
+                  <option [ngValue]="''">Sin categoría</option>
+                  @for (n of realCategoryNames(); track n) {
+                    <option [ngValue]="n">{{ n }}</option>
+                  }
+                </select>
               </label>
             }
             @if (txType() === 'tdc' || txType() === 'diferido') {
@@ -725,6 +834,78 @@
       </div>
     </div>
   </div>
+}
+
+<!-- Modal de compensación de sobregiro (Fase 4) -->
+@if (compTarget(); as target) {
+  <div class="comp-backdrop" (click)="cancelCompensation()"></div>
+  <div class="comp-modal" role="dialog" aria-label="Compensar sobregiro">
+    <div class="comp-head">
+      <i class="bx bx-error-circle"></i>
+      <h3>Vas a pasarte de "{{ target.name }}"</h3>
+    </div>
+    <p class="comp-text">Este gasto excede el presupuesto por <strong>{{ compOverflow() | number:'1.2-2' }}</strong>. ¿De qué categoría lo compensas?</p>
+    @if (compSources().length === 0) {
+      <p class="muted small">No hay categorías con presupuesto fijo libre para compensar. Ajusta el monto o edita los presupuestos.</p>
+      <div class="comp-actions">
+        <button class="btn btn-outline" (click)="cancelCompensation()">Cancelar</button>
+      </div>
+    } @else {
+      <label class="comp-select">Compensar desde
+        <select [ngModel]="compSourceId()" (ngModelChange)="compSourceId.set($event)">
+          @for (src of compSources(); track src.cat._id) {
+            <option [ngValue]="src.cat._id">{{ src.cat.name }} (libre {{ src.free | number:'1.2-2' }})</option>
+          }
+        </select>
+      </label>
+      <div class="comp-actions">
+        <button class="btn btn-outline" (click)="cancelCompensation()">Cancelar</button>
+        <button class="btn btn-primary" (click)="confirmCompensation()">Compensar y guardar</button>
+      </div>
+    }
+  </div>
+}
+
+<!-- Modal de cierre de mes (Fase 4) -->
+@if (showClose()) {
+  @if (closePreview(); as cp) {
+    <div class="comp-backdrop" (click)="closeCloseModal()"></div>
+    <div class="close-modal" role="dialog" aria-label="Cerrar mes">
+      <div class="close-head">
+        <h3><i class="bx bx-lock-alt"></i> Cerrar {{ monthLabel() }}</h3>
+        <button class="btn-icon" (click)="closeCloseModal()" aria-label="Cerrar"><i class="bx bx-x"></i></button>
+      </div>
+
+      <div class="close-row"><span>Ahorro depositado</span><strong class="pos">+{{ cp.deposits | number:'1.2-2' }}</strong></div>
+      <div class="close-row"><span>Ahorro retirado</span><strong class="neg">-{{ cp.withdrawals | number:'1.2-2' }}</strong></div>
+      <div class="close-row total"><span>Ahorro neto real</span><strong>{{ cp.net | number:'1.2-2' }}</strong></div>
+
+      <div class="close-chain">
+        <div><span>Ahorros inicio</span><strong>{{ (cp.savingsStart ?? 0) | number:'1.2-2' }}</strong></div>
+        <i class="bx bx-right-arrow-alt"></i>
+        <div><span>Ahorros fin</span><strong>{{ (cp.savingsEnd ?? 0) | number:'1.2-2' }}</strong></div>
+      </div>
+      <p class="close-note">Este saldo final será el inicial del próximo mes.</p>
+
+      <div class="close-row"><span>Apartado que se arrastra</span><strong>{{ cp.apartado | number:'1.2-2' }}</strong></div>
+
+      @if (cp.overspent.length > 0) {
+        <div class="close-over">
+          <div class="co-title"><i class="bx bx-error"></i> Te pasaste en:</div>
+          @for (o of cp.overspent; track o.name) {
+            <div class="co-row"><span>{{ o.name }}</span><strong>-{{ o.over | number:'1.2-2' }}</strong></div>
+          }
+        </div>
+      } @else {
+        <p class="muted small">No te pasaste en ninguna categoría 🎉</p>
+      }
+
+      <div class="close-actions">
+        <button class="btn btn-outline" (click)="closeCloseModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="confirmCloseMonth()">Cerrar mes</button>
+      </div>
+    </div>
+  }
 }
 
 <app-loading [show]="loading()"></app-loading>

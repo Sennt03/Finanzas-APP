@@ -9,7 +9,8 @@ const {
     toggleGroupValidator,
     convertValidator,
     addItemValidator,
-    updateCategoryValidator
+    updateCategoryValidator,
+    compensateValidator
 } = require('./validators')
 
 router.use(verifyToken)
@@ -101,6 +102,27 @@ router.delete('/:id/categories/:categoryId/items/:itemId', async (req, res, next
 router.patch('/:id/categories/:categoryId', updateCategoryValidator, async (req, res, next) => {
     try {
         const data = await controller.updateCategoryMeta(req.user._id, req.params.id, req.params.categoryId, req.body)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/compensate', compensateValidator, async (req, res, next) => {
+    try {
+        const data = await controller.compensate(req.user._id, req.params.id, req.body)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/close', async (req, res, next) => {
+    try {
+        const data = await controller.close(req.user._id, req.params.id)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/reopen', async (req, res, next) => {
+    try {
+        const data = await controller.reopen(req.user._id, req.params.id)
         response.success(req, res, data)
     } catch (e) { next(e) }
 })

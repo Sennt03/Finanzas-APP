@@ -516,3 +516,28 @@ $loan-soft: #f5f3ff;
     }
   }
 }
+
+// ===== Fase 4: cuánto me debe cada persona =====
+.by-person {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $r-lg;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: $shadow-sm;
+
+  .bp-head {
+    display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px;
+    .bp-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: $primary-muted; font-weight: 700; }
+    .bp-total { font-size: 24px; font-weight: 800; color: $success; }
+  }
+  .bp-list { display: flex; flex-direction: column; gap: 4px; }
+  .bp-row {
+    display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid $surface-alt;
+    &:last-child { border-bottom: none; }
+    .bp-avatar { width: 36px; height: 36px; border-radius: 50%; background: $accent-soft; color: $accent;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; flex: none; }
+    .bp-info { flex: 1; strong { display: block; font-size: 15px; } small { color: $primary-muted; font-size: 12px; } }
+    .bp-amount { font-size: 17px; font-weight: 700; color: $success; }
+  }
+}

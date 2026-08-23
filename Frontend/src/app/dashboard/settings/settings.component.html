@@ -7,15 +7,90 @@
     <button class="btn btn-primary" (click)="save()" [disabled]="draftRemaining() < 0">Guardar</button>
   </header>
 
+  <!-- Tarjetas de crédito (Fase 1) -->
+  <section class="cards-block">
+    <div class="block-head">
+      <h2><i class="bx bx-credit-card"></i> Tarjetas de crédito</h2>
+      <button class="btn btn-outline btn-sm" (click)="openNewCard()"><i class="bx bx-plus"></i> Nueva tarjeta</button>
+    </div>
+
+    @for (card of cardDrafts(); track card._id; let i = $index) {
+      <div class="card-editor" [class.inactive]="!card.active" [style.border-left-color]="card.color">
+        <div class="card-fields">
+          <label class="wide">Nombre
+            <input type="text" [ngModel]="card.name" (ngModelChange)="updateCardDraft(i, { name: $event })" placeholder="Gold Pichincha">
+          </label>
+          <label>Banco
+            <input type="text" [ngModel]="card.bank" (ngModelChange)="updateCardDraft(i, { bank: $event })" placeholder="Pichincha">
+          </label>
+          <label>Cupo
+            <input type="number" min="0" [ngModel]="card.creditLimit" (ngModelChange)="updateCardDraft(i, { creditLimit: $event })">
+          </label>
+          <label>Corte
+            <input type="number" min="1" max="31" [ngModel]="card.cutoffDay" (ngModelChange)="updateCardDraft(i, { cutoffDay: $event })">
+          </label>
+          <label>Pago
+            <input type="number" min="1" max="31" [ngModel]="card.paymentDay" (ngModelChange)="updateCardDraft(i, { paymentDay: $event })">
+          </label>
+        </div>
+        <div class="card-colors">
+          @for (col of cardColors; track col) {
+            <button type="button" class="swatch" [class.sel]="card.color === col" [style.background]="col" (click)="updateCardDraft(i, { color: col })" [attr.aria-label]="col"></button>
+          }
+        </div>
+        @if (card.used !== undefined && (card.creditLimit || 0) > 0) {
+          <div class="card-usage">Usado {{ card.used | number:'1.2-2' }} · Disponible {{ card.available | number:'1.2-2' }}</div>
+        }
+        <div class="card-actions">
+          <button class="btn-link" (click)="toggleCardActive(i)">{{ card.active ? 'Desactivar' : 'Activar' }}</button>
+          <button class="btn btn-primary btn-sm" (click)="saveCard(i)">Guardar</button>
+          <button class="btn-icon danger" (click)="deleteCard(card)" title="Eliminar"><i class="bx bx-trash"></i></button>
+        </div>
+      </div>
+    }
+
+    @if (showNewCard()) {
+      <div class="card-editor new">
+        <div class="card-fields">
+          <label class="wide">Nombre
+            <input type="text" [ngModel]="newCard().name" (ngModelChange)="updateNewCard({ name: $event })" placeholder="Amex Guayaquil">
+          </label>
+          <label>Banco
+            <input type="text" [ngModel]="newCard().bank" (ngModelChange)="updateNewCard({ bank: $event })">
+          </label>
+          <label>Cupo
+            <input type="number" min="0" [ngModel]="newCard().creditLimit" (ngModelChange)="updateNewCard({ creditLimit: $event })">
+          </label>
+          <label>Corte
+            <input type="number" min="1" max="31" [ngModel]="newCard().cutoffDay" (ngModelChange)="updateNewCard({ cutoffDay: $event })">
+          </label>
+          <label>Pago
+            <input type="number" min="1" max="31" [ngModel]="newCard().paymentDay" (ngModelChange)="updateNewCard({ paymentDay: $event })">
+          </label>
+        </div>
+        <div class="card-colors">
+          @for (col of cardColors; track col) {
+            <button type="button" class="swatch" [class.sel]="newCard().color === col" [style.background]="col" (click)="updateNewCard({ color: col })"></button>
+          }
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-outline btn-sm" (click)="closeNewCard()">Cancelar</button>
+          <button class="btn btn-primary btn-sm" (click)="createCard()">Crear tarjeta</button>
+        </div>
+      </div>
+    }
+  </section>
+
   <section class="edit-block">
+    <h2 class="block-title">Presupuesto default</h2>
     <div class="edit-row">
       <label>
         Sueldo default
         <input type="number" min="0" [ngModel]="draftSalary()" (ngModelChange)="draftSalary.set($event)">
       </label>
       <label>
-        Día de corte TDC
-        <input type="number" min="1" max="28" [ngModel]="draftCutoffDay()" (ngModelChange)="draftCutoffDay.set($event)">
+        Día de corte (fallback)
+        <input type="number" min="1" max="31" [ngModel]="draftCutoffDay()" (ngModelChange)="draftCutoffDay.set($event)" title="Se usa si una compra no tiene tarjeta con corte propio">
       </label>
       <div class="balance" [class.invalid]="draftRemaining() < 0">
         Libre: {{ draftRemaining() | number:'1.2-2' }} · Presupuestado: {{ draftTotal() | number:'1.2-2' }}
@@ -34,6 +109,16 @@
           <button class="btn-icon" (click)="removeCategory(ci)" title="Eliminar categoría">
             <i class="bx bx-trash"></i>
           </button>
+        </div>
+        <div class="cat-flags">
+          <label class="flag" title="Su restante suma al número PUEDO GASTAR del inicio">
+            <input type="checkbox" [checked]="!!cat.flexible" (change)="updateCategoryFlexible(ci, $any($event.target).checked)">
+            <span>Flexible (puedo gastar)</span>
+          </label>
+          <label class="flag" title="Categoría protegida: los retiros piden confirmación y motivo">
+            <input type="checkbox" [checked]="!!cat.protected" (change)="updateCategoryProtected(ci, $any($event.target).checked)">
+            <span>Protegida</span>
+          </label>
         </div>
         @for (it of cat.items; track $index; let ii = $index) {
           <div class="edit-item" [class.is-credit]="isCreditItem(it)">

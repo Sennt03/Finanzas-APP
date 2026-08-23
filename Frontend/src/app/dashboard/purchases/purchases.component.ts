@@ -3,7 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { CreditPurchaseService } from '@services/credit-purchase.service';
 import { MonthlyStatementService } from '@services/monthly-statement.service';
-import { LsCreditPurchase, LsMonthlyStatement, MONTH_NAMES } from '@models/finance.models';
+import { CardService } from '@services/card.service';
+import { LsCard, LsCreditPurchase, LsMonthlyStatement, MONTH_NAMES } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
 
@@ -27,6 +28,10 @@ interface MonthRow {
   isPaid: boolean;
   isShared: boolean;
   borrowerName: string;
+  cardName: string;
+  cardColor: string;
+  categoryName: string;
+  budgetLabel: string | null;  // "presupuesto: septiembre" cuando difiere del mes de pago
 }
 
 // Un bloque por mes: cabecera inline (resumen) + filas de cuotas que se pagan ese mes.
@@ -52,8 +57,10 @@ interface MonthBlock {
 export class PurchasesComponent {
   private svc = inject(CreditPurchaseService);
   private stmtSvc = inject(MonthlyStatementService);
+  private cardSvc = inject(CardService);
 
   purchases = signal<LsCreditPurchase[]>([]);
+  cardMap = signal<Map<string, LsCard>>(new Map());
   // Total real de tarjeta por mes (`year-month` -> summary.creditCard.total), tomado de cada estado mensual.
   realTotals = signal<Map<string, number>>(new Map());
   loading = signal(false);
@@ -86,6 +93,7 @@ export class PurchasesComponent {
   // mostrando la cuota de ese mes. En una compra compartida la cuota es deuda del prestatario.
   months = computed<MonthBlock[]>(() => {
     const realTotals = this.realTotals();
+    const cardMap = this.cardMap();
     const map = new Map<string, MonthBlock>();
 
     for (const p of this.enriched()) {
@@ -93,6 +101,10 @@ export class PurchasesComponent {
       const borrower = (p.borrowerName ?? '').trim() || 'Otra persona';
       const isDiferido = p.installments > 1;
       const totalCuotas = p.cuotas.length;
+      const card = p.cardId ? cardMap.get(String(p.cardId)) : undefined;
+      // Mes de presupuesto: compra simple = mes de compra; diferido = mes de la cuota.
+      const pd = new Date(p.purchaseDate);
+      const budgetMonth = isDiferido ? null : { year: pd.getFullYear(), month: pd.getMonth() + 1 };
 
       p.cuotas.forEach((c, idx) => {
         const key = `${c.year}-${c.month}`;
@@ -120,6 +132,7 @@ export class PurchasesComponent {
         } else {
           m.mine += c.amount;
         }
+        const billedLater = !!budgetMonth && (budgetMonth.year < c.year || (budgetMonth.year === c.year && budgetMonth.month < c.month));
         m.rows.push({
           view: p,
           name: p.name,
@@ -129,7 +142,11 @@ export class PurchasesComponent {
           amount: c.amount,
           isPaid: c.isPaid,
           isShared: shared,
-          borrowerName: shared ? borrower : ''
+          borrowerName: shared ? borrower : '',
+          cardName: card?.name ?? '',
+          cardColor: card?.color ?? '#94a3b8',
+          categoryName: p.categoryName ?? '',
+          budgetLabel: billedLater && budgetMonth ? `presupuesto: ${MONTH_NAMES[budgetMonth.month - 1]}` : null
         });
       });
     }
@@ -149,10 +166,12 @@ export class PurchasesComponent {
     this.loading.set(true);
     forkJoin({
       purchases: this.svc.list(),
-      statements: this.stmtSvc.list().pipe(catchError(() => of([] as LsMonthlyStatement[])))
+      statements: this.stmtSvc.list().pipe(catchError(() => of([] as LsMonthlyStatement[]))),
+      cards: this.cardSvc.list().pipe(catchError(() => of([] as LsCard[])))
     }).subscribe({
-      next: ({ purchases, statements }) => {
+      next: ({ purchases, statements, cards }) => {
         this.purchases.set(purchases);
+        this.cardMap.set(new Map(cards.map(c => [String(c._id), c])));
         const rt = new Map<string, number>();
         for (const s of statements) {
           rt.set(`${s.year}-${s.month}`, s.summary?.creditCard?.total ?? 0);

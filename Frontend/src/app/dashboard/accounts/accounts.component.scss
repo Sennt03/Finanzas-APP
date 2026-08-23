@@ -488,3 +488,32 @@
     }
   }
 }
+
+// ===== Fase 4: ahorro protegido / retiros =====
+.protected-note {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: $warning; margin: 4px 0 0;
+  i { font-size: 16px; }
+}
+.withdrawals-summary {
+  margin-top: 14px;
+  border: 1px solid $border;
+  border-radius: $r-md;
+  overflow: hidden;
+
+  .ws-head {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    background: $surface-alt; border: none; cursor: pointer;
+    padding: 12px 14px; color: $primary; font-size: 14px; text-align: left;
+    span { flex: 1; }
+    i:first-child { color: $savings; font-size: 20px; }
+  }
+  .ws-list {
+    list-style: none; margin: 0; padding: 4px 14px 10px;
+    li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid $surface-alt; font-size: 13px;
+      .ws-date { color: $primary-muted; white-space: nowrap; font-size: 12px; min-width: 72px; }
+      .ws-reason { flex: 1; }
+      .ws-amount { color: $danger; font-weight: 600; } }
+  }
+}

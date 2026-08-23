@@ -34,6 +34,13 @@ export class AccountsComponent {
   transactional = computed(() => this.accounts().find(a => a.type === 'transactional'));
   savings = computed(() => this.accounts().find(a => a.type === 'savings'));
 
+  // Fase 4: historial de retiros del ahorro protegido (motivos y conteo).
+  withdrawals = computed(() => this.movements().filter(m => m.type === 'withdrawal' && !m.itemRef?.itemId));
+  withdrawalsCount = computed(() => this.withdrawals().length);
+  withdrawalsTotal = computed(() => this.withdrawals().reduce((a, m) => a + m.amount, 0));
+  showWithdrawals = signal(false);
+  toggleWithdrawals() { this.showWithdrawals.update(v => !v); }
+
   ngOnInit() { this.load(); }
 
   load() {
@@ -94,11 +101,20 @@ export class AccountsComponent {
       toastr.error('Monto inválido', '');
       return;
     }
+    const reason = this.newMovDescription().trim();
+    // Fase 4: ahorro protegido. Un retiro exige motivo escrito + confirmación explícita.
+    if (this.newMovType() === 'withdrawal') {
+      if (!reason) {
+        toastr.error('El ahorro está protegido: escribe el motivo del retiro.', '');
+        return;
+      }
+      if (!confirm(`Vas a retirar $${amt.toFixed(2)} de tus ahorros.\nMotivo: "${reason}"\n\n¿Confirmas el retiro?`)) return;
+    }
     this.loading.set(true);
     this.savingsSvc.create({
       type: this.newMovType(),
       amount: amt,
-      description: this.newMovDescription().trim()
+      description: reason
     }).subscribe({
       next: () => {
         this.toggleMovementForm();

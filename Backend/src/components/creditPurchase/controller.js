@@ -1,5 +1,7 @@
 const CreditPurchase = require('./model')
 const Template = require('../budgetTemplate/model')
+const Card = require('../card/model')
+const cardController = require('../card/controller')
 const myError = require('../../libs/myError')
 const log = require('../../libs/activityLog')
 
@@ -26,10 +28,24 @@ function calculateCuotas(purchaseDate, installments, totalAmount, cutoffDay) {
     return cuotas
 }
 
+// Mes en el que la cuota `idx` CONSUME presupuesto (Fase 2):
+//   - Compra simple (1 cuota): el mes de la fecha de compra, sin importar cuándo se facture.
+//   - Diferido (N cuotas): cada cuota consume presupuesto en su propio mes de facturación.
+function budgetMonthOf(p, idx) {
+    if ((p.installments || 1) === 1) {
+        const d = new Date(p.purchaseDate)
+        return { year: d.getFullYear(), month: d.getMonth() + 1 }
+    }
+    const c = p.cuotas[idx]
+    return { year: c.year, month: c.month }
+}
+
 async function list(userId) {
     return CreditPurchase.find({ userId }).sort({ purchaseDate: -1 })
 }
 
+// Cuotas que se FACTURAN (pagan) en el mes indicado. Base del pago mensual y de la
+// categoría virtual de tarjeta. (Sin cambios de comportamiento salvo exponer cardId.)
 async function findCuotasForMonth(userId, year, month) {
     const purchases = await CreditPurchase.find({ userId })
     const tdc = []
@@ -39,6 +55,7 @@ async function findCuotasForMonth(userId, year, month) {
         for (let idx = 0; idx < p.cuotas.length; idx++) {
             const c = p.cuotas[idx]
             if (c.year === year && c.month === month) {
+                const bm = budgetMonthOf(p, idx)
                 const display = {
                     _id: c._id,
                     name: p.installments > 1
@@ -50,10 +67,16 @@ async function findCuotasForMonth(userId, year, month) {
                     paidAt: c.paidAt,
                     purchaseId: p._id,
                     cuotaId: c._id,
+                    cardId: p.cardId ? String(p.cardId) : null,
+                    categoryName: p.categoryName || '',
                     isShared: p.isShared || false,
                     borrowerName: p.borrowerName || '',
                     paidByBorrower: c.paidByBorrower || 0,
-                    convertedToLoan: c.convertedToLoan || false
+                    convertedToLoan: c.convertedToLoan || false,
+                    // Fase 2: en qué mes se apartó / consumió presupuesto y si se paga después.
+                    budgetYear: bm.year,
+                    budgetMonth: bm.month,
+                    billedLater: (bm.year < c.year) || (bm.year === c.year && bm.month < c.month)
                 }
                 if (p.installments > 1) diferidos.push(display)
                 else tdc.push(display)
@@ -64,9 +87,60 @@ async function findCuotasForMonth(userId, year, month) {
     return { tdc, diferidos }
 }
 
-async function create(userId, { name, totalAmount, purchaseDate, installments, isShared, borrowerName }) {
-    const tpl = await Template.findOne({ userId })
-    const cutoffDay = tpl?.cutoffDay || 12
+// Fase 2: datos por MES DE PRESUPUESTO.
+//  - consumedByCategory: cuánto consumen las compras (propias, no compartidas) de cada
+//    categoría en ese mes → alimenta el "gastado/queda" de la categoría y PUEDO GASTAR.
+//  - apartado: plata comprometida este mes que se paga en un mes posterior (no compartida).
+async function findBudgetMonthData(userId, year, month) {
+    const purchases = await CreditPurchase.find({ userId })
+    const consumedByCategory = {}
+    const items = []
+    let apartado = 0
+
+    for (const p of purchases) {
+        if (p.isShared) continue // consumo de tercero: no reduce mi presupuesto
+        for (let idx = 0; idx < p.cuotas.length; idx++) {
+            const c = p.cuotas[idx]
+            const bm = budgetMonthOf(p, idx)
+            if (bm.year === year && bm.month === month) {
+                const amt = c.amount
+                const billedLater = (bm.year < c.year) || (bm.year === c.year && bm.month < c.month)
+                if (billedLater) apartado += amt
+                if (p.categoryName) {
+                    consumedByCategory[p.categoryName] = (consumedByCategory[p.categoryName] || 0) + amt
+                    // Detalle para mostrar la compra como línea dentro de su categoría.
+                    items.push({
+                        purchaseId: String(p._id),
+                        cuotaId: String(c._id),
+                        name: p.installments > 1 ? `${p.name} (${idx + 1}/${p.installments})` : p.name,
+                        amount: amt,
+                        categoryName: p.categoryName,
+                        cardId: p.cardId ? String(p.cardId) : null,
+                        isPaid: !!c.isPaid,
+                        billYear: c.year,
+                        billMonth: c.month,
+                        billedLater,
+                        subType: p.installments > 1 ? 'diferido' : 'tdc'
+                    })
+                }
+            }
+        }
+    }
+    return { consumedByCategory, apartado: Math.round(apartado * 100) / 100, items }
+}
+
+async function resolveCard(userId, cardId) {
+    if (cardId) {
+        const card = await Card.findOne({ _id: cardId, userId })
+        if (!card) throw myError('Tarjeta no encontrada', 404)
+        return card
+    }
+    return cardController.ensureDefaultCard(userId)
+}
+
+async function create(userId, { name, totalAmount, purchaseDate, installments, isShared, borrowerName, cardId, categoryName }) {
+    const card = await resolveCard(userId, cardId)
+    const cutoffDay = card?.cutoffDay || (await Template.findOne({ userId }))?.cutoffDay || 12
     const inst = installments && installments > 0 ? Math.floor(installments) : 1
     const cuotas = calculateCuotas(purchaseDate, inst, totalAmount, cutoffDay)
     const purchase = await CreditPurchase.create({
@@ -76,6 +150,8 @@ async function create(userId, { name, totalAmount, purchaseDate, installments, i
         purchaseDate,
         installments: inst,
         cutoffDayUsed: cutoffDay,
+        cardId: card ? card._id : null,
+        categoryName: (categoryName || '').trim(),
         cuotas,
         isShared: !!isShared,
         borrowerName: isShared ? (borrowerName || '').trim() : ''
@@ -181,6 +257,21 @@ async function update(userId, id, data) {
     if (!p) throw myError('Compra no encontrada', 404)
 
     if (data.name !== undefined) p.name = data.name
+    if (data.categoryName !== undefined) p.categoryName = (data.categoryName || '').trim()
+
+    // Reasignar tarjeta: recalcula los meses de facturación con el corte de la nueva
+    // tarjeta, pero solo si ninguna cuota fue pagada aún (evita descuadrar pagos).
+    if (data.cardId !== undefined && String(data.cardId || '') !== String(p.cardId || '')) {
+        const anyPaid = p.cuotas.some(c => c.isPaid || (c.paidAmount || 0) > 0 || (c.paidByBorrower || 0) > 0)
+        const card = await resolveCard(userId, data.cardId)
+        p.cardId = card ? card._id : null
+        if (!anyPaid && card) {
+            p.cutoffDayUsed = card.cutoffDay
+            const fresh = calculateCuotas(p.purchaseDate, p.installments, p.totalAmount, card.cutoffDay)
+            p.cuotas = fresh
+        }
+    }
+
     if (data.totalAmount !== undefined && data.totalAmount !== p.totalAmount) {
         const newTotal = Number(data.totalAmount)
         const cuotaAmount = Math.round((newTotal / p.installments) * 100) / 100
@@ -211,6 +302,9 @@ module.exports = {
     create,
     update,
     findCuotasForMonth,
+    findBudgetMonthData,
+    budgetMonthOf,
+    calculateCuotas,
     setCuotaAmount,
     payBorrowerCuota,
     convertCuotaToLoan,

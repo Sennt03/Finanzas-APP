@@ -30,61 +30,40 @@
     margin-bottom: 26px;
   }
 
-  // Línea inline que reemplaza las antiguas cards de "Pago por mes".
+  // Cabecera de mes: título + monto grande arriba, desglose en chips abajo.
   .month-inline {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 6px 14px;
-    padding: 8px 4px 10px;
+    padding: 10px 2px 8px;
     margin-bottom: 8px;
     border-bottom: 2px solid $border-strong;
 
-    .m-name {
-      font-weight: 800;
-      font-size: 16px;
-      text-transform: capitalize;
-      color: $primary;
-    }
-
-    .m-purchases {
-      font-size: 13px;
-      color: $primary-soft;
-      strong { font-size: 15px; font-weight: 800; color: $primary; margin-left: 2px; }
-    }
-
-    // Desglose mío / otros: pequeño y no intrusivo.
-    .m-split {
-      display: inline-flex;
+    .mi-top {
+      display: flex;
       align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      .m-name { font-weight: 800; font-size: 17px; text-transform: capitalize; color: $primary; }
+      .m-purchases { font-weight: 800; font-size: 18px; color: $primary; }
+    }
+
+    .mi-stats {
+      display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      font-size: 11.5px;
-      color: $primary-muted;
+      margin-top: 6px;
+      font-size: 12px;
 
-      .mine { color: $success; font-weight: 600; }
-      .others { color: $credit; font-weight: 600; }
-      .sep { opacity: 0.5; }
-      .borrower {
+      .mine, .others, .borrower, .m-real {
         background: $surface-alt;
         border: 1px solid $border;
         border-radius: 999px;
-        padding: 1px 8px;
+        padding: 2px 9px;
         font-weight: 600;
       }
-    }
-
-    // Total real de tarjeta del mes: info extra, discreta, alineada a la derecha.
-    .m-real {
-      margin-left: auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11.5px;
-      color: $primary-muted;
-      cursor: help;
-      i { font-size: 13px; opacity: 0.7; }
-      strong { font-size: 13px; font-weight: 800; color: $accent; margin-left: 2px; }
+      .mine { color: $success; }
+      .others { color: $credit; }
+      .borrower { color: $primary-soft; }
+      .m-real { color: $accent; margin-left: auto; cursor: help; display: inline-flex; align-items: center; gap: 4px;
+        i { font-size: 13px; opacity: .8; } }
     }
   }
 
@@ -113,19 +92,27 @@
       cursor: pointer;
       user-select: none;
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
+      gap: 6px;
       padding: 11px 14px;
       &::-webkit-details-marker { display: none; }
-      &::before {
-        content: '▸';
-        font-size: 10px;
-        color: $primary-muted;
-        flex: none;
-        transition: transform .15s ease;
-      }
     }
-    details[open] > summary::before { transform: rotate(90deg); }
+
+    .summary-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      .chev { font-size: 18px; color: $primary-muted; flex: none; transition: transform .15s ease; }
+    }
+    details[open] > summary .chev { transform: rotate(90deg); }
+
+    .summary-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding-left: 26px;
+      &:empty { display: none; }
+    }
 
     .r-name {
       font-weight: 700;
@@ -134,12 +121,14 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .r-amount {
       margin-left: auto;
       font-weight: 800;
-      font-size: 14.5px;
+      font-size: 15px;
       color: $primary;
       flex: none;
     }
@@ -335,18 +324,11 @@
 
     .month-block { margin-bottom: 20px; }
 
-    .month-inline {
-      gap: 4px 10px;
-      .m-real { margin-left: 0; flex-basis: 100%; }
-    }
+    .month-inline .mi-stats .m-real { margin-left: 0; }
 
     .row {
-      details > summary {
-        flex-wrap: wrap;
-        padding: 12px 14px;
-        .r-name { flex: 1 1 auto; min-width: 0; }
-        .r-amount { font-size: 15px; }
-      }
+      details > summary { padding: 12px 14px; }
+      .r-amount { font-size: 15px; }
     }
 
     .row-detail {
@@ -390,3 +372,13 @@
     }
   }
 }
+
+// ===== Fase 1/2: badges de tarjeta / categoría / presupuesto =====
+.badge.card {
+  background: transparent; border: 1px solid; display: inline-flex; align-items: center; gap: 5px;
+  text-transform: none; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  .cdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+}
+.badge.cat { background: $accent-soft; color: $accent; text-transform: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; i { font-size: 13px; } }
+.badge.budget { background: $warning-soft; color: color.adjust($warning, $lightness: -12%); text-transform: none; }
+.badge.shared { text-transform: none; }

@@ -13,6 +13,8 @@ const categorySchema = Joi.object({
     name: Joi.string().min(1).max(120).required(),
     kind: Joi.string().valid('expense', 'savings').default('expense'),
     totalAmount: Joi.number().min(0).default(0),
+    flexible: Joi.boolean().default(false),
+    protected: Joi.boolean().default(false),
     items: Joi.array().items(itemSchema).default([])
 })
 
@@ -56,8 +58,16 @@ const addItemSchema = Joi.object({
 const updateCategorySchema = Joi.object({
     name: Joi.string().min(1).max(120),
     kind: Joi.string().valid('expense', 'savings'),
-    totalAmount: Joi.number().min(0)
+    totalAmount: Joi.number().min(0),
+    flexible: Joi.boolean(),
+    protected: Joi.boolean()
 }).min(1)
+
+const compensateSchema = Joi.object({
+    fromCategoryId: Joi.string().required(),
+    toCategoryId: Joi.string().required(),
+    amount: Joi.number().greater(0).required()
+})
 
 const convertSchema = Joi.object({
     source: Joi.object({
@@ -83,5 +93,6 @@ module.exports = {
     toggleGroupValidator: validatorHandler(toggleGroupSchema),
     convertValidator: validatorHandler(convertSchema),
     addItemValidator: validatorHandler(addItemSchema),
-    updateCategoryValidator: validatorHandler(updateCategorySchema)
+    updateCategoryValidator: validatorHandler(updateCategorySchema),
+    compensateValidator: validatorHandler(compensateSchema)
 }

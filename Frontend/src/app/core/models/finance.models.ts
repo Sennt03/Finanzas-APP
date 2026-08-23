@@ -28,7 +28,26 @@ export interface LsTemplateCategory {
     name: string;
     kind: CategoryKind;
     totalAmount: number;
+    flexible?: boolean;
+    protected?: boolean;
     items: LsTemplateItem[];
+}
+
+// Fase 1: tarjeta de crédito
+export interface LsCard {
+    _id: string;
+    name: string;
+    bank: string;
+    creditLimit: number;
+    cutoffDay: number;
+    paymentDay: number;
+    color: string;
+    active: boolean;
+    isDefault?: boolean;
+    // Añadidos por el backend en el listado:
+    used?: number;
+    available?: number;
+    createdAt?: string;
 }
 
 export interface LsBudgetTemplate {
@@ -54,6 +73,12 @@ export interface LsStatementItem {
     borrowerName?: string;
     paidByBorrower?: number;
     convertedToLoan?: boolean;
+    // Fase 1/2 (cuotas de la categoría virtual de tarjeta):
+    cardId?: string | null;
+    categoryName?: string;
+    budgetYear?: number;
+    budgetMonth?: number;
+    billedLater?: boolean;
 }
 
 export interface LsExternalCreditItem {
@@ -65,11 +90,28 @@ export interface LsExternalCreditItem {
     isPaid: boolean;
 }
 
+// Fase 2: compra de tarjeta asignada a una categoría, mostrada como línea dentro de ella.
+export interface LsCreditBudgetItem {
+    purchaseId: string;
+    cuotaId: string;
+    name: string;
+    amount: number;
+    categoryName: string;
+    cardId: string | null;
+    isPaid: boolean;
+    billYear: number;
+    billMonth: number;
+    billedLater: boolean;
+    subType: 'tdc' | 'diferido';
+}
+
 export interface LsStatementCategory {
     _id?: string;
     name: string;
     kind: CategoryKind;
     totalAmount: number;
+    flexible?: boolean;
+    protected?: boolean;
     items: LsStatementItem[];
     isVirtual?: boolean;
     groupKey?: 'tdc' | 'diferidos';
@@ -77,6 +119,12 @@ export interface LsStatementCategory {
     categoryPaidAt?: string | null;
     externalCreditItems?: LsExternalCreditItem[];
     totalAll?: number;
+    // Fase 2/3: calculado por el backend en buildEnrichedStatement.
+    categoryBudget?: number;
+    spent?: number;
+    remaining?: number;
+    creditConsumed?: number;
+    creditBudgetItems?: LsCreditBudgetItem[];
 }
 
 export interface LsStatementExtra {
@@ -89,6 +137,19 @@ export interface LsStatementExtra {
     date: string;
 }
 
+export interface LsCardBreakdown {
+    cardId: string | null;
+    name: string;
+    color: string;
+    bank: string;
+    creditLimit: number;
+    used: number;
+    available: number;
+    total: number;
+    mine: number;
+    others: number;
+}
+
 export interface LsStatementSummary {
     totalBudgeted: number;
     totalPaid: number;
@@ -98,6 +159,11 @@ export interface LsStatementSummary {
     availableBalance: number;
     availableToBudget: number;
     pendingLoansTotal: number;
+    // Fase 2/3
+    puedoGastar: number;
+    apartado: number;
+    porPagar: number;
+    cardsBreakdown: LsCardBreakdown[];
     savings: {
         monthDeposits: number;
         monthWithdrawals: number;
@@ -115,6 +181,22 @@ export interface LsStatementSummary {
     };
 }
 
+export interface LsClosingOverspent {
+    name: string;
+    budget: number;
+    spent: number;
+    over: number;
+}
+
+export interface LsClosing {
+    closedAt: string | null;
+    savingsStart: number;
+    savingsEnd: number;
+    netSavings: number;
+    apartadoCarried: number;
+    overspent: LsClosingOverspent[];
+}
+
 export interface LsMonthlyStatement {
     _id: string;
     year: number;
@@ -123,6 +205,7 @@ export interface LsMonthlyStatement {
     categories: LsStatementCategory[];
     extras: LsStatementExtra[];
     summary: LsStatementSummary;
+    closing?: LsClosing | null;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -159,6 +242,8 @@ export interface LsCreditPurchase {
     purchaseDate: string;
     installments: number;
     cutoffDayUsed: number;
+    cardId?: string | null;
+    categoryName?: string;
     cuotas: LsCuota[];
     isShared?: boolean;
     borrowerName?: string;

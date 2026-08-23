@@ -3,9 +3,17 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { LoanService } from '@services/loan.service';
 import { MonthlyStatementService } from '@services/monthly-statement.service';
-import { LsLoan, LsMonthlyStatement, LoanTransferType, MONTH_NAMES } from '@models/finance.models';
+import { CreditPurchaseService } from '@services/credit-purchase.service';
+import { LsCreditPurchase, LsLoan, LsMonthlyStatement, LoanTransferType, MONTH_NAMES } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
+
+interface PersonDebt {
+  name: string;
+  loansOwed: number;   // préstamos pendientes
+  cardOwed: number;    // cuotas de tarjeta prestada sin cobrar
+  total: number;
+}
 
 @Component({
   selector: 'app-loans',
@@ -17,10 +25,39 @@ import toastr from '@shared/utils/toastr';
 export class LoansComponent {
   private loanSvc = inject(LoanService);
   private stmtSvc = inject(MonthlyStatementService);
+  private purchaseSvc = inject(CreditPurchaseService);
 
   loans = signal<LsLoan[]>([]);
+  purchases = signal<LsCreditPurchase[]>([]);
   statements = signal<Pick<LsMonthlyStatement, '_id' | 'year' | 'month'>[]>([]);
   loading = signal(false);
+
+  // Fase 4: cuánto me debe cada persona (préstamos pendientes + tarjeta prestada sin cobrar).
+  byPerson = computed<PersonDebt[]>(() => {
+    const map = new Map<string, PersonDebt>();
+    const get = (name: string) => {
+      const key = (name || 'Otra persona').trim() || 'Otra persona';
+      let p = map.get(key);
+      if (!p) { p = { name: key, loansOwed: 0, cardOwed: 0, total: 0 }; map.set(key, p); }
+      return p;
+    };
+    for (const l of this.loans()) {
+      if (l.status === 'pending') get(l.borrowerName).loansOwed += (l.amount - (l.paidAmount || 0));
+    }
+    for (const p of this.purchases()) {
+      if (!p.isShared) continue;
+      for (const c of p.cuotas) {
+        if (c.convertedToLoan) continue; // ya contado como préstamo
+        const owed = c.amount - (c.paidByBorrower || 0);
+        if (owed > 0.001) get(p.borrowerName || '').cardOwed += owed;
+      }
+    }
+    const arr = [...map.values()];
+    for (const p of arr) p.total = Math.round((p.loansOwed + p.cardOwed) * 100) / 100;
+    return arr.filter(p => p.total > 0.001).sort((a, b) => b.total - a.total);
+  });
+
+  totalOwed = computed(() => Math.round(this.byPerson().reduce((a, p) => a + p.total, 0) * 100) / 100);
 
   transferingLoanId = signal<string | null>(null);
   transferTargetId = signal('');
@@ -43,9 +80,13 @@ export class LoansComponent {
 
   load() {
     this.loading.set(true);
-    this.loanSvc.list().subscribe({
-      next: (loans) => {
+    forkJoin({
+      loans: this.loanSvc.list(),
+      purchases: this.purchaseSvc.list()
+    }).subscribe({
+      next: ({ loans, purchases }) => {
         this.loans.set(loans);
+        this.purchases.set(purchases);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)

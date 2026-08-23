@@ -24,6 +24,11 @@ const creditPurchaseSchema = new Schema({
     purchaseDate: { type: Date, required: true },
     installments: { type: Number, default: 1, min: 1 },
     cutoffDayUsed: { type: Number, required: true },
+    // Tarjeta con la que se hizo la compra (Fase 1). El corte se lee de ella.
+    cardId: { type: Types.ObjectId, ref: 'cards', default: null, index: true },
+    // Categoría de presupuesto que consume esta compra en su MES DE PRESUPUESTO
+    // (Fase 2). Snapshot por nombre; '' = no consume ninguna categoría.
+    categoryName: { type: String, default: '', trim: true },
     cuotas: { type: [cuotaSchema], default: [] },
     isShared: { type: Boolean, default: false },
     borrowerName: { type: String, default: '' }

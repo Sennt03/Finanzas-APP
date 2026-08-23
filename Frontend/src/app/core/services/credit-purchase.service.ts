@@ -20,11 +20,13 @@ export class CreditPurchaseService {
         installments: number;
         isShared?: boolean;
         borrowerName?: string;
+        cardId?: string | null;
+        categoryName?: string;
     }): Observable<LsCreditPurchase> {
         return this.http.post<LsCreditPurchase>(this.url, data);
     }
 
-    update(id: string, data: { name?: string; totalAmount?: number }): Observable<LsCreditPurchase> {
+    update(id: string, data: { name?: string; totalAmount?: number; cardId?: string | null; categoryName?: string }): Observable<LsCreditPurchase> {
         return this.http.put<LsCreditPurchase>(`${this.url}/${id}`, data);
     }
 

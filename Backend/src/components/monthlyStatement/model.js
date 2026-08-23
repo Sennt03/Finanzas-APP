@@ -13,6 +13,11 @@ const categorySchema = new Schema({
     name: { type: String, required: true, trim: true },
     kind: { type: String, enum: ['expense', 'savings'], default: 'expense' },
     totalAmount: { type: Number, default: 0, min: 0 },
+    // Fase 3: categorías "flexibles" (Gastos Yo, Salud, Compras grandes, Colchón)
+    // cuyo restante suma al número "PUEDO GASTAR".
+    flexible: { type: Boolean, default: false },
+    // Fase 4: categoría protegida (ahorro): retiros requieren confirmación + motivo.
+    protected: { type: Boolean, default: false },
     items: { type: [itemSchema], default: [] }
 }, { _id: true })
 
@@ -34,6 +39,24 @@ const creditStateSchema = new Schema({
     diferidosPaidAt: { type: Date, default: null }
 }, { _id: false })
 
+// Fase 4: snapshot del cierre de mes. Ancla el saldo de ahorros para que el
+// saldo final de un mes sea exactamente el inicial del siguiente.
+const overspentSchema = new Schema({
+    name: String,
+    budget: Number,
+    spent: Number,
+    over: Number
+}, { _id: false })
+
+const closingSchema = new Schema({
+    closedAt: { type: Date, default: null },
+    savingsStart: { type: Number, default: 0 },
+    savingsEnd: { type: Number, default: 0 },
+    netSavings: { type: Number, default: 0 },
+    apartadoCarried: { type: Number, default: 0 },
+    overspent: { type: [overspentSchema], default: [] }
+}, { _id: false })
+
 const monthlyStatementSchema = new Schema({
     userId: {
         type: Types.ObjectId,
@@ -46,7 +69,8 @@ const monthlyStatementSchema = new Schema({
     salary: { type: Number, default: 0, min: 0 },
     categories: { type: [categorySchema], default: [] },
     extras: { type: [extraSchema], default: [] },
-    creditState: { type: creditStateSchema, default: () => ({}) }
+    creditState: { type: creditStateSchema, default: () => ({}) },
+    closing: { type: closingSchema, default: null }
 }, {
     timestamps: true,
     versionKey: false

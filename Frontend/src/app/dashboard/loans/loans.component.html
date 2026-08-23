@@ -17,6 +17,32 @@
     </div>
   }
 
+  <!-- Fase 4: cuánto me debe cada persona -->
+  @if (byPerson().length > 0) {
+    <section class="by-person">
+      <div class="bp-head">
+        <span class="bp-title">Me deben en total</span>
+        <strong class="bp-total">{{ totalOwed() | number:'1.2-2' }}</strong>
+      </div>
+      <div class="bp-list">
+        @for (p of byPerson(); track p.name) {
+          <div class="bp-row">
+            <div class="bp-avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
+            <div class="bp-info">
+              <strong>{{ p.name }}</strong>
+              <small>
+                @if (p.loansOwed > 0) { <span>préstamos {{ p.loansOwed | number:'1.2-2' }}</span> }
+                @if (p.loansOwed > 0 && p.cardOwed > 0) { <span> · </span> }
+                @if (p.cardOwed > 0) { <span>tarjeta {{ p.cardOwed | number:'1.2-2' }}</span> }
+              </small>
+            </div>
+            <strong class="bp-amount">{{ p.total | number:'1.2-2' }}</strong>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
   <!-- Pendientes -->
   <section class="loan-section">
     <div class="section-label">Pendientes ({{ pending().length }})</div>

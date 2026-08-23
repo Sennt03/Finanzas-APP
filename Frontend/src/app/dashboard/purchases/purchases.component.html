@@ -16,23 +16,24 @@
   @for (m of months(); track m.label) {
     <section class="month-block">
       <header class="month-inline">
-        <span class="m-name">{{ m.label }}</span>
-        <span class="m-purchases">Compras <strong>{{ m.total | number:'1.2-2' }}</strong></span>
-        <span class="m-split">
+        <div class="mi-top">
+          <span class="m-name">{{ m.label }}</span>
+          <span class="m-purchases">{{ m.total | number:'1.2-2' }}</span>
+        </div>
+        <div class="mi-stats">
           <span class="mine">mío {{ m.mine | number:'1.2-2' }}</span>
           @if (m.others > 0) {
-            <span class="sep">·</span>
             <span class="others">otros {{ m.others | number:'1.2-2' }}</span>
             @for (b of m.byBorrower; track b.name) {
               <span class="borrower">{{ b.name }} {{ b.amount | number:'1.2-2' }}</span>
             }
           }
-        </span>
-        @if (m.realTotal !== null) {
-          <span class="m-real" title="Total real de la tarjeta este mes: incluye estos diferidos/TDC más las compras a crédito registradas en las categorías del mes.">
-            <i class="bx bx-info-circle"></i> Total real tarjeta <strong>{{ m.realTotal | number:'1.2-2' }}</strong>
-          </span>
-        }
+          @if (m.realTotal !== null) {
+            <span class="m-real" title="Total real de la tarjeta este mes: incluye estos diferidos/TDC más las compras a crédito registradas en las categorías del mes.">
+              <i class="bx bx-info-circle"></i> real {{ m.realTotal | number:'1.2-2' }}
+            </span>
+          }
+        </div>
       </header>
 
       <ul class="month-rows">
@@ -40,21 +41,35 @@
           <li class="row" [class.paid]="r.isPaid">
             <details>
               <summary>
-                <span class="r-name">{{ r.name }}</span>
-                @if (r.isDiferido) {
-                  <span class="badge diferido">diferido {{ r.cuotaIndex }}/{{ r.totalCuotas }}</span>
-                } @else {
-                  <span class="badge tdc">TDC</span>
-                }
-                @if (r.isShared) {
-                  <span class="badge shared"><i class="bx bx-user"></i> {{ r.borrowerName }}</span>
-                }
-                <span class="r-amount">{{ r.amount | number:'1.2-2' }}</span>
-                @if (r.isPaid) {
-                  <span class="tag paid">pagada</span>
-                } @else {
-                  <span class="tag pending">pendiente</span>
-                }
+                <div class="summary-main">
+                  <i class="bx bx-chevron-right chev"></i>
+                  <span class="r-name">{{ r.name }}</span>
+                  <span class="r-amount">{{ r.amount | number:'1.2-2' }}</span>
+                  @if (r.isPaid) {
+                    <span class="tag paid">pagada</span>
+                  } @else {
+                    <span class="tag pending">pendiente</span>
+                  }
+                </div>
+                <div class="summary-badges">
+                  @if (r.cardName) {
+                    <span class="badge card" [style.border-color]="r.cardColor" [style.color]="r.cardColor"><span class="cdot" [style.background]="r.cardColor"></span>{{ r.cardName }}</span>
+                  }
+                  @if (r.isDiferido) {
+                    <span class="badge diferido">{{ r.cuotaIndex }}/{{ r.totalCuotas }}</span>
+                  } @else {
+                    <span class="badge tdc">TDC</span>
+                  }
+                  @if (r.categoryName) {
+                    <span class="badge cat"><i class="bx bx-folder"></i> {{ r.categoryName }}</span>
+                  }
+                  @if (r.budgetLabel) {
+                    <span class="badge budget">{{ r.budgetLabel }}</span>
+                  }
+                  @if (r.isShared) {
+                    <span class="badge shared"><i class="bx bx-user"></i> {{ r.borrowerName }}</span>
+                  }
+                </div>
               </summary>
 
               <div class="row-detail">

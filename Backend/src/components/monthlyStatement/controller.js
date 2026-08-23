@@ -14,6 +14,10 @@ function sumItems(cat) {
     return (cat.items || []).reduce((a, it) => a + (it.budgetedAmount || 0), 0)
 }
 
+function r2(n) {
+    return Math.round((Number(n) || 0) * 100) / 100
+}
+
 function sumCreditItems(categories) {
     return (categories || [])
         .filter(c => !c.isVirtual)
@@ -88,6 +92,8 @@ async function buildEnrichedStatement(stmt, userId) {
     const obj = stmt.toObject ? stmt.toObject() : stmt
     const cs = obj.creditState || {}
     const { tdc, diferidos } = await creditPurchaseController.findCuotasForMonth(userId, obj.year, obj.month)
+    // Fase 2/3: consumo por categoría en el MES DE PRESUPUESTO + apartado del mes.
+    const budgetData = await creditPurchaseController.findBudgetMonthData(userId, obj.year, obj.month)
 
     // Items credit "dispersos" en otras categorías del statement
     const externalCreditItems = collectExternalCreditItems(obj.categories || [])
@@ -171,6 +177,42 @@ async function buildEnrichedStatement(stmt, userId) {
     const extrasExpense = sumExtras(obj.extras, 'expense')
     const extrasIncome = sumExtras(obj.extras, 'income')
 
+    // ----- Fase 2/3: envelope por categoría + PUEDO GASTAR -----
+    // "spent" de una categoría = efectivo pagado + items a crédito (comprometidos)
+    // + compras de tarjeta (propias) asignadas a la categoría en su mes de presupuesto.
+    // "remaining" = presupuesto de la categoría − spent. PUEDO GASTAR = Σ remaining de
+    // las categorías marcadas como flexibles (excluye ahorro/fijos/familia).
+    const consumedByCategory = budgetData.consumedByCategory || {}
+    const budgetItemsByCat = {}
+    for (const it of budgetData.items || []) {
+        if (!budgetItemsByCat[it.categoryName]) budgetItemsByCat[it.categoryName] = []
+        budgetItemsByCat[it.categoryName].push(it)
+    }
+    for (const cat of nonVirtual) {
+        const cashSpent = (cat.items || [])
+            .filter(it => !isCreditItem(it))
+            .reduce((a, it) => a + (it.paidAmount || 0), 0)
+        const creditInCat = (cat.items || [])
+            .filter(isCreditItem)
+            .reduce((a, it) => a + (it.budgetedAmount || 0), 0)
+        const purchasesConsumed = consumedByCategory[cat.name] || 0
+        const budget = categoryBudget(cat)
+        const spent = r2(cashSpent + creditInCat + purchasesConsumed)
+        cat.categoryBudget = r2(budget)
+        cat.spent = spent
+        cat.creditConsumed = r2(creditInCat + purchasesConsumed)
+        cat.remaining = r2(budget - spent)
+        cat.flexible = !!cat.flexible
+        cat.protected = !!cat.protected
+        // Compras de tarjeta (propias) asignadas a esta categoría este mes de presupuesto.
+        cat.creditBudgetItems = budgetItemsByCat[cat.name] || []
+    }
+    const puedoGastar = r2(
+        nonVirtual
+            .filter(c => c.flexible && c.kind !== 'savings')
+            .reduce((a, c) => a + c.remaining, 0)
+    )
+
     const tdcShare = tdc.reduce((s, i) => s + i.budgetedAmount, 0)
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
     const itemsShare = sumCreditItems(nonVirtual)
@@ -192,6 +234,58 @@ async function buildEnrichedStatement(stmt, userId) {
     const realBalance = base - creditPaidAmt - balancePendingTotal
     const availableBalance = base - paidByBorrowerNet - (creditTotal - sharedShare) - balancePendingTotal
 
+    // ----- Fase 1: desglose de la factura del mes por tarjeta -----
+    const Card = require('../card/model')
+    const cards = await Card.find({ userId }).lean()
+    const cardMap = new Map(cards.map(c => [String(c._id), c]))
+    const usageMap = {}
+    {
+        const allPurchases = await require('../creditPurchase/model').find({ userId }).lean()
+        for (const p of allPurchases) {
+            const key = String(p.cardId || 'none')
+            for (const c of p.cuotas) {
+                if (!c.isPaid) usageMap[key] = (usageMap[key] || 0) + (c.amount - (c.paidAmount || 0))
+            }
+        }
+    }
+    const breakdownMap = new Map()
+    const bucket = (cardId) => {
+        const key = cardId ? String(cardId) : 'none'
+        let b = breakdownMap.get(key)
+        if (!b) {
+            const meta = cardId ? cardMap.get(String(cardId)) : null
+            b = {
+                cardId: cardId ? String(cardId) : null,
+                name: meta ? meta.name : 'Sin tarjeta',
+                color: meta ? (meta.color || '#94a3b8') : '#94a3b8',
+                bank: meta ? (meta.bank || '') : '',
+                creditLimit: meta ? (meta.creditLimit || 0) : 0,
+                used: r2(usageMap[key] || 0),
+                total: 0, mine: 0, others: 0
+            }
+            breakdownMap.set(key, b)
+        }
+        return b
+    }
+    for (const c of [...tdc, ...diferidos]) {
+        const b = bucket(c.cardId)
+        b.total += c.budgetedAmount
+        if (c.isShared) b.others += c.budgetedAmount
+        else b.mine += c.budgetedAmount
+    }
+    for (const ext of externalCreditItems) {
+        const b = bucket(null)
+        b.total += ext.amount
+        b.mine += ext.amount
+    }
+    const cardsBreakdown = [...breakdownMap.values()].map(b => ({
+        ...b,
+        total: r2(b.total),
+        mine: r2(b.mine),
+        others: r2(b.others),
+        available: b.creditLimit > 0 ? r2(Math.max(0, b.creditLimit - b.used)) : 0
+    }))
+
     obj.summary = {
         totalBudgeted: budgeted,
         totalPaid: paid,
@@ -201,6 +295,11 @@ async function buildEnrichedStatement(stmt, userId) {
         availableBalance: availableBalance,
         availableToBudget: obj.salary - budgeted,
         pendingLoansTotal,
+        // Fase 2/3
+        puedoGastar,
+        apartado: budgetData.apartado || 0,
+        porPagar: r2(creditTotal),
+        cardsBreakdown,
         savings: { monthDeposits, monthWithdrawals },
         creditCard: {
             total: creditTotal,
@@ -357,6 +456,8 @@ async function create(userId, { year, month, salary }) {
         name: cat.name,
         kind: cat.kind,
         totalAmount: cat.totalAmount || 0,
+        flexible: !!cat.flexible,
+        protected: !!cat.protected,
         items: (cat.items || []).map(it => ({
             name: it.name,
             budgetedAmount: it.amount || 0,
@@ -397,6 +498,8 @@ async function updateMeta(userId, id, { salary, categories }) {
             name: cat.name,
             kind: cat.kind || 'expense',
             totalAmount: cat.totalAmount || 0,
+            flexible: !!cat.flexible,
+            protected: !!cat.protected,
             items: (cat.items || []).map(it => {
                 const prev = it._id ? oldMap.get(String(it._id)) : null
                 const pm = it.paymentMethod === 'credit' ? 'credit' : 'cash'
@@ -650,6 +753,8 @@ async function updateCategoryMeta(userId, id, categoryId, data) {
 
     if (data.name !== undefined) cat.name = data.name
     if (data.kind !== undefined) cat.kind = data.kind
+    if (data.flexible !== undefined) cat.flexible = !!data.flexible
+    if (data.protected !== undefined) cat.protected = !!data.protected
     if (data.totalAmount !== undefined) {
         const newTotal = Number(data.totalAmount) || 0
         if (newTotal > 0) {
@@ -670,6 +775,102 @@ async function updateCategoryMeta(userId, id, categoryId, data) {
     }
 
     await stmt.save()
+    return buildEnrichedStatement(stmt, userId)
+}
+
+// Fase 4: compensar un sobregiro moviendo presupuesto de una categoría (con
+// presupuesto fijo/envelope) a otra. Nunca deja que un exceso se absorba en silencio.
+async function compensate(userId, id, { fromCategoryId, toCategoryId, amount }) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+
+    const from = stmt.categories.id(fromCategoryId)
+    const to = stmt.categories.id(toCategoryId)
+    if (!from || !to) throw myError('Categoría no encontrada', 404)
+    if (String(from._id) === String(to._id)) throw myError('Elige una categoría distinta', 400)
+
+    const amt = r2(amount)
+    if (amt <= 0) throw myError('Monto inválido', 400)
+
+    if (!(from.totalAmount > 0)) {
+        throw myError(`"${from.name}" no tiene un presupuesto fijo del que compensar.`, 400)
+    }
+    const fromUsed = sumItems(from)
+    const fromFree = from.totalAmount - fromUsed
+    if (amt > fromFree + 0.001) {
+        throw myError(`"${from.name}" solo tiene ${fromFree.toFixed(2)} libre para compensar.`, 400)
+    }
+
+    from.totalAmount = r2(from.totalAmount - amt)
+    if (to.totalAmount > 0) {
+        to.totalAmount = r2(to.totalAmount + amt)
+    } else {
+        // La categoría destino presupuesta por suma de items: fijamos un total = items + refuerzo.
+        to.totalAmount = r2(sumItems(to) + amt)
+    }
+
+    await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'budget_compensated',
+        `Compensado $${amt.toFixed(2)}: ${from.name} → ${to.name}`, amt)
+    return buildEnrichedStatement(stmt, userId)
+}
+
+// Saldo real actual de la cuenta de ahorros (initialBalance + Σ movimientos).
+async function currentSavingsBalance(userId) {
+    const acc = await Account.findOne({ userId, type: 'savings' })
+    if (!acc) return 0
+    const movs = await SavingsMovement.find({ userId })
+    const sum = movs.reduce((a, m) => a + (m.type === 'deposit' ? m.amount : -m.amount), 0)
+    return r2((acc.initialBalance || 0) + sum)
+}
+
+// Fase 4: cerrar el mes. Ancla el saldo de ahorros para que el saldo final de un mes
+// sea exactamente el inicial del siguiente, y guarda el resumen del cierre.
+async function close(userId, id) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+
+    const enriched = await buildEnrichedStatement(stmt, userId)
+    const savingsEnd = await currentSavingsBalance(userId)
+    const deposits = enriched.summary.savings.monthDeposits || 0
+    const withdrawals = enriched.summary.savings.monthWithdrawals || 0
+    const netSavings = r2(deposits - withdrawals)
+
+    // savingsStart: fin del mes previo cerrado; si no hay, reconstrucción (fin − neto).
+    const prev = await Statement.findOne({
+        userId,
+        'closing.closedAt': { $ne: null },
+        $or: [
+            { year: { $lt: stmt.year } },
+            { year: stmt.year, month: { $lt: stmt.month } }
+        ]
+    }).sort({ year: -1, month: -1 })
+    const savingsStart = (prev && prev.closing) ? r2(prev.closing.savingsEnd) : r2(savingsEnd - netSavings)
+
+    const overspent = (enriched.categories || [])
+        .filter(c => !c.isVirtual && c.kind !== 'savings' && c.remaining < -0.001)
+        .map(c => ({ name: c.name, budget: c.categoryBudget, spent: c.spent, over: r2(-c.remaining) }))
+
+    stmt.closing = {
+        closedAt: new Date(),
+        savingsStart,
+        savingsEnd,
+        netSavings,
+        apartadoCarried: enriched.summary.apartado || 0,
+        overspent
+    }
+    await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'month_closed',
+        `Mes cerrado. Ahorro neto $${netSavings.toFixed(2)} · Apartado $${(enriched.summary.apartado || 0).toFixed(2)}`, netSavings)
+    return buildEnrichedStatement(stmt, userId)
+}
+
+async function reopen(userId, id) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+    stmt.closing = null
+    await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'month_reopened', 'Mes reabierto', null)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -695,5 +896,7 @@ module.exports = {
     addItemToCategory, removeItemFromCategory, updateCategoryMeta,
     toggleCreditGroup,
     convertMovement,
+    compensate,
+    close, reopen,
     remove
 }

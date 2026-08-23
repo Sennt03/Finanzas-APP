@@ -10,6 +10,8 @@ const categorySchema = new Schema({
     name: { type: String, required: true, trim: true },
     kind: { type: String, enum: ['expense', 'savings'], default: 'expense' },
     totalAmount: { type: Number, default: 0, min: 0 },
+    flexible: { type: Boolean, default: false },
+    protected: { type: Boolean, default: false },
     items: { type: [itemSchema], default: [] }
 }, { _id: true })
 
@@ -22,7 +24,7 @@ const templateSchema = new Schema({
         index: true
     },
     defaultSalary: { type: Number, default: 0, min: 0 },
-    cutoffDay: { type: Number, default: 12, min: 1, max: 28 },
+    cutoffDay: { type: Number, default: 12, min: 1, max: 31 },
     categories: { type: [categorySchema], default: [] }
 }, {
     timestamps: true,

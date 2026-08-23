@@ -5,11 +5,18 @@ import { MonthlyStatementService } from '@services/monthly-statement.service';
 import { CreditPurchaseService } from '@services/credit-purchase.service';
 import { LoanService } from '@services/loan.service';
 import { AccountService } from '@services/account.service';
+import { CardService } from '@services/card.service';
 import {
-  CategoryKind, ExtraType, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementExtra, LsStatementItem, MONTH_NAMES
+  CategoryKind, ExtraType, LsCard, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementExtra, LsStatementItem, MONTH_NAMES
 } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
+
+const LAST_CARD_KEY = 'lastCardId';
+
+type CompPending =
+  | { kind: 'add'; cat: LsStatementCategory; name: string; amount: number; paymentMethod: 'cash' | 'credit' }
+  | { kind: 'purchase'; payload: any; typeLabel: string; statementId: string };
 
 interface DraftItem {
   _id?: string;
@@ -41,7 +48,9 @@ export class MonthDetailComponent {
   private purchaseSvc = inject(CreditPurchaseService);
   private loanSvc = inject(LoanService);
   private accountSvc = inject(AccountService);
+  private cardSvc = inject(CardService);
 
+  cards = signal<LsCard[]>([]);
   stmt = signal<LsMonthlyStatement | null>(null);
   // Saldo real de la cuenta de ahorros (histórico, no asumido)
   savingsBalance = signal<number | null>(null);
@@ -65,6 +74,17 @@ export class MonthDetailComponent {
   txInstallments = signal(2);
   txIsShared = signal(false);
   txBorrowerName = signal('');
+  txCardId = signal<string | null>(null);
+  txPurchaseCategory = signal('');
+
+  // Compensación de sobregiro (Fase 4)
+  compTarget = signal<LsStatementCategory | null>(null);
+  compOverflow = signal(0);
+  compSourceId = signal<string | null>(null);
+  private compPending: CompPending | null = null;
+
+  // Cierre de mes (Fase 4)
+  showClose = signal(false);
 
   itemDrafts = signal<Record<string, number | null>>({});
   itemSaving = signal<Record<string, boolean>>({});
@@ -172,7 +192,69 @@ export class MonthDetailComponent {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.load(id);
     this.refreshSavings();
+    this.cardSvc.list().subscribe({ next: (c) => this.cards.set(c), error: () => {} });
   }
+
+  activeCards = computed(() => this.cards().filter(c => c.active));
+  cardMap = computed(() => new Map(this.cards().map(c => [c._id, c])));
+
+  cardName(id?: string | null): string {
+    if (!id) return 'Sin tarjeta';
+    return this.cardMap().get(id)?.name ?? 'Sin tarjeta';
+  }
+  cardColor(id?: string | null): string {
+    if (!id) return '#94a3b8';
+    return this.cardMap().get(id)?.color ?? '#94a3b8';
+  }
+  monthName(m?: number): string {
+    return m ? MONTH_NAMES[m - 1] : '';
+  }
+
+  // Categorías reales (no virtuales) para el selector de categoría en compras de tarjeta.
+  realCategoryNames = computed(() => (this.stmt()?.categories ?? []).filter(c => !c.isVirtual).map(c => c.name));
+
+  isClosed = computed(() => !!this.stmt()?.closing?.closedAt);
+
+  // Reasignar la categoría / tarjeta de una compra de tarjeta ya creada.
+  reassignCategory(purchaseId: string, categoryName: string) {
+    const s = this.stmt();
+    if (!s) return;
+    this.loading.set(true);
+    this.purchaseSvc.update(purchaseId, { categoryName }).subscribe({
+      next: () => { this.load(s._id); toastr.success(categoryName ? 'Categoría asignada' : 'Categoría quitada', ''); },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
+  reassignCard(purchaseId: string, cardId: string) {
+    const s = this.stmt();
+    if (!s) return;
+    this.loading.set(true);
+    this.purchaseSvc.update(purchaseId, { cardId }).subscribe({
+      next: () => { this.load(s._id); toastr.success('Tarjeta cambiada', ''); },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
+  // Vista previa del cierre (se calcula del estado actual; el backend lo persiste al cerrar).
+  closePreview = computed(() => {
+    const s = this.stmt();
+    if (!s) return null;
+    const deposits = s.summary.savings.monthDeposits || 0;
+    const withdrawals = s.summary.savings.monthWithdrawals || 0;
+    const net = Math.round((deposits - withdrawals) * 100) / 100;
+    const now = this.savingsBalance();
+    const overspent = s.categories
+      .filter(c => !c.isVirtual && c.kind !== 'savings' && (c.remaining ?? 0) < -0.001)
+      .map(c => ({ name: c.name, over: Math.round(-(c.remaining ?? 0) * 100) / 100 }));
+    return {
+      net, deposits, withdrawals,
+      savingsEnd: now,
+      savingsStart: now != null ? Math.round((now - net) * 100) / 100 : null,
+      apartado: s.summary.apartado || 0,
+      overspent
+    };
+  });
 
   private todayIso(): string {
     const d = new Date();
@@ -319,22 +401,39 @@ export class MonthDetailComponent {
     this.draftCategories.update(list => list.map((c, i) => i === idx ? { ...c, totalAmount: total } : c));
   }
 
-  // ----- Gasto real por categoría -----
+  // ----- Gasto real por categoría (usa el envelope calculado por el backend) -----
+  // spent = efectivo pagado + items a crédito + compras de tarjeta asignadas a la categoría
   categoryPaidSum(cat: LsStatementCategory): number {
-    // Incluye credit items cuando ya están pagados (TDC marcada como pagada)
+    if (cat.spent !== undefined) return cat.spent;
     return (cat.items || []).reduce((s, i) => s + (i.paidAmount || 0), 0);
   }
 
   categoryBudget(cat: LsStatementCategory): number {
+    if (cat.categoryBudget !== undefined) return cat.categoryBudget;
     return (cat.totalAmount && cat.totalAmount > 0) ? cat.totalAmount : this.itemsSum(cat);
   }
 
   categoryRemainingToPay(cat: LsStatementCategory): number {
+    if (cat.remaining !== undefined) return cat.remaining;
     return this.categoryBudget(cat) - this.categoryPaidSum(cat);
   }
 
+  // Cuánto de lo gastado viene de compras a crédito (para "también en tarjeta").
+  categoryCreditConsumed(cat: LsStatementCategory): number {
+    return cat.creditConsumed ?? 0;
+  }
+
   showSpentIndicator(cat: LsStatementCategory): boolean {
-    return !cat.isVirtual && cat.kind !== 'savings' && this.itemsSum(cat) > 0;
+    return !cat.isVirtual && cat.kind !== 'savings' && ((cat.spent ?? 0) > 0 || this.itemsSum(cat) > 0);
+  }
+
+  catStatus(cat: LsStatementCategory): 'ok' | 'warn' | 'over' {
+    const budget = this.categoryBudget(cat);
+    if (budget <= 0) return 'ok';
+    const p = (this.categoryPaidSum(cat) / budget) * 100;
+    if (p >= 100) return 'over';
+    if (p >= 70) return 'warn';
+    return 'ok';
   }
 
   // ----- Préstamos del mes -----
@@ -537,14 +636,26 @@ export class MonthDetailComponent {
     if (!s || !cat._id) return;
     const name = this.newItemName().trim();
     const amount = this.newItemAmount() ?? 0;
+    const paymentMethod = this.newItemPaymentMethod();
     if (!name) { toastr.error('Nombre requerido', ''); return; }
 
+    // Sobregiro: si el item excede el presupuesto (envelope) de la categoría, compensar.
+    const budget = this.categoryBudget(cat);
+    if (budget > 0) {
+      const remaining = this.categoryRemainingToPay(cat);
+      if (amount > remaining + 0.001) {
+        this.startCompensation(cat, amount - remaining, { kind: 'add', cat, name, amount, paymentMethod });
+        return;
+      }
+    }
+    this.doAddItem(cat, name, amount, paymentMethod);
+  }
+
+  private doAddItem(cat: LsStatementCategory, name: string, amount: number, paymentMethod: 'cash' | 'credit') {
+    const s = this.stmt();
+    if (!s || !cat._id) return;
     this.loading.set(true);
-    this.svc.addItemToCategory(s._id, cat._id, {
-      name,
-      budgetedAmount: amount,
-      paymentMethod: this.newItemPaymentMethod()
-    }).subscribe({
+    this.svc.addItemToCategory(s._id, cat._id, { name, budgetedAmount: amount, paymentMethod }).subscribe({
       next: (updated) => {
         this.stmt.set(updated);
         this.closeAddItem();
@@ -555,6 +666,83 @@ export class MonthDetailComponent {
         this.loading.set(false);
         toastr.error(err.error?.message ?? 'Error', '');
       }
+    });
+  }
+
+  // ----- Compensación de sobregiro (Fase 4) -----
+  compSources = computed(() => {
+    const target = this.compTarget();
+    const s = this.stmt();
+    if (!target || !s) return [] as { cat: LsStatementCategory; free: number }[];
+    return s.categories
+      .filter(c => !c.isVirtual && c._id !== target._id && (c.totalAmount ?? 0) > 0)
+      .map(c => ({ cat: c, free: (c.totalAmount ?? 0) - this.itemsSum(c) }))
+      .filter(x => x.free > 0.001)
+      .sort((a, b) => b.free - a.free);
+  });
+
+  private startCompensation(target: LsStatementCategory, overflow: number, pending: CompPending) {
+    this.compTarget.set(target);
+    this.compOverflow.set(Math.round(overflow * 100) / 100);
+    this.compSourceId.set(this.compSources()[0]?.cat._id ?? null);
+    this.compPending = pending;
+  }
+
+  cancelCompensation() {
+    this.compTarget.set(null);
+    this.compSourceId.set(null);
+    this.compPending = null;
+  }
+
+  confirmCompensation() {
+    const target = this.compTarget();
+    const sourceId = this.compSourceId();
+    const s = this.stmt();
+    if (!target || !target._id || !sourceId || !s) { toastr.error('Elige una categoría para compensar', ''); return; }
+    const amount = this.compOverflow();
+    const pending = this.compPending;
+    this.loading.set(true);
+    this.svc.compensate(s._id, { fromCategoryId: sourceId, toCategoryId: target._id, amount }).subscribe({
+      next: (updated) => {
+        this.stmt.set(updated);
+        this.loading.set(false);
+        const freshCat = updated.categories.find(c => c._id === target._id) ?? target;
+        this.cancelCompensation();
+        toastr.success('Presupuesto compensado', '');
+        if (pending?.kind === 'add') this.doAddItem(freshCat, pending.name, pending.amount, pending.paymentMethod);
+        else if (pending?.kind === 'purchase') this.doCreatePurchase(pending.payload, pending.typeLabel, pending.statementId);
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
+  // ----- Cierre de mes (Fase 4) -----
+  openClose() { this.showClose.set(true); }
+  closeCloseModal() { this.showClose.set(false); }
+
+  confirmCloseMonth() {
+    const s = this.stmt();
+    if (!s) return;
+    this.loading.set(true);
+    this.svc.close(s._id).subscribe({
+      next: (updated) => {
+        this.stmt.set(updated);
+        this.loading.set(false);
+        this.showClose.set(false);
+        toastr.success('Mes cerrado', '');
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
+  reopenMonth() {
+    const s = this.stmt();
+    if (!s) return;
+    if (!confirm('¿Reabrir el mes? Se borrará el resumen de cierre.')) return;
+    this.loading.set(true);
+    this.svc.reopen(s._id).subscribe({
+      next: (updated) => { this.stmt.set(updated); this.loading.set(false); toastr.info('Mes reabierto', ''); },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
     });
   }
 
@@ -713,6 +901,13 @@ export class MonthDetailComponent {
     this.txInstallments.set(2);
     this.txIsShared.set(false);
     this.txBorrowerName.set('');
+    this.txPurchaseCategory.set('');
+    // Tarjeta por defecto: la última usada, si sigue activa; si no, la primera activa.
+    let last: string | null = null;
+    try { last = localStorage.getItem(LAST_CARD_KEY); } catch { /* no storage */ }
+    const active = this.activeCards();
+    const pick = active.find(c => c._id === last) || active[0];
+    this.txCardId.set(pick?._id ?? null);
     this.showTx.set(true);
   }
 
@@ -776,25 +971,54 @@ export class MonthDetailComponent {
         this.loading.set(false);
         return;
       }
-      this.purchaseSvc.create({
+      const categoryName = this.txPurchaseCategory().trim();
+      const payload = {
         name,
         totalAmount: amount,
         purchaseDate: this.txDate(),
         installments,
         isShared: isShared || undefined,
-        borrowerName: isShared ? borrowerName : undefined
-      }).subscribe({
-        next: () => {
-          this.closeTx();
-          this.load(s._id);
-          toastr.success(type === 'diferido' ? 'Diferido registrado' : 'Compra TDC registrada', '');
-        },
-        error: (err) => {
-          this.loading.set(false);
-          toastr.error(err.error?.message ?? 'Error', '');
+        borrowerName: isShared ? borrowerName : undefined,
+        cardId: this.txCardId(),
+        categoryName: categoryName || undefined
+      };
+      const typeLabel = type === 'diferido' ? 'Diferido registrado' : 'Compra TDC registrada';
+
+      // Sobregiro: compra propia asignada a una categoría cuyo consumo de ESTE mes
+      // (una cuota) excede lo que queda. Se pregunta de dónde compensar antes de guardar.
+      if (!isShared && categoryName) {
+        const cat = s.categories.find(c => !c.isVirtual && c.name === categoryName);
+        const consumedNow = installments > 1 ? amount / installments : amount;
+        const purchMonth = new Date(this.txDate()).getMonth() + 1;
+        const purchYear = new Date(this.txDate()).getFullYear();
+        const budgetHitsThisMonth = installments === 1 ? (purchMonth === s.month && purchYear === s.year) : false;
+        if (cat && this.categoryBudget(cat) > 0 && budgetHitsThisMonth) {
+          const remaining = this.categoryRemainingToPay(cat);
+          if (consumedNow > remaining + 0.001) {
+            this.loading.set(false);
+            this.startCompensation(cat, consumedNow - remaining, { kind: 'purchase', payload, typeLabel, statementId: s._id });
+            return;
+          }
         }
-      });
+      }
+      this.doCreatePurchase(payload, typeLabel, s._id);
     }
+  }
+
+  private doCreatePurchase(payload: any, typeLabel: string, statementId: string) {
+    this.loading.set(true);
+    if (payload.cardId) { try { localStorage.setItem(LAST_CARD_KEY, payload.cardId); } catch { /* no storage */ } }
+    this.purchaseSvc.create(payload).subscribe({
+      next: () => {
+        this.closeTx();
+        this.load(statementId);
+        toastr.success(typeLabel, '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
   }
 
   removeExtra(extraId: string) {

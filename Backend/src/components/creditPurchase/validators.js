@@ -7,12 +7,16 @@ const createSchema = Joi.object({
     purchaseDate: Joi.date().required(),
     installments: Joi.number().integer().min(1).max(60).default(1),
     isShared: Joi.boolean().default(false),
-    borrowerName: Joi.string().max(80).allow('').default('')
+    borrowerName: Joi.string().max(80).allow('').default(''),
+    cardId: Joi.string().allow(null, ''),
+    categoryName: Joi.string().max(120).allow('').default('')
 })
 
 const updateSchema = Joi.object({
     name: Joi.string().min(1).max(120),
-    totalAmount: Joi.number().min(0)
+    totalAmount: Joi.number().min(0),
+    cardId: Joi.string().allow(null, ''),
+    categoryName: Joi.string().max(120).allow('')
 }).min(1)
 
 module.exports = {

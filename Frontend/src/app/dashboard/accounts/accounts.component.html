@@ -73,7 +73,7 @@
             } @else {
               <h3>{{ sv.name }}</h3>
             }
-            <span class="badge">Ahorros · histórico</span>
+            <span class="badge"><i class="bx bx-lock-alt"></i> Ahorros · protegido</span>
           </div>
           @if (editingId() === sv._id) {
             <div class="actions">
@@ -122,13 +122,38 @@
           <input type="number" min="0" [ngModel]="newMovAmount()" (ngModelChange)="newMovAmount.set($event)">
         </label>
         <label class="span-2">
-          Descripción
-          <input type="text" [ngModel]="newMovDescription()" (ngModelChange)="newMovDescription.set($event)" placeholder="Motivo del movimiento">
+          {{ newMovType() === 'withdrawal' ? 'Motivo del retiro *' : 'Descripción' }}
+          <input type="text" [ngModel]="newMovDescription()" (ngModelChange)="newMovDescription.set($event)"
+            [placeholder]="newMovType() === 'withdrawal' ? 'Ej: emergencia médica, reparación...' : 'Motivo del movimiento'">
         </label>
+        @if (newMovType() === 'withdrawal') {
+          <p class="protected-note span-2"><i class="bx bx-lock-alt"></i> El ahorro está protegido: el motivo queda guardado en el historial de retiros.</p>
+        }
         <div class="form-actions">
           <button class="btn btn-outline btn-sm" (click)="toggleMovementForm()">Cancelar</button>
           <button class="btn btn-primary btn-sm" (click)="addMovement()">Registrar</button>
         </div>
+      </div>
+    }
+
+    @if (withdrawalsCount() > 0) {
+      <div class="withdrawals-summary">
+        <button class="ws-head" (click)="toggleWithdrawals()" [attr.aria-expanded]="showWithdrawals()">
+          <i class="bx bx-lock-open-alt"></i>
+          <span>Retiros de ahorros: <strong>{{ withdrawalsCount() }}</strong> · total <strong>{{ withdrawalsTotal() | number:'1.2-2' }}</strong></span>
+          <i class="bx" [class.bx-chevron-down]="!showWithdrawals()" [class.bx-chevron-up]="showWithdrawals()"></i>
+        </button>
+        @if (showWithdrawals()) {
+          <ul class="ws-list">
+            @for (w of withdrawals(); track w._id) {
+              <li>
+                <span class="ws-date">{{ w.date | date:'d MMM y' }}</span>
+                <span class="ws-reason">{{ w.description || 'Sin motivo' }}</span>
+                <span class="ws-amount">-{{ w.amount | number:'1.2-2' }}</span>
+              </li>
+            }
+          </ul>
+        }
       </div>
     }
 

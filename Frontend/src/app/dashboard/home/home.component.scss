@@ -2,318 +2,346 @@
 @use 'vars' as *;
 
 .home {
-  max-width: 1180px;
+  max-width: 720px;
   margin: 0 auto;
+  padding-bottom: 32px;
 
   .hello {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 8px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
     gap: 12px;
 
-    h1 { margin: 0; font-size: 24px; font-weight: 700; }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
     p { margin: 4px 0 0; }
   }
 
   .muted { color: $primary-muted; }
   .small { font-size: 13px; }
+}
 
-  .month-switcher {
+.month-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: $primary-muted; }
+  select {
+    padding: 8px 12px;
+    border: 1px solid $border;
+    border-radius: $r-md;
+    background: $surface;
+    color: $primary;
+    font-weight: 600;
+    min-height: $tap;
+  }
+}
+
+// ---------- HÉROE ----------
+.hero {
+  background: linear-gradient(135deg, $accent, $accent-hover);
+  color: #fff;
+  border-radius: $r-xl;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: $shadow-md;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.negative { background: linear-gradient(135deg, $danger, color.adjust($danger, $lightness: -12%)); }
+
+  .hero-label { font-size: 13px; letter-spacing: .12em; font-weight: 700; opacity: .9; }
+  .hero-amount { font-size: 44px; font-weight: 800; line-height: 1.05; letter-spacing: -.02em; }
+  .hero-sub { font-size: 13px; opacity: .85; }
+}
+
+// ---------- SECUNDARIOS ----------
+.secondary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+
+  .sec-card {
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: $r-lg;
+    padding: 12px;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: $shadow-sm;
+
+    .sec-label { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: $primary-muted; }
+    strong { font-size: 18px; font-weight: 700; }
+    small { font-size: 11px; color: $primary-faint; }
+    .goal { color: $primary-faint; font-weight: 600; font-size: 14px; }
+
+    &.credit strong { color: $credit; }
+    &.apartado.has strong { color: $warning; }
+    &.savings strong { color: $savings; }
+  }
+}
+
+// ---------- DETALLE PLEGABLE ----------
+.details-toggle {
+  margin: 14px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: $primary-muted;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px;
+
+  i { font-size: 18px; }
+}
+
+.details-panel {
+  background: $surface-alt;
+  border: 1px solid $border;
+  border-radius: $r-lg;
+  padding: 14px;
+  margin-top: 6px;
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+
+    .detail-cell {
+      display: flex;
+      flex-direction: column;
+      .d-label { font-size: 11px; color: $primary-muted; text-transform: uppercase; letter-spacing: .03em; }
+      strong { font-size: 17px; font-weight: 700; }
+    }
+  }
+
+  .cards-cupo {
+    margin-top: 14px;
+    border-top: 1px dashed $border;
+    padding-top: 12px;
+
+    .cc-title { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: $primary-muted; margin-bottom: 8px; }
+    .cupo-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      padding: 5px 0;
+      font-size: 13px;
+
+      .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+      .c-name { font-weight: 600; flex: 1; }
+      .c-pay { color: $credit; font-weight: 600; }
+      .c-split { color: $primary-faint; font-size: 12px; }
+      .c-cupo { color: $primary-faint; font-size: 12px; }
+    }
+  }
+}
+
+// ---------- CATEGORÍAS ----------
+.section-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: $primary-muted;
+  font-weight: 700;
+  margin: 20px 4px 8px;
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.cat-card {
+  text-align: left;
+  background: $surface;
+  border: 1px solid $border;
+  border-left: 4px solid $primary-faint;
+  border-radius: $r-lg;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: $shadow-sm;
+  transition: transform .08s ease, box-shadow .12s ease;
+
+  &:active { transform: scale(.98); }
+
+  .cc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
     gap: 8px;
 
-    label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: $primary-muted;
-      font-weight: 600;
-    }
-    select {
-      padding: 8px 30px 8px 12px;
-      border-radius: $r-md;
-      border: 1px solid $border;
-      background: $surface url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3e%3cpath fill='none' stroke='%2364748b' stroke-width='2' d='M1 1l5 5 5-5'/%3e%3c/svg%3e") no-repeat right 10px center;
-      font-size: 13.5px;
-      font-weight: 600;
-      cursor: pointer;
-      color: $primary;
-      appearance: none;
-      -webkit-appearance: none;
-      transition: border-color .15s ease, box-shadow .15s ease;
-
-      &:focus {
-        outline: none;
-        border-color: $accent;
-        box-shadow: 0 0 0 3px rgba($accent, 0.12);
-      }
-    }
+    .cc-name { font-weight: 700; font-size: 14px; }
+    .cc-remaining { font-weight: 800; font-size: 16px; white-space: nowrap; }
   }
 
-  .month-title {
-    margin: 22px 0 10px;
-    font-size: 18px;
-    font-weight: 600;
-    color: $primary-soft;
+  .cc-bar {
+    height: 7px;
+    background: $surface-alt;
+    border-radius: 99px;
+    overflow: hidden;
+
+    .fill { height: 100%; border-radius: 99px; transition: width .3s ease; background: $primary-faint; }
+    &.savings .fill { background: $savings; }
   }
 
-  .empty {
-    text-align: center;
-    padding: 60px 20px;
+  .cc-foot {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
     color: $primary-muted;
-    background: $surface;
-    border-radius: $r-lg;
-    border: 1px dashed $border-strong;
-    i { font-size: 56px; opacity: 0.3; display: block; margin-bottom: 12px; color: $accent; }
-    a { color: $accent; font-weight: 600; }
+    .cc-hint { color: $primary-faint; }
   }
 
-  .section {
-    margin-bottom: 24px;
+  // Estados de color (verde / ámbar / rojo)
+  &.st-ok    { border-left-color: $success; .cc-remaining { color: $success; } .fill { background: $success; } }
+  &.st-warn  { border-left-color: $warning; .cc-remaining { color: color.adjust($warning, $lightness: -8%); } .fill { background: $warning; } }
+  &.st-over  { border-left-color: $danger;  .cc-remaining { color: $danger; } .fill { background: $danger; } }
 
-    .section-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: $primary-muted;
-      font-weight: 700;
-      margin-bottom: 10px;
-      padding-left: 4px;
+  &.savings-card { border-left-color: $savings; .cc-remaining { color: $savings; } }
+  &.compact { padding: 10px 12px; .cc-head .cc-name { font-size: 13px; } }
+}
+
+.full-link {
+  text-align: center;
+  margin-top: 22px;
+  a { color: $accent; font-weight: 600; }
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: $primary-muted;
+  i { font-size: 48px; opacity: .5; }
+  a { color: $accent; font-weight: 600; }
+}
+
+// ---------- BOTTOM SHEET ----------
+.sheet-backdrop, .comp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .5);
+  z-index: 60;
+  animation: fade .15s ease;
+}
+
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 61;
+  background: $surface;
+  border-radius: $r-xl $r-xl 0 0;
+  box-shadow: $shadow-lg;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: slideUp .22s ease;
+
+  .sheet-handle { width: 40px; height: 4px; border-radius: 99px; background: $border-strong; margin: 4px auto 10px; }
+
+  .sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid $border;
+
+    h3 { font-size: 18px; font-weight: 700; }
+    .sheet-sub { font-size: 12px; color: $primary-muted; }
+  }
+
+  .sheet-body { overflow-y: auto; padding-top: 8px; }
+
+  .sheet-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid $surface-alt;
+
+    &.paid .si-name { color: $primary-muted; text-decoration: line-through; }
+
+    .si-check { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer;
+      input { width: 20px; height: 20px; accent-color: $accent; } }
+    .si-name { font-weight: 600; font-size: 14px; i { color: $credit; } }
+    .si-badge { font-size: 10px; background: $credit-soft; color: $credit; padding: 1px 6px; border-radius: 99px; margin-left: 4px; }
+    .si-amount { font-weight: 700; color: $danger; }
+    .si-amount-input {
+      display: flex; align-items: center; gap: 4px;
+      input { width: 72px; text-align: right; padding: 6px 8px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; }
+      .of { font-size: 12px; color: $primary-faint; }
+      &.saving { opacity: .5; }
     }
   }
 
-  .cards {
-    display: grid;
-    gap: 14px;
-
-    &.balances {
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-
-      .card {
-        padding: 22px 24px;
-
-        strong { font-size: 30px; }
-      }
-    }
-
-    &.summary {
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    }
-  }
-
-  .card {
-    background: $surface;
-    border-radius: $r-lg;
-    padding: 18px 20px;
-    box-shadow: $shadow-sm;
-    border: 1px solid $border;
-    position: relative;
-    transition: transform .15s ease, box-shadow .15s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: $shadow-md;
-    }
-
-    .card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 4px;
-
-      .hint {
-        font-size: 10.5px;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        color: $primary-faint;
-        font-weight: 600;
-      }
-    }
-
-    .label {
-      font-size: 12px;
-      color: $primary-muted;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
-    }
-
-    strong {
-      display: block;
-      font-size: 24px;
-      font-weight: 700;
-      margin-top: 6px;
-      letter-spacing: -0.3px;
-    }
-
-    small {
-      display: block;
-      font-size: 11.5px;
-      color: $primary-muted;
-      margin-top: 4px;
-
-      &.positive { color: $success; font-weight: 600; }
-      &.status { font-weight: 600; }
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 3px;
-      border-radius: $r-lg $r-lg 0 0;
-      background: $border;
-    }
-
-    &.primary { strong { color: $primary; } &::after { background: $primary; } }
-    &.real { strong { color: $success; } &::after { background: $success; } }
-    &.available { strong { color: $info; } &::after { background: $info; } }
-    &.spent { strong { color: $danger; } &::after { background: $danger; } }
-    &.credit { strong { color: $credit; } &::after { background: $credit; } }
-    &.savings { strong { color: $savings; } &::after { background: $savings; } }
-  }
-
-  .movements {
-    background: $surface;
-    border-radius: $r-lg;
-    padding: 22px;
-    box-shadow: $shadow-sm;
-    border: 1px solid $border;
-
-    .section-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-      h2 { font-size: 16px; font-weight: 700; }
-      .link {
-        color: $accent;
-        font-size: 13px;
-        font-weight: 600;
-        transition: color .15s ease;
-        &:hover { color: $accent-hover; }
-      }
-    }
-
-    .mov-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-
-      li {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 4px;
-        border-bottom: 1px solid $border;
-        &:last-child { border-bottom: none; }
-
-        .dot {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          font-size: 16px;
-          &.income { background: $success-soft; color: $success; }
-          &.expense { background: $danger-soft; color: $danger; }
-        }
-
-        .info {
-          flex: 1;
-          min-width: 0;
-          strong { display: block; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          small { color: $primary-muted; font-size: 12px; }
-        }
-
-        .amt {
-          font-weight: 700;
-          font-size: 14.5px;
-          &.income { color: $success; }
-          &.expense { color: $danger; }
-        }
-      }
-    }
+  .sheet-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .sheet-add {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center;
+    input { flex: 1; min-width: 90px; padding: 10px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; }
+    .edit-total-label { flex: 1 1 100%; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: $primary-muted; }
   }
 }
 
-// =====================================================
-// 📱 MOBILE — Home
-// =====================================================
-@media (max-width: 768px) {
-  .home {
-    .hello {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 12px;
-      h1 { font-size: 22px; }
-      .month-switcher {
-        width: 100%;
-        select {
-          width: 100%;
-          padding: 12px 36px 12px 14px;
-          font-size: 15px;
-          min-height: 48px;
-        }
-      }
-    }
+// ---------- MODAL COMPENSACIÓN ----------
+.comp-modal {
+  position: fixed;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 62;
+  width: min(440px, calc(100vw - 32px));
+  background: $surface;
+  border-radius: $r-xl;
+  box-shadow: $shadow-lg;
+  padding: 22px;
+  animation: pop .18s ease;
 
-    .month-title { font-size: 16px; margin: 16px 0 10px; }
-
-    .section { margin-bottom: 18px; }
-
-    .cards {
-      gap: 10px;
-
-      &.balances {
-        grid-template-columns: 1fr;
-        .card { padding: 18px 18px; strong { font-size: 28px; } }
-      }
-      &.summary {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    .card {
-      padding: 14px 16px;
-      strong { font-size: 20px; }
-    }
-
-    .movements {
-      padding: 16px 14px;
-      border-radius: $r-md;
-
-      .section-head h2 { font-size: 15px; }
-
-      .mov-list li {
-        padding: 14px 2px;
-        gap: 14px;
-
-        .dot {
-          width: 38px;
-          height: 38px;
-          font-size: 18px;
-        }
-        .info strong { font-size: 15px; }
-        .amt { font-size: 15px; }
-      }
-    }
-
-    .empty {
-      padding: 40px 16px;
-      i { font-size: 44px; }
-    }
-  }
+  .comp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    i { font-size: 26px; color: $warning; }
+    h3 { font-size: 17px; font-weight: 700; } }
+  .comp-text { font-size: 14px; color: $primary-soft; margin-bottom: 14px; }
+  .comp-select { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: $primary-muted; margin-bottom: 18px;
+    select { padding: 10px; border: 1px solid $border; border-radius: $r-md; background: $surface; color: $primary; font-weight: 600; min-height: $tap; } }
+  .comp-actions { display: flex; justify-content: flex-end; gap: 10px; }
 }
 
-@media (max-width: 420px) {
-  .home {
-    .cards.summary { grid-template-columns: 1fr; }
-  }
+// ---------- BOTONES base (compartidos) ----------
+.btn {
+  border: none;
+  border-radius: $r-md;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: $tap;
+
+  &.btn-sm { padding: 7px 12px; min-height: 36px; font-size: 13px; }
+  &.btn-primary { background: $accent; color: #fff; &:hover { background: $accent-hover; } }
+  &.btn-outline { background: transparent; border: 1px solid $border-strong; color: $primary; }
 }
+.btn-icon {
+  background: transparent; border: none; color: $primary-muted; cursor: pointer;
+  width: 36px; height: 36px; border-radius: $r-sm; display: inline-flex; align-items: center; justify-content: center;
+  i { font-size: 22px; }
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, -48%) scale(.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }

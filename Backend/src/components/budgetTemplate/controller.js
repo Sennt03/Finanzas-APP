@@ -27,6 +27,7 @@ const DEFAULT_TEMPLATE = {
         {
             name: 'Ahorro',
             kind: 'savings',
+            protected: true,
             items: [
                 { name: 'Ahorro mensual', amount: 0 }
             ]

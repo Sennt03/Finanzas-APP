@@ -8,6 +8,12 @@ async function list(userId) {
 }
 
 async function create(userId, data) {
+    // Fase 4: el ahorro es una categoría protegida. Un retiro manual siempre exige
+    // un motivo escrito, que queda en el historial de movimientos.
+    if (data.type === 'withdrawal' && !(data.description || '').trim()) {
+        throw myError('Un retiro de ahorros requiere un motivo escrito.', 400)
+    }
+
     let savingsAcc = await Account.findOne({ userId, type: 'savings' })
     if (!savingsAcc) {
         const accountController = require('../account/controller')
