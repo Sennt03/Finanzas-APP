@@ -76,6 +76,7 @@ export class MonthDetailComponent {
   txBorrowerName = signal('');
   txCardId = signal<string | null>(null);
   txPurchaseCategory = signal('');
+  txBudgetMode = signal<'retain' | 'defer'>('retain');
 
   // Compensación de sobregiro (Fase 4)
   compTarget = signal<LsStatementCategory | null>(null);
@@ -85,6 +86,10 @@ export class MonthDetailComponent {
 
   // Cierre de mes (Fase 4)
   showClose = signal(false);
+
+  // Detalle de saldos plegable
+  showSaldos = signal(false);
+  toggleSaldos() { this.showSaldos.update(v => !v); }
 
   itemDrafts = signal<Record<string, number | null>>({});
   itemSaving = signal<Record<string, boolean>>({});
@@ -232,6 +237,16 @@ export class MonthDetailComponent {
     this.loading.set(true);
     this.purchaseSvc.update(purchaseId, { cardId }).subscribe({
       next: () => { this.load(s._id); toastr.success('Tarjeta cambiada', ''); },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
+  reassignBudgetMode(purchaseId: string, mode: 'retain' | 'defer') {
+    const s = this.stmt();
+    if (!s) return;
+    this.loading.set(true);
+    this.purchaseSvc.update(purchaseId, { budgetMode: mode }).subscribe({
+      next: () => { this.load(s._id); toastr.success(mode === 'retain' ? 'Se retiene en el mes de compra' : 'Se paga en el mes de facturación', ''); },
       error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
     });
   }
@@ -425,6 +440,21 @@ export class MonthDetailComponent {
 
   showSpentIndicator(cat: LsStatementCategory): boolean {
     return !cat.isVirtual && cat.kind !== 'savings' && ((cat.spent ?? 0) > 0 || this.itemsSum(cat) > 0);
+  }
+
+  // Marcar/desmarcar una categoría como "cuenta para PUEDO GASTAR" (flexible).
+  toggleFlexible(cat: LsStatementCategory) {
+    const s = this.stmt();
+    if (!s || !cat._id) return;
+    this.loading.set(true);
+    this.svc.updateCategoryMeta(s._id, cat._id, { flexible: !cat.flexible }).subscribe({
+      next: (updated) => {
+        this.stmt.set(updated);
+        this.loading.set(false);
+        toastr.success(!cat.flexible ? `"${cat.name}" cuenta para puedo gastar` : `"${cat.name}" ya no cuenta`, '');
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
   }
 
   catStatus(cat: LsStatementCategory): 'ok' | 'warn' | 'over' {
@@ -902,6 +932,7 @@ export class MonthDetailComponent {
     this.txIsShared.set(false);
     this.txBorrowerName.set('');
     this.txPurchaseCategory.set('');
+    this.txBudgetMode.set('retain');
     // Tarjeta por defecto: la última usada, si sigue activa; si no, la primera activa.
     let last: string | null = null;
     try { last = localStorage.getItem(LAST_CARD_KEY); } catch { /* no storage */ }
@@ -980,7 +1011,8 @@ export class MonthDetailComponent {
         isShared: isShared || undefined,
         borrowerName: isShared ? borrowerName : undefined,
         cardId: this.txCardId(),
-        categoryName: categoryName || undefined
+        categoryName: categoryName || undefined,
+        budgetMode: this.txBudgetMode()
       };
       const typeLabel = type === 'diferido' ? 'Diferido registrado' : 'Compra TDC registrada';
 

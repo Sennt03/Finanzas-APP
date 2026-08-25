@@ -21,7 +21,11 @@
     <section class="hero" [class.negative]="s.summary.puedoGastar < 0">
       <span class="hero-label">PUEDO GASTAR</span>
       <strong class="hero-amount">$ {{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
-      <span class="hero-sub">restante en categorías flexibles</span>
+      @if (s.summary.flexibleCount > 0) {
+        <span class="hero-sub">lo que sobra en tus {{ s.summary.flexibleCount }} categoría(s) de gasto{{ s.summary.unbudgeted > 0 ? ' + no presupuestado' : '' }}</span>
+      } @else {
+        <span class="hero-sub cta">Toca una categoría y marca la ⭐ para contarla aquí</span>
+      }
     </section>
 
     <!-- Tres secundarios -->
@@ -67,6 +71,18 @@
             <span class="d-label">Ahorros (real)</span>
             <strong>{{ (savingsBalance() ?? 0) | number:'1.2-2' }}</strong>
           </div>
+          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
+            <div class="detail-cell">
+              <span class="d-label">Disponible real</span>
+              <strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong>
+            </div>
+          }
+          @if (s.summary.retainedFromPrev > 0) {
+            <div class="detail-cell">
+              <span class="d-label">Retenido del mes anterior</span>
+              <strong>{{ s.summary.retainedFromPrev | number:'1.2-2' }}</strong>
+            </div>
+          }
         </div>
 
         @if (s.summary.cardsBreakdown.length > 0) {
@@ -169,7 +185,16 @@
         <h3>{{ cat.name }}</h3>
         <span class="sheet-sub">{{ cat.spent | number:'1.2-2' }} de {{ budgetOf(cat) | number:'1.2-2' }} · queda <strong>{{ cat.remaining | number:'1.2-2' }}</strong></span>
       </div>
-      <button class="btn-icon" (click)="closeSheet()" aria-label="Cerrar"><i class="bx bx-x"></i></button>
+      <div class="sheet-head-actions">
+        @if (cat.kind !== 'savings') {
+          <button class="flex-star" [class.on]="cat.flexible" (click)="toggleFlexible(cat)"
+            [title]="cat.flexible ? 'Cuenta para PUEDO GASTAR (toca para quitar)' : 'Contar para PUEDO GASTAR'"
+            [attr.aria-label]="cat.flexible ? 'Quitar de puedo gastar' : 'Contar para puedo gastar'">
+            <i class="bx" [class.bxs-star]="cat.flexible" [class.bx-star]="!cat.flexible"></i>
+          </button>
+        }
+        <button class="btn-icon" (click)="closeSheet()" aria-label="Cerrar"><i class="bx bx-x"></i></button>
+      </div>
     </div>
 
     <div class="sheet-body">

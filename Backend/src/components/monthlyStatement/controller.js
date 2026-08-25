@@ -207,11 +207,14 @@ async function buildEnrichedStatement(stmt, userId) {
         // Compras de tarjeta (propias) asignadas a esta categoría este mes de presupuesto.
         cat.creditBudgetItems = budgetItemsByCat[cat.name] || []
     }
-    const puedoGastar = r2(
-        nonVirtual
-            .filter(c => c.flexible && c.kind !== 'savings')
-            .reduce((a, c) => a + c.remaining, 0)
-    )
+    // PUEDO GASTAR = lo que sobra en las categorías que el usuario marcó como "de gasto"
+    // (flexible) + el sueldo que no presupuestó en ninguna categoría.
+    const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
+    const flexibleRemaining = nonVirtual
+        .filter(c => c.flexible && c.kind !== 'savings')
+        .reduce((a, c) => a + c.remaining, 0)
+    const flexibleCount = nonVirtual.filter(c => c.flexible && c.kind !== 'savings').length
+    const puedoGastar = r2(flexibleRemaining + unbudgeted)
 
     const tdcShare = tdc.reduce((s, i) => s + i.budgetedAmount, 0)
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
@@ -297,7 +300,13 @@ async function buildEnrichedStatement(stmt, userId) {
         pendingLoansTotal,
         // Fase 2/3
         puedoGastar,
+        flexibleCount,
+        unbudgeted,
         apartado: budgetData.apartado || 0,
+        retainedFromPrev: budgetData.retainedFromPrev || 0,
+        // Saldo realmente libre: quita lo que aparto este mes y suma lo que retuve antes
+        // (ese dinero ya está en la cuenta para pagar la tarjeta de este mes).
+        disponibleReal: r2(availableBalance - (budgetData.apartado || 0) + (budgetData.retainedFromPrev || 0)),
         porPagar: r2(creditTotal),
         cardsBreakdown,
         savings: { monthDeposits, monthWithdrawals },

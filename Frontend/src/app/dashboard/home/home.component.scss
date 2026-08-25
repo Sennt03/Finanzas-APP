@@ -345,3 +345,13 @@
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes pop { from { opacity: 0; transform: translate(-50%, -48%) scale(.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+
+// ===== Estrella "cuenta para puedo gastar" =====
+.hero .hero-sub.cta { background: rgba(255,255,255,.18); border-radius: 99px; padding: 4px 12px; align-self: center; margin-top: 4px; font-weight: 600; }
+
+.sheet .sheet-head-actions { display: flex; align-items: center; gap: 4px; }
+.flex-star {
+  background: transparent; border: none; cursor: pointer; padding: 4px 6px; color: $primary-faint; line-height: 1;
+  i { font-size: 22px; }
+  &.on i { color: $warning; }
+}

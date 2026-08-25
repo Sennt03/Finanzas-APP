@@ -130,6 +130,21 @@ export class HomeComponent {
 
   toggleDetails() { this.showDetails.update(v => !v); }
 
+  // Marcar/desmarcar una categoría como "cuenta para PUEDO GASTAR".
+  toggleFlexible(cat: LsStatementCategory) {
+    const id = this.selectedId();
+    if (!id || !cat._id) return;
+    this.loading.set(true);
+    this.stmtSvc.updateCategoryMeta(id, cat._id, { flexible: !cat.flexible }).subscribe({
+      next: (updated) => {
+        this.months.update(list => list.map(m => m._id === updated._id ? updated : m));
+        this.loading.set(false);
+        toastr.success(!cat.flexible ? `"${cat.name}" cuenta para puedo gastar` : `"${cat.name}" ya no cuenta`, '');
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
   // ----- Cálculos de categoría -----
   pct(cat: LsStatementCategory): number {
     const budget = cat.categoryBudget ?? cat.totalAmount ?? 0;

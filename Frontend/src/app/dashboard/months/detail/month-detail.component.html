@@ -26,99 +26,48 @@
       </div>
     </header>
 
-    <!-- Sección: Saldos -->
+    <!-- Puedo gastar: lo primero y lo único grande -->
     <div class="section" id="saldos-section">
-      <div class="section-label">Saldos</div>
-      <div class="cards balances">
-        <div class="card real">
-          <div class="card-top">
-            <span class="label">Saldo cuenta</span>
-            <span class="hint">en banco</span>
-          </div>
-          <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
-          @if (s.summary.pendingLoansTotal > 0) {
-            <small class="loans-hint">
-              Con préstamos cobrados: <strong>{{ s.summary.remainingSalary + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong>
-            </small>
-            <small>{{ s.summary.pendingLoansTotal | number:'1.2-2' }} en préstamos pendientes</small>
-          } @else {
-            <small>Incluye TDC no pagada aún</small>
-          }
-        </div>
-        <div class="card available">
-          <div class="card-top">
-            <span class="label">Saldo disponible</span>
-            <span class="hint">real</span>
-          </div>
-          <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
-          @if (s.summary.pendingLoansTotal > 0) {
-            <small class="loans-hint">
-              Con cobros: <strong>{{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong>
-            </small>
-          }
-          <small>Descuenta TDC pendiente y préstamos</small>
-        </div>
+      <div class="puedo-hero" [class.negative]="s.summary.puedoGastar < 0">
+        <span class="ph-label">PUEDO GASTAR</span>
+        <strong class="ph-amount">$ {{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
+        @if (s.summary.flexibleCount > 0) {
+          <span class="ph-sub">lo que sobra en tus {{ s.summary.flexibleCount }} categoría(s) de gasto{{ s.summary.unbudgeted > 0 ? ' + no presupuestado' : '' }}</span>
+        } @else {
+          <span class="ph-sub warn">Elige abajo qué categorías cuentan para gastar (toca la ⭐)</span>
+        }
       </div>
-    </div>
 
-    <!-- Sección: Resumen del mes -->
-    <div class="section">
-      <div class="section-label">Resumen del mes</div>
-      <div class="cards summary">
-        <div class="card primary">
-          <span class="label">Sueldo</span>
-          <strong>{{ s.salary | number:'1.2-2' }}</strong>
-          @if (s.summary.totalExtrasIncome > 0) {
-            <small class="positive">+{{ s.summary.totalExtrasIncome | number:'1.2-2' }} ingresos extra</small>
-          } @else {
-            <small>ingresos del mes</small>
-          }
-        </div>
-        <div class="card budget">
-          <span class="label">Presupuestado</span>
-          <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
-          <small>libre: {{ s.summary.availableToBudget | number:'1.2-2' }}</small>
-        </div>
-        <div class="card spent">
-          <span class="label">Gastado</span>
-          <strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong>
-          <small>items {{ s.summary.totalPaid | number:'1.2-2' }} · extras {{ s.summary.totalExtras | number:'1.2-2' }}</small>
-        </div>
-        <div class="card savings">
-          <span class="label">Ahorro</span>
-          <strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong>
-          @if (s.summary.savings.monthWithdrawals > 0) {
-            <small>egresos: -{{ s.summary.savings.monthWithdrawals | number:'1.2-2' }}</small>
-          } @else {
-            <small>depositado a ahorros</small>
-          }
-        </div>
-        @if (s.summary.creditCard.total > 0) {
-          <div class="card credit">
-            <span class="label">Tarjeta de crédito</span>
-            <strong>{{ s.summary.creditCard.total | number:'1.2-2' }}</strong>
-            @if (s.summary.creditCard.diferidosShare > 0) {
-              <small>diferidos: {{ s.summary.creditCard.diferidosShare | number:'1.2-2' }}</small>
-            }
-            @if (s.summary.creditCard.itemsShare > 0) {
-              <small>items presupuesto: {{ s.summary.creditCard.itemsShare | number:'1.2-2' }}</small>
-            }
-            <small [class.positive]="s.summary.creditCard.groupPaid">{{ s.summary.creditCard.groupPaid ? 'pagada ✓' : 'pendiente de pagar' }}</small>
-          </div>
+      <!-- Números compactos -->
+      <div class="mini-row">
+        @if (s.summary.porPagar > 0) {
+          <div class="mini credit"><span>Por pagar tarjeta</span><strong>{{ s.summary.porPagar | number:'1.2-2' }}</strong></div>
         }
-        <div class="card puedo">
-          <span class="label">Puedo gastar</span>
-          <strong [class.neg]="s.summary.puedoGastar < 0">{{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
-          <small>categorías flexibles</small>
-        </div>
         @if (s.summary.apartado > 0) {
-          <div class="card apartado">
-            <span class="label">Apartado</span>
-            <strong>{{ s.summary.apartado | number:'1.2-2' }}</strong>
-            <small>comprometido, se paga el próximo mes</small>
-          </div>
+          <div class="mini warn"><span>Apartado</span><strong>{{ s.summary.apartado | number:'1.2-2' }}</strong></div>
         }
+        @if (s.summary.retainedFromPrev > 0) {
+          <div class="mini info"><span>Retenido del mes ant.</span><strong>{{ s.summary.retainedFromPrev | number:'1.2-2' }}</strong></div>
+        }
+        <div class="mini savings"><span>Ahorro del mes</span><strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong></div>
       </div>
+
+      <button class="detalle-toggle" (click)="toggleSaldos()" [attr.aria-expanded]="showSaldos()">
+        <i class="bx" [class.bx-chevron-down]="!showSaldos()" [class.bx-chevron-up]="showSaldos()"></i>
+        {{ showSaldos() ? 'Ocultar detalle' : 'Ver saldos y presupuesto' }}
+      </button>
+      @if (showSaldos()) {
+        <div class="saldo-detail">
+          <div class="sd-cell"><span>Sueldo</span><strong>{{ s.salary | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Presupuestado</span><strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Sin presupuestar</span><strong>{{ s.summary.availableToBudget | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Gastado</span><strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo disponible</span><strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong></div>
+          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
+            <div class="sd-cell"><span>Disponible real</span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
+          }
+        </div>
+      }
     </div>
 
     <!-- Banner de mes cerrado -->
@@ -222,6 +171,13 @@
               {{ cat.name }}
               @if (cat.isVirtual) { <span class="auto-tag">auto</span> }
               @if (cat.isVirtual && cat.categoryPaid) { <span class="paid-tag">pagada</span> }
+              @if (!cat.isVirtual && cat.kind !== 'savings') {
+                <button type="button" class="flex-star" [class.on]="cat.flexible" (click)="toggleFlexible(cat)"
+                  [title]="cat.flexible ? 'Cuenta para PUEDO GASTAR (toca para quitar)' : 'Marcar: esta categoría cuenta para PUEDO GASTAR'"
+                  [attr.aria-label]="cat.flexible ? 'Quitar de puedo gastar' : 'Contar para puedo gastar'">
+                  <i class="bx" [class.bxs-star]="cat.flexible" [class.bx-star]="!cat.flexible"></i>
+                </button>
+              }
             </h3>
             @if (!cat.isVirtual && cat.totalAmount > 0) {
               <div class="cat-budget">
@@ -348,10 +304,18 @@
                         <span class="cchip-dot" [style.background]="cardColor(it.cardId)"></span>{{ cardName(it.cardId) }}
                       </span>
                       @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
+                      @if (it.billedLater) { <span class="pay-badge later">retenido desde {{ monthName(it.budgetMonth) }}</span> }
                       <select class="cat-assign" [ngModel]="it.categoryName || ''" (ngModelChange)="reassignCategory(it.purchaseId!, $event)" title="Categoría que consume esta compra">
                         <option [ngValue]="''">Sin categoría</option>
                         @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
                       </select>
+                      @if (it.subType === 'tdc') {
+                        <button type="button" class="mode-toggle" [class.defer]="it.budgetMode === 'defer'"
+                          (click)="reassignBudgetMode(it.purchaseId!, it.budgetMode === 'defer' ? 'retain' : 'defer')"
+                          [title]="it.budgetMode === 'defer' ? 'Se paga al facturar (no retiene). Click para retener en el mes de compra' : 'Se retiene en el mes de compra. Click para pagar al facturar'">
+                          <i class="bx bx-transfer-alt"></i>{{ it.budgetMode === 'defer' ? 'no retiene' : 'retiene' }}
+                        </button>
+                      }
                     </div>
                     <div class="amounts">
                       <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
@@ -575,6 +539,21 @@
                   }
                 </select>
               </label>
+            }
+            @if (txType() === 'tdc') {
+              <div class="span-full mode-choice">
+                <span class="mode-label">¿Cómo manejas el dinero si se paga el mes siguiente?</span>
+                <div class="mode-options">
+                  <button type="button" class="mode-opt" [class.sel]="txBudgetMode() === 'retain'" (click)="txBudgetMode.set('retain')">
+                    <strong>Retener ahora</strong>
+                    <small>Aparto el dinero este mes y lo pago con plata de este mes</small>
+                  </button>
+                  <button type="button" class="mode-opt" [class.sel]="txBudgetMode() === 'defer'" (click)="txBudgetMode.set('defer')">
+                    <strong>Pagar al facturar</strong>
+                    <small>No retengo nada; el mes que se cobra elijo de qué categoría sale</small>
+                  </button>
+                </div>
+              </div>
             }
             @if (txType() === 'tdc' || txType() === 'diferido') {
               <label class="span-full shared-toggle-label">

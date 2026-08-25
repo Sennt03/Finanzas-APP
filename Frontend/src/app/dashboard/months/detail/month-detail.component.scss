@@ -2246,3 +2246,80 @@
   .credit-budget-block .cbb-item { align-items: flex-start; }
   .cat-assign { max-width: 100%; }
 }
+
+// ===== Retener / diferir (elección de manejo del dinero) =====
+.cards.summary .card.retained strong { color: $info; }
+.cards.summary .card.disponible strong { color: $success; &.neg { color: $danger; } }
+
+.tx-form .mode-choice {
+  display: flex; flex-direction: column; gap: 8px;
+  .mode-label { font-size: 12px; font-weight: 600; color: $primary-muted; }
+  .mode-options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mode-opt {
+    flex: 1 1 180px; text-align: left; cursor: pointer;
+    background: $surface; border: 1.5px solid $border; border-radius: $r-md; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 2px;
+    strong { font-size: 14px; color: $primary; }
+    small { font-size: 11px; color: $primary-muted; line-height: 1.3; }
+    &.sel { border-color: $accent; background: $accent-soft; strong { color: $accent; } }
+  }
+}
+
+.mode-toggle {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: $info-soft; color: $info; border: 1px solid transparent;
+  border-radius: 99px; padding: 1px 8px; font-size: 11px; font-weight: 600; cursor: pointer;
+  i { font-size: 13px; }
+  &.defer { background: $surface-alt; color: $primary-muted; }
+}
+
+// ===== Puedo gastar como encabezado del mes =====
+.puedo-hero {
+  background: linear-gradient(135deg, $accent, $accent-hover);
+  color: #fff;
+  border-radius: $r-xl;
+  padding: 22px 20px;
+  text-align: center;
+  box-shadow: $shadow-md;
+  display: flex; flex-direction: column; gap: 3px;
+  &.negative { background: linear-gradient(135deg, $danger, color.adjust($danger, $lightness: -12%)); }
+  .ph-label { font-size: 12px; letter-spacing: .12em; font-weight: 700; opacity: .9; }
+  .ph-amount { font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -.02em; }
+  .ph-sub { font-size: 12.5px; opacity: .9; &.warn { background: rgba(255,255,255,.18); border-radius: 99px; padding: 3px 10px; align-self: center; margin-top: 4px; } }
+}
+
+.mini-row {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  .mini {
+    flex: 1 1 auto; min-width: 120px;
+    background: $surface; border: 1px solid $border; border-radius: $r-md; padding: 8px 12px;
+    display: flex; flex-direction: column; gap: 1px; box-shadow: $shadow-sm;
+    span { font-size: 11px; color: $primary-muted; text-transform: uppercase; letter-spacing: .02em; }
+    strong { font-size: 16px; font-weight: 700; }
+    &.credit strong { color: $credit; }
+    &.warn strong { color: $warning; }
+    &.info strong { color: $info; }
+    &.savings strong { color: $savings; }
+  }
+}
+
+.detalle-toggle {
+  margin: 12px auto 0; display: flex; align-items: center; gap: 6px;
+  background: transparent; border: none; color: $primary-muted; font-weight: 600; font-size: 13px; cursor: pointer; padding: 6px;
+  i { font-size: 18px; }
+}
+.saldo-detail {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  background: $surface-alt; border: 1px solid $border; border-radius: $r-lg; padding: 14px; margin-top: 4px;
+  .sd-cell { display: flex; flex-direction: column;
+    span { font-size: 11px; color: $primary-muted; text-transform: uppercase; letter-spacing: .02em; }
+    strong { font-size: 16px; font-weight: 700; } }
+}
+@media (max-width: 560px) { .saldo-detail { grid-template-columns: repeat(2, 1fr); } }
+
+.flex-star {
+  background: transparent; border: none; cursor: pointer; padding: 2px 4px; margin-left: 4px;
+  color: $primary-faint; line-height: 1;
+  i { font-size: 20px; }
+  &.on i { color: $warning; }
+}

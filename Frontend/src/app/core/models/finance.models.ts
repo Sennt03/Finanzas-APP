@@ -76,6 +76,7 @@ export interface LsStatementItem {
     // Fase 1/2 (cuotas de la categoría virtual de tarjeta):
     cardId?: string | null;
     categoryName?: string;
+    budgetMode?: 'retain' | 'defer';
     budgetYear?: number;
     budgetMonth?: number;
     billedLater?: boolean;
@@ -161,7 +162,11 @@ export interface LsStatementSummary {
     pendingLoansTotal: number;
     // Fase 2/3
     puedoGastar: number;
+    flexibleCount: number;
+    unbudgeted: number;
     apartado: number;
+    retainedFromPrev: number;
+    disponibleReal: number;
     porPagar: number;
     cardsBreakdown: LsCardBreakdown[];
     savings: {
@@ -244,6 +249,7 @@ export interface LsCreditPurchase {
     cutoffDayUsed: number;
     cardId?: string | null;
     categoryName?: string;
+    budgetMode?: 'retain' | 'defer';
     cuotas: LsCuota[];
     isShared?: boolean;
     borrowerName?: string;

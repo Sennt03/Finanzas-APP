@@ -61,6 +61,8 @@ export class PurchasesComponent {
 
   purchases = signal<LsCreditPurchase[]>([]);
   cardMap = signal<Map<string, LsCard>>(new Map());
+  cardsList = signal<LsCard[]>([]);
+  categoryNames = signal<string[]>([]);
   // Total real de tarjeta por mes (`year-month` -> summary.creditCard.total), tomado de cada estado mensual.
   realTotals = signal<Map<string, number>>(new Map());
   loading = signal(false);
@@ -68,6 +70,9 @@ export class PurchasesComponent {
   editingId = signal<string | null>(null);
   editName = signal('');
   editTotal = signal(0);
+  editCardId = signal<string | null>(null);
+  editCategory = signal('');
+  editBudgetMode = signal<'retain' | 'defer'>('retain');
 
   enriched = computed<PurchaseView[]>(() =>
     this.purchases().map(p => {
@@ -172,10 +177,16 @@ export class PurchasesComponent {
       next: ({ purchases, statements, cards }) => {
         this.purchases.set(purchases);
         this.cardMap.set(new Map(cards.map(c => [String(c._id), c])));
+        this.cardsList.set(cards.filter(c => c.active));
         const rt = new Map<string, number>();
+        const names = new Set<string>();
         for (const s of statements) {
           rt.set(`${s.year}-${s.month}`, s.summary?.creditCard?.total ?? 0);
+          for (const cat of s.categories) {
+            if (!cat.isVirtual) names.add(cat.name);
+          }
         }
+        this.categoryNames.set([...names].sort());
         this.realTotals.set(rt);
         this.loading.set(false);
       },
@@ -190,7 +201,12 @@ export class PurchasesComponent {
     this.editingId.set(p._id);
     this.editName.set(p.name);
     this.editTotal.set(p.totalAmount);
+    this.editCardId.set(p.cardId ?? null);
+    this.editCategory.set(p.categoryName ?? '');
+    this.editBudgetMode.set(p.budgetMode ?? 'retain');
   }
+
+  isDiferido(p: PurchaseView): boolean { return p.installments > 1; }
 
   cancelEdit() {
     this.editingId.set(null);
@@ -204,7 +220,12 @@ export class PurchasesComponent {
       return;
     }
     this.loading.set(true);
-    this.svc.update(p._id, { name, totalAmount: total }).subscribe({
+    this.svc.update(p._id, {
+      name, totalAmount: total,
+      cardId: this.editCardId(),
+      categoryName: this.editCategory(),
+      budgetMode: this.editBudgetMode()
+    }).subscribe({
       next: () => {
         this.editingId.set(null);
         this.load();

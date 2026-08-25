@@ -29,10 +29,16 @@ function calculateCuotas(purchaseDate, installments, totalAmount, cutoffDay) {
 }
 
 // Mes en el que la cuota `idx` CONSUME presupuesto (Fase 2):
-//   - Compra simple (1 cuota): el mes de la fecha de compra, sin importar cuándo se facture.
+//   - Compra simple (1 cuota):
+//       · budgetMode 'retain' (default) → mes de la FECHA DE COMPRA (retengo/aparto ahora).
+//       · budgetMode 'defer'            → mes de FACTURACIÓN (consumo al pagar).
 //   - Diferido (N cuotas): cada cuota consume presupuesto en su propio mes de facturación.
 function budgetMonthOf(p, idx) {
     if ((p.installments || 1) === 1) {
+        if (p.budgetMode === 'defer') {
+            const c = p.cuotas[0]
+            return { year: c.year, month: c.month }
+        }
         const d = new Date(p.purchaseDate)
         return { year: d.getFullYear(), month: d.getMonth() + 1 }
     }
@@ -69,6 +75,7 @@ async function findCuotasForMonth(userId, year, month) {
                     cuotaId: c._id,
                     cardId: p.cardId ? String(p.cardId) : null,
                     categoryName: p.categoryName || '',
+                    budgetMode: p.budgetMode || 'retain',
                     isShared: p.isShared || false,
                     borrowerName: p.borrowerName || '',
                     paidByBorrower: c.paidByBorrower || 0,
@@ -95,20 +102,26 @@ async function findBudgetMonthData(userId, year, month) {
     const purchases = await CreditPurchase.find({ userId })
     const consumedByCategory = {}
     const items = []
-    let apartado = 0
+    let apartado = 0            // budgetMonth==M y se factura después → aparto ahora para el próximo mes
+    let retainedFromPrev = 0    // se factura este mes pero ya se apartó en un mes anterior
+    const retainedItems = []
+
+    const before = (a, y, mo) => (a.year < y) || (a.year === y && a.month < mo)
 
     for (const p of purchases) {
         if (p.isShared) continue // consumo de tercero: no reduce mi presupuesto
         for (let idx = 0; idx < p.cuotas.length; idx++) {
             const c = p.cuotas[idx]
             const bm = budgetMonthOf(p, idx)
-            if (bm.year === year && bm.month === month) {
+            const budgetIsThisMonth = bm.year === year && bm.month === month
+            const billIsThisMonth = c.year === year && c.month === month
+            const billedLater = (bm.year < c.year) || (bm.year === c.year && bm.month < c.month)
+
+            if (budgetIsThisMonth) {
                 const amt = c.amount
-                const billedLater = (bm.year < c.year) || (bm.year === c.year && bm.month < c.month)
                 if (billedLater) apartado += amt
                 if (p.categoryName) {
                     consumedByCategory[p.categoryName] = (consumedByCategory[p.categoryName] || 0) + amt
-                    // Detalle para mostrar la compra como línea dentro de su categoría.
                     items.push({
                         purchaseId: String(p._id),
                         cuotaId: String(c._id),
@@ -124,9 +137,29 @@ async function findBudgetMonthData(userId, year, month) {
                     })
                 }
             }
+
+            // Se factura este mes pero su presupuesto se consumió en un mes anterior:
+            // ese dinero ya lo retuve → lo muestro como "retenido del mes anterior".
+            if (billIsThisMonth && before(bm, year, month)) {
+                retainedFromPrev += c.amount
+                retainedItems.push({
+                    purchaseId: String(p._id),
+                    name: p.name,
+                    amount: c.amount,
+                    categoryName: p.categoryName || '',
+                    budgetYear: bm.year,
+                    budgetMonth: bm.month
+                })
+            }
         }
     }
-    return { consumedByCategory, apartado: Math.round(apartado * 100) / 100, items }
+    return {
+        consumedByCategory,
+        apartado: Math.round(apartado * 100) / 100,
+        retainedFromPrev: Math.round(retainedFromPrev * 100) / 100,
+        items,
+        retainedItems
+    }
 }
 
 async function resolveCard(userId, cardId) {
@@ -138,7 +171,7 @@ async function resolveCard(userId, cardId) {
     return cardController.ensureDefaultCard(userId)
 }
 
-async function create(userId, { name, totalAmount, purchaseDate, installments, isShared, borrowerName, cardId, categoryName }) {
+async function create(userId, { name, totalAmount, purchaseDate, installments, isShared, borrowerName, cardId, categoryName, budgetMode }) {
     const card = await resolveCard(userId, cardId)
     const cutoffDay = card?.cutoffDay || (await Template.findOne({ userId }))?.cutoffDay || 12
     const inst = installments && installments > 0 ? Math.floor(installments) : 1
@@ -152,6 +185,7 @@ async function create(userId, { name, totalAmount, purchaseDate, installments, i
         cutoffDayUsed: cutoffDay,
         cardId: card ? card._id : null,
         categoryName: (categoryName || '').trim(),
+        budgetMode: budgetMode === 'defer' ? 'defer' : 'retain',
         cuotas,
         isShared: !!isShared,
         borrowerName: isShared ? (borrowerName || '').trim() : ''
@@ -258,6 +292,7 @@ async function update(userId, id, data) {
 
     if (data.name !== undefined) p.name = data.name
     if (data.categoryName !== undefined) p.categoryName = (data.categoryName || '').trim()
+    if (data.budgetMode !== undefined) p.budgetMode = data.budgetMode === 'defer' ? 'defer' : 'retain'
 
     // Reasignar tarjeta: recalcula los meses de facturación con el corte de la nueva
     // tarjeta, pero solo si ninguna cuota fue pagada aún (evita descuadrar pagos).

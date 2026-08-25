@@ -81,6 +81,27 @@
                     <label>Total compra
                       <input type="number" min="0" class="edit-input small" [ngModel]="editTotal()" (ngModelChange)="editTotal.set($event)">
                     </label>
+                    <label>Tarjeta
+                      <select class="edit-input" [ngModel]="editCardId()" (ngModelChange)="editCardId.set($event)">
+                        @for (c of cardsList(); track c._id) {
+                          <option [ngValue]="c._id">{{ c.name }}{{ c.bank ? ' · ' + c.bank : '' }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label>Categoría
+                      <select class="edit-input" [ngModel]="editCategory()" (ngModelChange)="editCategory.set($event)">
+                        <option [ngValue]="''">Sin categoría</option>
+                        @for (n of categoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
+                      </select>
+                    </label>
+                    @if (!isDiferido(r.view)) {
+                      <label>Manejo del dinero
+                        <select class="edit-input" [ngModel]="editBudgetMode()" (ngModelChange)="editBudgetMode.set($event)">
+                          <option [ngValue]="'retain'">Retener en el mes de compra</option>
+                          <option [ngValue]="'defer'">Pagar en el mes de facturación</option>
+                        </select>
+                      </label>
+                    }
                   </div>
                   <div class="actions">
                     <button class="btn btn-outline btn-sm" (click)="cancelEdit()">Cancelar</button>

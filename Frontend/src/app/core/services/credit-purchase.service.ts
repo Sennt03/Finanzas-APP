@@ -22,11 +22,12 @@ export class CreditPurchaseService {
         borrowerName?: string;
         cardId?: string | null;
         categoryName?: string;
+        budgetMode?: 'retain' | 'defer';
     }): Observable<LsCreditPurchase> {
         return this.http.post<LsCreditPurchase>(this.url, data);
     }
 
-    update(id: string, data: { name?: string; totalAmount?: number; cardId?: string | null; categoryName?: string }): Observable<LsCreditPurchase> {
+    update(id: string, data: { name?: string; totalAmount?: number; cardId?: string | null; categoryName?: string; budgetMode?: 'retain' | 'defer' }): Observable<LsCreditPurchase> {
         return this.http.put<LsCreditPurchase>(`${this.url}/${id}`, data);
     }
 
