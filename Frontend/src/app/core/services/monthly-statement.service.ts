@@ -80,7 +80,7 @@ export class MonthlyStatementService {
     }
 
     // Fase 3: mandar lo no presupuestado a una categoría (sube su presupuesto).
-    allocate(id: string, payload: { toCategoryId: string; amount: number }): Observable<LsMonthlyStatement> {
+    allocate(id: string, payload: { toCategoryId?: string | null; newCategoryName?: string; amount: number }): Observable<LsMonthlyStatement> {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/allocate`, payload);
     }
 

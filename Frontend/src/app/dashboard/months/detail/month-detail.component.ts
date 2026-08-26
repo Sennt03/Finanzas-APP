@@ -466,7 +466,8 @@ export class MonthDetailComponent {
   }
 
   showSpentIndicator(cat: LsStatementCategory): boolean {
-    return !cat.isVirtual && cat.kind !== 'savings' && ((cat.spent ?? 0) > 0 || this.itemsSum(cat) > 0);
+    return !cat.isVirtual && cat.kind !== 'savings' &&
+      (this.categoryBudget(cat) > 0 || (cat.spent ?? 0) > 0 || this.itemsSum(cat) > 0);
   }
 
   // Marcar/desmarcar una categoría como "cuenta para PUEDO GASTAR" (flexible).

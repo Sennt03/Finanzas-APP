@@ -35,7 +35,7 @@ export class HomeComponent {
   selectedId = signal<string | null>(null);
   loading = signal(false);
 
-  showDetails = signal(false);
+  showDetails = signal(true);
 
   selected = computed(() => this.months().find(m => m._id === this.selectedId()) ?? null);
 
@@ -132,13 +132,15 @@ export class HomeComponent {
 
   // ----- Presupuestar lo no presupuestado a una categoría (Fase 3) -----
   allocating = signal(false);
-  allocCatId = signal<string | null>(null);
+  allocCatId = signal<string>('__new__'); // '__new__' = crear categoría; si no, un categoryId
+  allocNewName = signal('');
   allocAmount = signal<number>(0);
   allocCats = computed(() => this.realCats().filter(c => c.kind !== 'savings'));
 
   openAllocate() {
     const cats = this.allocCats();
-    this.allocCatId.set(cats[0]?._id ?? null);
+    this.allocCatId.set(cats[0]?._id ?? '__new__');
+    this.allocNewName.set('');
     this.allocAmount.set(this.selected()?.summary.sinCategoria.budget ?? 0);
     this.allocating.set(true);
   }
@@ -146,16 +148,24 @@ export class HomeComponent {
 
   submitAllocate() {
     const id = this.selectedId();
-    const catId = this.allocCatId();
+    const sel = this.allocCatId();
     const amt = Number(this.allocAmount());
-    if (!id || !catId || amt <= 0) { toastr.error('Elige categoría y monto', ''); return; }
+    if (!id || amt <= 0) { toastr.error('Indica un monto válido', ''); return; }
+    const payload: { toCategoryId?: string; newCategoryName?: string; amount: number } = { amount: amt };
+    if (sel === '__new__') {
+      const name = this.allocNewName().trim();
+      if (!name) { toastr.error('Escribe el nombre de la nueva categoría', ''); return; }
+      payload.newCategoryName = name;
+    } else {
+      payload.toCategoryId = sel;
+    }
     this.loading.set(true);
-    this.stmtSvc.allocate(id, { toCategoryId: catId, amount: amt }).subscribe({
+    this.stmtSvc.allocate(id, payload).subscribe({
       next: (updated) => {
         this.months.update(list => list.map(m => m._id === updated._id ? updated : m));
         this.loading.set(false);
         this.allocating.set(false);
-        toastr.success('Presupuestado a la categoría', '');
+        toastr.success('Presupuestado', '');
       },
       error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
     });

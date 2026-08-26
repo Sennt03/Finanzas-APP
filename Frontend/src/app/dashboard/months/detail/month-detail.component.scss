@@ -2326,9 +2326,9 @@
 
 // ===== Menú ⋮ por cuota de tarjeta (categoría / tarjeta / convertir) =====
 .cuota-menu-wrap { position: relative; display: inline-flex; }
-.cuota-menu-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 80; }
+.cuota-menu-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 95; }
 .cuota-menu {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 81;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 96;
   background: $surface; border-radius: $r-xl $r-xl 0 0; box-shadow: $shadow-lg;
   padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 10px;
@@ -2389,3 +2389,7 @@
 .extra-item.savings-mov { border-left: 3px solid $savings; }
 .extra-item .extra-info i.bx-piggy-bank { color: $savings; }
 .mov-tag.ahorro { font-size: 10px; font-weight: 700; background: $savings-soft; color: $savings; padding: 1px 7px; border-radius: 99px; margin-left: 4px; }
+
+// Fila única Gastado/Queda de categoría
+.cat-spent-row .of-total { color: $primary-faint; font-weight: 400; margin-left: 3px; }
+.cat-spent-row .remaining-label.over strong { color: $danger; }

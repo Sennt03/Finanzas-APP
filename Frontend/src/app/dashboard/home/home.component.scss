@@ -408,3 +408,10 @@
 
 .secondary .sec-card.credit.paid { border-color: color.adjust($success, $lightness: 25%); background: $success-soft; }
 .secondary .sec-card.credit strong.ok { color: $success; font-size: 16px; }
+
+.details-panel .detail-cell strong.pos { color: $success; }
+.details-panel .detail-cell strong.neg { color: $danger; }
+.sincat-card .alloc-form .af-newname {
+  width: 100%; padding: 9px 10px; border: 1px solid $border; border-radius: $r-sm;
+  background: $surface; color: $primary; font-weight: 600;
+}

@@ -179,14 +179,6 @@
                 </button>
               }
             </h3>
-            @if (!cat.isVirtual && cat.totalAmount > 0) {
-              <div class="cat-budget">
-                <span class="used">{{ categoryPaidSum(cat) | number:'1.2-2' }}</span>
-                <span class="sep">/</span>
-                <span class="total">{{ cat.totalAmount | number:'1.2-2' }}</span>
-                <span class="free" [class.warn]="categoryRemainingToPay(cat) < 0">libre {{ categoryRemainingToPay(cat) | number:'1.2-2' }}</span>
-              </div>
-            }
             @if (cat.isVirtual) {
               <div class="cat-budget credit-total" [class.paid]="cat.categoryPaid">
                 <span class="label">total a pagar</span>
@@ -236,9 +228,9 @@
 
           @if (showSpentIndicator(cat)) {
             <div class="cat-spent-row">
-              <span class="spent-label">Gastado: <strong>{{ categoryPaidSum(cat) | number:'1.2-2' }}</strong></span>
+              <span class="spent-label">Gastado: <strong>{{ categoryPaidSum(cat) | number:'1.2-2' }}</strong>@if (categoryBudget(cat) > 0) { <span class="of-total">de {{ categoryBudget(cat) | number:'1.2-2' }}</span> }</span>
               <span class="sep">·</span>
-              <span class="remaining-label" [class.all-paid]="categoryRemainingToPay(cat) <= 0">
+              <span class="remaining-label" [class.all-paid]="categoryRemainingToPay(cat) <= 0" [class.over]="categoryRemainingToPay(cat) < 0">
                 Queda: <strong>{{ categoryRemainingToPay(cat) | number:'1.2-2' }}</strong>
               </span>
             </div>
@@ -536,9 +528,6 @@
               <button class="add-item-btn" (click)="openAddItem(cat)">
                 <i class="bx bx-plus"></i>
                 <span>Agregar item</span>
-                @if (cat.totalAmount > 0) {
-                  <small>queda {{ categoryRemainingToPay(cat) | number:'1.2-2' }}</small>
-                }
               </button>
             }
           }
@@ -704,22 +693,36 @@
                 } @else {
                   <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
                 }
-                @if (!e.linkedSavingsId && !e.savingsDepositId && e.type === 'expense' && realCategoryNames().length > 0) {
-                  <select class="cat-assign" (change)="moveExtraToCategory(e, $any($event.target).value); $any($event.target).value=''" title="Marcarlo como gasto de una categoría">
-                    <option value="" disabled selected>📁</option>
-                    @for (n of realCategoryNames(); track n) { <option [value]="n">{{ n }}</option> }
-                  </select>
-                }
                 @if (!e.linkedSavingsId && !e.savingsDepositId) {
-                  <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
-                    <option value="" disabled selected>⋮</option>
-                    @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }
-                    @if (e.type !== 'income') { <option value="income">→ Ingreso</option> }
-                    <option value="tdc">→ TDC</option>
-                    <option value="diferido">→ Diferido</option>
-                  </select>
+                  <div class="cuota-menu-wrap">
+                    <button type="button" class="btn-icon mini" (click)="toggleCuotaMenu('extra-' + e._id)" aria-label="Opciones">
+                      <i class="bx bx-dots-vertical-rounded"></i>
+                    </button>
+                    @if (isCuotaMenuOpen('extra-' + e._id)) {
+                      <div class="cuota-menu-backdrop" (click)="closeCuotaMenu()"></div>
+                      <div class="cuota-menu" role="menu">
+                        @if (e.type === 'expense' && realCategoryNames().length > 0) {
+                          <label class="cm-field">Marcar como gasto de una categoría
+                            <select (change)="moveExtraToCategory(e, $any($event.target).value); $any($event.target).value=''">
+                              <option value="" disabled selected>Elegir categoría…</option>
+                              @for (n of realCategoryNames(); track n) { <option [value]="n">{{ n }}</option> }
+                            </select>
+                          </label>
+                          <div class="cm-sep"></div>
+                        }
+                        <div class="cm-title">Convertir a</div>
+                        @if (e.type !== 'expense') { <button type="button" class="cm-item" (click)="convertExtra(e, 'expense'); closeCuotaMenu()">Gasto cash</button> }
+                        @if (e.type !== 'income') { <button type="button" class="cm-item" (click)="convertExtra(e, 'income'); closeCuotaMenu()">Ingreso</button> }
+                        <button type="button" class="cm-item" (click)="convertExtra(e, 'tdc'); closeCuotaMenu()">TDC</button>
+                        <button type="button" class="cm-item" (click)="convertExtra(e, 'diferido'); closeCuotaMenu()">Diferido</button>
+                        <div class="cm-sep"></div>
+                        <button type="button" class="cm-item danger" (click)="removeExtra(e._id!); closeCuotaMenu()">Eliminar movimiento</button>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
                 }
-                <button class="btn-icon" (click)="removeExtra(e._id!)"><i class="bx bx-x"></i></button>
               </div>
             </div>
           }

@@ -76,9 +76,10 @@ const compensateSchema = Joi.object({
 })
 
 const allocateSchema = Joi.object({
-    toCategoryId: Joi.string().required(),
+    toCategoryId: Joi.string().allow(null, ''),
+    newCategoryName: Joi.string().max(120).allow('', null),
     amount: Joi.number().greater(0).required()
-})
+}).or('toCategoryId', 'newCategoryName')
 
 const createSavingsSchema = Joi.object({
     amount: Joi.number().greater(0).required(),

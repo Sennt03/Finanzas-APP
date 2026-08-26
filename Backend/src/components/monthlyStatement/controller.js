@@ -969,11 +969,9 @@ async function compensate(userId, id, { fromCategoryId, toCategoryId, amount }) 
 
 // Fase 3: mandar parte (o todo) lo NO presupuestado a una categoría, subiendo su
 // presupuesto. Así ese dinero queda marcado como "puedo gastar" en esa categoría.
-async function allocateToCategory(userId, id, { toCategoryId, amount }) {
+async function allocateToCategory(userId, id, { toCategoryId, amount, newCategoryName }) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
-    const to = stmt.categories.id(toCategoryId)
-    if (!to) throw myError('Categoría no encontrada', 404)
     const amt = r2(amount)
     if (amt <= 0) throw myError('Monto inválido', 400)
 
@@ -982,11 +980,23 @@ async function allocateToCategory(userId, id, { toCategoryId, amount }) {
     if (amt > unbudgeted + 0.001) {
         throw myError(`Solo tienes ${unbudgeted.toFixed(2)} sin presupuestar.`, 400)
     }
-    to.totalAmount = to.totalAmount > 0 ? r2(to.totalAmount + amt) : r2(sumItems(to) + amt)
+
+    let targetName
+    const newName = (newCategoryName || '').trim()
+    if (newName) {
+        // Crear una categoría nueva (flexible) con este presupuesto.
+        stmt.categories.push({ name: newName, kind: 'expense', totalAmount: amt, flexible: true, items: [] })
+        targetName = newName
+    } else {
+        const to = stmt.categories.id(toCategoryId)
+        if (!to) throw myError('Categoría no encontrada', 404)
+        to.totalAmount = to.totalAmount > 0 ? r2(to.totalAmount + amt) : r2(sumItems(to) + amt)
+        targetName = to.name
+    }
 
     await stmt.save()
     await log(userId, stmt.year, stmt.month, 'budget_allocated',
-        `Presupuestado $${amt.toFixed(2)} → ${to.name}`, amt)
+        `Presupuestado $${amt.toFixed(2)} → ${targetName}`, amt)
     return buildEnrichedStatement(stmt, userId)
 }
 
