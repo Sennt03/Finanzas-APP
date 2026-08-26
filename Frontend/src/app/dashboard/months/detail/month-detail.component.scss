@@ -2427,3 +2427,6 @@
 }
 
 .extra-inc-tag { font-size: 10px; font-weight: 700; background: $success-soft; color: color.adjust($success, $lightness: -8%); padding: 1px 7px; border-radius: 99px; margin-left: 6px; vertical-align: middle; }
+
+.pool-box .pool-note { padding: 0 12px 12px; font-size: 12px; color: $primary-muted; line-height: 1.5;
+  strong { color: $danger; } }

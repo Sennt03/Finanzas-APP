@@ -60,7 +60,7 @@
         <div class="saldo-detail">
           <div class="sd-cell"><span>Sueldo</span><strong>{{ s.salary | number:'1.2-2' }}</strong></div>
           <div class="sd-cell"><span>Presupuestado</span><strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
-          <div class="sd-cell"><span>Sin presupuestar</span><strong>{{ s.summary.availableToBudget | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Sin presupuestar (sueldo)</span><strong>{{ s.summary.availableToBudget | number:'1.2-2' }}</strong></div>
           <div class="sd-cell"><span>Gastado</span><strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong></div>
           @if (s.summary.sinCategoria.income > 0) {
             <div class="sd-cell"><span>Ingresos extra</span><strong class="pos">+{{ s.summary.sinCategoria.income | number:'1.2-2' }}</strong></div>
@@ -89,6 +89,17 @@
               <span class="pool-amount">{{ s.summary.sinCategoria.remaining | number:'1.2-2' }}</span>
               @if (s.summary.sinCategoria.remaining > 0) { <i class="bx bx-plus-circle"></i> }
             </button>
+
+            @if (s.summary.sinCategoria.remaining <= 0 && (s.summary.sinCategoria.income > 0 || s.summary.sinCategoria.expense > 0 || s.summary.sinCategoria.allocated > 0)) {
+              <div class="pool-note">
+                No presupuestado {{ s.summary.sinCategoria.budget | number:'1.2-2' }}
+                @if (s.summary.sinCategoria.income > 0) { + ingresos extra {{ s.summary.sinCategoria.income | number:'1.2-2' }} }
+                @if (s.summary.sinCategoria.expense > 0) { − gastos {{ s.summary.sinCategoria.expense | number:'1.2-2' }} }
+                @if (s.summary.sinCategoria.savings > 0) { − ahorro {{ s.summary.sinCategoria.savings | number:'1.2-2' }} }
+                @if (s.summary.sinCategoria.allocated > 0) { − presupuestado {{ s.summary.sinCategoria.allocated | number:'1.2-2' }} }
+                = <strong>{{ s.summary.sinCategoria.remaining | number:'1.2-2' }}</strong>. Ya lo usaste en movimientos, no queda para crear categorías.
+              </div>
+            }
 
             @if (allocating()) {
               <div class="alloc-form">
