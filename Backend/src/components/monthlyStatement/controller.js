@@ -3,6 +3,7 @@ const Template = require('../budgetTemplate/model')
 const Account = require('../account/model')
 const SavingsMovement = require('../savingsMovement/model')
 const creditPurchaseController = require('../creditPurchase/controller')
+const cardController = require('../card/controller')
 const myError = require('../../libs/myError')
 const log = require('../../libs/activityLog')
 
@@ -80,6 +81,7 @@ function collectExternalCreditItems(categories) {
                     name: it.name,
                     amount: it.budgetedAmount || 0,
                     categoryName: cat.name,
+                    cardId: it.cardId ? String(it.cardId) : null,
                     isPaid: !!it.isPaid
                 })
             }
@@ -197,15 +199,19 @@ async function buildEnrichedStatement(stmt, userId) {
     const normName = (s) => String(s || '').trim().toLowerCase()
     const catByName = new Map(nonVirtual.map(c => [normName(c.name), c]))
     const extrasSpentByCat = {}
-    let uncategorizedSpent = 0
+    let uncategorizedExpense = 0
+    let uncategorizedIncome = 0
     for (const e of (obj.extras || [])) {
         if (e.linkedSavingsId) continue
-        const signed = (e.type === 'income' ? -1 : 1) * (e.amount || 0)
+        const amt = e.amount || 0
+        const signed = (e.type === 'income' ? -1 : 1) * amt
         const key = normName(e.categoryName)
         if (key && catByName.has(key)) {
             extrasSpentByCat[key] = (extrasSpentByCat[key] || 0) + signed
+        } else if (e.type === 'income') {
+            uncategorizedIncome += amt
         } else {
-            uncategorizedSpent += signed
+            uncategorizedExpense += amt
         }
     }
 
@@ -233,8 +239,8 @@ async function buildEnrichedStatement(stmt, userId) {
     // (flexible) + el bote "sin categoría" (sueldo no presupuestado − movimientos sin
     // categoría). Puede quedar NEGATIVO si se gasta de más (es intencional).
     const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
-    const sinCatSpent = r2(uncategorizedSpent)
-    const sinCatRemaining = r2(unbudgeted - sinCatSpent)
+    const sinCatSpent = r2(uncategorizedExpense - uncategorizedIncome)
+    const sinCatRemaining = r2(unbudgeted - uncategorizedExpense + uncategorizedIncome)
     const flexibleRemaining = nonVirtual
         .filter(c => c.flexible && c.kind !== 'savings')
         .reduce((a, c) => a + c.remaining, 0)
@@ -302,7 +308,7 @@ async function buildEnrichedStatement(stmt, userId) {
         else b.mine += c.budgetedAmount
     }
     for (const ext of externalCreditItems) {
-        const b = bucket(null)
+        const b = bucket(ext.cardId || null)
         b.total += ext.amount
         b.mine += ext.amount
     }
@@ -327,8 +333,14 @@ async function buildEnrichedStatement(stmt, userId) {
         puedoGastar,
         flexibleCount,
         unbudgeted,
-        // Bote "sin categoría": lo no presupuestado menos los movimientos sin categoría.
-        sinCategoria: { budget: unbudgeted, spent: sinCatSpent, remaining: sinCatRemaining },
+        // Bote "sin categoría": lo no presupuestado, con sus movimientos sin categoría.
+        sinCategoria: {
+            budget: unbudgeted,
+            income: r2(uncategorizedIncome),
+            expense: r2(uncategorizedExpense),
+            spent: sinCatSpent,
+            remaining: sinCatRemaining
+        },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,
         // Saldo realmente libre: quita lo que aparto este mes y suma lo que retuve antes
@@ -500,7 +512,8 @@ async function create(userId, { year, month, salary }) {
             isPaid: false,
             paidAmount: 0,
             paidAt: null,
-            paymentMethod: it.paymentMethod === 'credit' ? 'credit' : 'cash'
+            paymentMethod: it.paymentMethod === 'credit' ? 'credit' : 'cash',
+            cardId: it.paymentMethod === 'credit' ? (it.cardId || null) : null
         }))
     }))
 
@@ -551,7 +564,8 @@ async function updateMeta(userId, id, { salary, categories }) {
                         isPaid: groupPaid,
                         paidAmount: groupPaid ? (it.budgetedAmount || 0) : 0,
                         paidAt: groupPaid ? (prev?.paidAt || new Date()) : null,
-                        paymentMethod: 'credit'
+                        paymentMethod: 'credit',
+                        cardId: it.cardId || prev?.cardId || null
                     }
                 }
                 // cash: si venía de credit, reseteamos el pago (lo de "pagado" venía del toggle grupal)
@@ -721,7 +735,7 @@ async function removeExtra(userId, id, extraId) {
     return buildEnrichedStatement(stmt, userId)
 }
 
-async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount, paymentMethod }) {
+async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount, paymentMethod, cardId, paid }) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
 
@@ -731,33 +745,70 @@ async function addItemToCategory(userId, id, categoryId, { name, budgetedAmount,
     const amount = Number(budgetedAmount) || 0
     if (amount < 0) throw myError('Monto inválido', 400)
 
-    if (cat.totalAmount && cat.totalAmount > 0) {
-        const used = sumItems(cat)
-        if (used + amount > cat.totalAmount) {
-            throw myError(`El item excede el presupuesto de la categoría (libre: ${(cat.totalAmount - used).toFixed(2)})`, 400)
-        }
-    } else {
-        const newTotalBudgeted = totalBudgeted(stmt.categories) + amount
-        if (newTotalBudgeted > stmt.salary) {
-            throw myError(`El item excede el sueldo (libre: ${(stmt.salary - totalBudgeted(stmt.categories)).toFixed(2)})`, 400)
+    // Un movimiento marcado como pagado (paid) es gasto real: la validación de sobregiro
+    // la hace el front por "restante gastado" (con compensación), no por suma de items.
+    if (!paid) {
+        if (cat.totalAmount && cat.totalAmount > 0) {
+            const used = sumItems(cat)
+            if (used + amount > cat.totalAmount) {
+                throw myError(`El item excede el presupuesto de la categoría (libre: ${(cat.totalAmount - used).toFixed(2)})`, 400)
+            }
+        } else {
+            const newTotalBudgeted = totalBudgeted(stmt.categories) + amount
+            if (newTotalBudgeted > stmt.salary) {
+                throw myError(`El item excede el sueldo (libre: ${(stmt.salary - totalBudgeted(stmt.categories)).toFixed(2)})`, 400)
+            }
         }
     }
 
     const pm = paymentMethod === 'credit' ? 'credit' : 'cash'
     const groupPaid = !!(stmt.creditState && stmt.creditState.tdcPaid)
     const startsPaid = pm === 'credit' && groupPaid
+    let resolvedCard = null
+    if (pm === 'credit') {
+        const card = await cardController.ensureDefaultCard(userId)
+        resolvedCard = cardId ? cardId : (card ? card._id : null)
+    }
     cat.items.push({
         name,
         budgetedAmount: amount,
         isPaid: startsPaid,
         paidAmount: startsPaid ? amount : 0,
         paidAt: startsPaid ? new Date() : null,
-        paymentMethod: pm
+        paymentMethod: pm,
+        cardId: resolvedCard
     })
     await stmt.save()
     const pmLabel = pm === 'credit' ? ' (tarjeta)' : ''
     await log(userId, stmt.year, stmt.month, 'item_added',
         `Item añadido: ${name} (${cat.name})${pmLabel} $${amount.toFixed(2)}`, amount)
+
+    // Movimiento rápido: marcar el item como gastado de una vez (solo cash).
+    // Reutiliza setItemAmount para que la sincronización con ahorros funcione igual.
+    if (paid && pm === 'cash' && amount > 0) {
+        const newItem = cat.items[cat.items.length - 1]
+        return setItemAmount(userId, id, { categoryId, itemId: String(newItem._id), amount })
+    }
+    return buildEnrichedStatement(stmt, userId)
+}
+
+// Cambiar la tarjeta de un item pagado con tarjeta (paymentMethod: 'credit').
+async function updateItemCard(userId, id, categoryId, itemId, { cardId }) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+    const cat = stmt.categories.id(categoryId)
+    if (!cat) throw myError('Categoría no encontrada', 404)
+    const item = cat.items.id(itemId)
+    if (!item) throw myError('Item no encontrado', 404)
+    if (cardId) {
+        const Card = require('../card/model')
+        const card = await Card.findOne({ _id: cardId, userId })
+        if (!card) throw myError('Tarjeta no encontrada', 404)
+        item.cardId = card._id
+    } else {
+        item.cardId = null
+    }
+    await stmt.save()
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -851,6 +902,29 @@ async function compensate(userId, id, { fromCategoryId, toCategoryId, amount }) 
     return buildEnrichedStatement(stmt, userId)
 }
 
+// Fase 3: mandar parte (o todo) lo NO presupuestado a una categoría, subiendo su
+// presupuesto. Así ese dinero queda marcado como "puedo gastar" en esa categoría.
+async function allocateToCategory(userId, id, { toCategoryId, amount }) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+    const to = stmt.categories.id(toCategoryId)
+    if (!to) throw myError('Categoría no encontrada', 404)
+    const amt = r2(amount)
+    if (amt <= 0) throw myError('Monto inválido', 400)
+
+    const budgeted = totalBudgeted(stmt.categories)
+    const unbudgeted = r2(stmt.salary - budgeted)
+    if (amt > unbudgeted + 0.001) {
+        throw myError(`Solo tienes ${unbudgeted.toFixed(2)} sin presupuestar.`, 400)
+    }
+    to.totalAmount = to.totalAmount > 0 ? r2(to.totalAmount + amt) : r2(sumItems(to) + amt)
+
+    await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'budget_allocated',
+        `Presupuestado $${amt.toFixed(2)} → ${to.name}`, amt)
+    return buildEnrichedStatement(stmt, userId)
+}
+
 // Saldo real actual de la cuenta de ahorros (initialBalance + Σ movimientos).
 async function currentSavingsBalance(userId) {
     const acc = await Account.findOne({ userId, type: 'savings' })
@@ -929,10 +1003,11 @@ module.exports = {
     list, getOne, create, updateMeta,
     setItemAmount,
     addExtra, removeExtra,
-    addItemToCategory, removeItemFromCategory, updateCategoryMeta,
+    addItemToCategory, removeItemFromCategory, updateItemCard, updateCategoryMeta,
     toggleCreditGroup,
     convertMovement,
     compensate,
+    allocateToCategory,
     close, reopen,
     remove
 }

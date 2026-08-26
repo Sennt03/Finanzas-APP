@@ -369,3 +369,37 @@
 
   &.neg { border-left-color: $danger; .sc-remaining { color: $danger; } }
 }
+
+// Sin categoría: card con desglose (base / +ingresos / -gastos)
+.sincat-card {
+  display: block;
+  background: $surface; border: 1px solid $border; border-left: 4px solid $accent;
+  border-radius: $r-lg; padding: 12px 14px; margin-top: 8px; box-shadow: $shadow-sm;
+
+  .sc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    .sc-name { font-weight: 700; font-size: 14px; i { color: $accent; margin-right: 3px; }
+      small { color: $primary-faint; font-weight: 500; font-size: 11px; } }
+    .sc-remaining { font-weight: 800; font-size: 18px; white-space: nowrap; } }
+  .sc-lines { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 6px; font-size: 12px; color: $primary-muted;
+    .sc-line b { color: $primary; font-weight: 700; }
+    .sc-line.pos { color: $success; b { color: $success; } }
+    .sc-line.neg { color: $danger; b { color: $danger; } } }
+
+  &.neg { border-left-color: $danger; .sc-remaining { color: $danger; } }
+}
+
+// Sin categoría: acción de presupuestar
+.sincat-card .sc-line.link {
+  background: none; border: none; cursor: pointer; padding: 0; font: inherit;
+  color: $accent; display: inline-flex; align-items: center; gap: 2px;
+  b { color: $accent; } i { font-size: 15px; }
+}
+.sincat-card .alloc-form {
+  margin-top: 10px; border-top: 1px dashed $border; padding-top: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  .af-title { font-size: 12px; font-weight: 700; color: $primary-muted; }
+  .af-row { display: flex; gap: 8px;
+    select, input { padding: 9px 10px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; font-weight: 600; }
+    select { flex: 1; } input { width: 96px; text-align: right; } }
+  .af-actions { display: flex; justify-content: flex-end; gap: 8px; }
+}

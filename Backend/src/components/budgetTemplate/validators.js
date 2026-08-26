@@ -5,7 +5,8 @@ const itemSchema = Joi.object({
     _id: Joi.any(),
     name: Joi.string().min(1).max(120).required(),
     amount: Joi.number().min(0).default(0),
-    paymentMethod: Joi.string().valid('cash', 'credit').default('cash')
+    paymentMethod: Joi.string().valid('cash', 'credit').default('cash'),
+    cardId: Joi.string().allow(null, '')
 })
 
 const categorySchema = Joi.object({

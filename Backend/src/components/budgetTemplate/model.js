@@ -3,7 +3,8 @@ const { Schema, model, Types } = require('mongoose')
 const itemSchema = new Schema({
     name: { type: String, required: true, trim: true },
     amount: { type: Number, default: 0, min: 0 },
-    paymentMethod: { type: String, enum: ['cash', 'credit'], default: 'cash' }
+    paymentMethod: { type: String, enum: ['cash', 'credit'], default: 'cash' },
+    cardId: { type: Types.ObjectId, ref: 'cards', default: null }
 }, { _id: true })
 
 const categorySchema = new Schema({

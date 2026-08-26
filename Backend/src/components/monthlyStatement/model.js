@@ -6,7 +6,9 @@ const itemSchema = new Schema({
     isPaid: { type: Boolean, default: false },
     paidAmount: { type: Number, default: 0, min: 0 },
     paidAt: { type: Date, default: null },
-    paymentMethod: { type: String, enum: ['cash', 'credit'], default: 'cash' }
+    paymentMethod: { type: String, enum: ['cash', 'credit'], default: 'cash' },
+    // Tarjeta con la que se paga (solo aplica si paymentMethod === 'credit').
+    cardId: { type: Types.ObjectId, ref: 'cards', default: null }
 }, { _id: true })
 
 const categorySchema = new Schema({

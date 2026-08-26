@@ -9,8 +9,10 @@ const {
     toggleGroupValidator,
     convertValidator,
     addItemValidator,
+    updateItemCardValidator,
     updateCategoryValidator,
-    compensateValidator
+    compensateValidator,
+    allocateValidator
 } = require('./validators')
 
 router.use(verifyToken)
@@ -99,6 +101,13 @@ router.delete('/:id/categories/:categoryId/items/:itemId', async (req, res, next
     } catch (e) { next(e) }
 })
 
+router.patch('/:id/categories/:categoryId/items/:itemId/card', updateItemCardValidator, async (req, res, next) => {
+    try {
+        const data = await controller.updateItemCard(req.user._id, req.params.id, req.params.categoryId, req.params.itemId, req.body)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
 router.patch('/:id/categories/:categoryId', updateCategoryValidator, async (req, res, next) => {
     try {
         const data = await controller.updateCategoryMeta(req.user._id, req.params.id, req.params.categoryId, req.body)
@@ -109,6 +118,13 @@ router.patch('/:id/categories/:categoryId', updateCategoryValidator, async (req,
 router.post('/:id/compensate', compensateValidator, async (req, res, next) => {
     try {
         const data = await controller.compensate(req.user._id, req.params.id, req.body)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/allocate', allocateValidator, async (req, res, next) => {
+    try {
+        const data = await controller.allocateToCategory(req.user._id, req.params.id, req.body)
         response.success(req, res, data)
     } catch (e) { next(e) }
 })

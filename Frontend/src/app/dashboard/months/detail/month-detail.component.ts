@@ -15,7 +15,7 @@ import toastr from '@shared/utils/toastr';
 const LAST_CARD_KEY = 'lastCardId';
 
 type CompPending =
-  | { kind: 'add'; cat: LsStatementCategory; name: string; amount: number; paymentMethod: 'cash' | 'credit' }
+  | { kind: 'add'; cat: LsStatementCategory; name: string; amount: number; paymentMethod: 'cash' | 'credit'; cardId: string | null; paid: boolean }
   | { kind: 'purchase'; payload: any; typeLabel: string; statementId: string };
 
 interface DraftItem {
@@ -99,6 +99,7 @@ export class MonthDetailComponent {
   newItemName = signal('');
   newItemAmount = signal<number | null>(null);
   newItemPaymentMethod = signal<'cash' | 'credit'>('cash');
+  newItemCardId = signal<string | null>(null);
 
   // Préstamos del mes
   monthLoans = signal<LsLoan[]>([]);
@@ -245,6 +246,18 @@ export class MonthDetailComponent {
     this.loading.set(true);
     this.purchaseSvc.update(purchaseId, { cardId }).subscribe({
       next: () => { this.load(s._id); toastr.success('Tarjeta cambiada', ''); },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
+  // Cambiar la tarjeta de un item pagado con tarjeta (paymentMethod: 'credit').
+  setItemCard(categoryId: string | undefined, itemId: string | undefined, cardId: string) {
+    const s = this.stmt();
+    if (!s || !categoryId || !itemId) return;
+    this.closeCuotaMenu();
+    this.loading.set(true);
+    this.svc.setItemCard(s._id, categoryId, itemId, cardId || null).subscribe({
+      next: (updated) => { this.stmt.set(updated); this.loading.set(false); toastr.success('Tarjeta cambiada', ''); },
       error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
     });
   }
@@ -649,12 +662,20 @@ export class MonthDetailComponent {
     return s.summary.availableToBudget;
   }
 
+  private defaultCardId(): string | null {
+    let last: string | null = null;
+    try { last = localStorage.getItem(LAST_CARD_KEY); } catch { /* no storage */ }
+    const active = this.activeCards();
+    return (active.find(c => c._id === last) || active[0])?._id ?? null;
+  }
+
   openAddItem(cat: LsStatementCategory) {
     if (!cat._id) return;
     this.addingForCategory.set(cat._id);
     this.newItemName.set('');
     this.newItemAmount.set(null);
     this.newItemPaymentMethod.set('cash');
+    this.newItemCardId.set(this.defaultCardId());
   }
 
   closeAddItem() {
@@ -663,6 +684,9 @@ export class MonthDetailComponent {
 
   toggleNewItemCredit() {
     this.newItemPaymentMethod.update(m => m === 'credit' ? 'cash' : 'credit');
+    if (this.newItemPaymentMethod() === 'credit' && !this.newItemCardId()) {
+      this.newItemCardId.set(this.defaultCardId());
+    }
   }
 
   isAddingTo(cat: LsStatementCategory): boolean {
@@ -675,6 +699,7 @@ export class MonthDetailComponent {
     const name = this.newItemName().trim();
     const amount = this.newItemAmount() ?? 0;
     const paymentMethod = this.newItemPaymentMethod();
+    const cardId = paymentMethod === 'credit' ? this.newItemCardId() : null;
     if (!name) { toastr.error('Nombre requerido', ''); return; }
 
     // Sobregiro: si el item excede el presupuesto (envelope) de la categoría, compensar.
@@ -682,18 +707,19 @@ export class MonthDetailComponent {
     if (budget > 0) {
       const remaining = this.categoryRemainingToPay(cat);
       if (amount > remaining + 0.001) {
-        this.startCompensation(cat, amount - remaining, { kind: 'add', cat, name, amount, paymentMethod });
+        this.startCompensation(cat, amount - remaining, { kind: 'add', cat, name, amount, paymentMethod, cardId, paid: false });
         return;
       }
     }
-    this.doAddItem(cat, name, amount, paymentMethod);
+    this.doAddItem(cat, name, amount, paymentMethod, cardId);
   }
 
-  private doAddItem(cat: LsStatementCategory, name: string, amount: number, paymentMethod: 'cash' | 'credit') {
+  private doAddItem(cat: LsStatementCategory, name: string, amount: number, paymentMethod: 'cash' | 'credit', cardId: string | null = null, paid = false) {
     const s = this.stmt();
     if (!s || !cat._id) return;
+    if (paymentMethod === 'credit' && cardId) { try { localStorage.setItem(LAST_CARD_KEY, cardId); } catch { /* no storage */ } }
     this.loading.set(true);
-    this.svc.addItemToCategory(s._id, cat._id, { name, budgetedAmount: amount, paymentMethod }).subscribe({
+    this.svc.addItemToCategory(s._id, cat._id, { name, budgetedAmount: amount, paymentMethod, cardId, paid }).subscribe({
       next: (updated) => {
         this.stmt.set(updated);
         this.closeAddItem();
@@ -747,7 +773,7 @@ export class MonthDetailComponent {
         const freshCat = updated.categories.find(c => c._id === target._id) ?? target;
         this.cancelCompensation();
         toastr.success('Presupuesto compensado', '');
-        if (pending?.kind === 'add') this.doAddItem(freshCat, pending.name, pending.amount, pending.paymentMethod);
+        if (pending?.kind === 'add') this.doAddItem(freshCat, pending.name, pending.amount, pending.paymentMethod, pending.cardId, pending.paid);
         else if (pending?.kind === 'purchase') this.doCreatePurchase(pending.payload, pending.typeLabel, pending.statementId);
       },
       error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
@@ -982,12 +1008,36 @@ export class MonthDetailComponent {
     this.loading.set(true);
 
     if (type === 'expense' || type === 'income') {
+      const catName = this.txCategoryName().trim();
+      const matchedCat = catName
+        ? s.categories.find(c => !c.isVirtual && c.name.trim().toLowerCase() === catName.toLowerCase())
+        : null;
+
+      // Gasto asignado a una categoría real → item PAGADO en esa categoría (con validación
+      // de sobregiro). Sin categoría (o ingreso) → movimiento extra no presupuestado.
+      if (type === 'expense' && matchedCat) {
+        const budget = this.categoryBudget(matchedCat);
+        if (budget > 0) {
+          const remaining = this.categoryRemainingToPay(matchedCat);
+          if (amount > remaining + 0.001) {
+            this.loading.set(false);
+            this.closeTx();
+            this.startCompensation(matchedCat, amount - remaining,
+              { kind: 'add', cat: matchedCat, name, amount, paymentMethod: 'cash', cardId: null, paid: true });
+            return;
+          }
+        }
+        this.closeTx();
+        this.doAddItem(matchedCat, name, amount, 'cash', null, true);
+        return;
+      }
+
       const extraType: ExtraType = type === 'income' ? 'income' : 'expense';
       this.svc.addExtra(s._id, {
         name,
         amount,
         type: extraType,
-        categoryName: this.txCategoryName().trim(),
+        categoryName: catName,
         date: this.txDate()
       }).subscribe({
         next: (updated) => {
@@ -1058,6 +1108,33 @@ export class MonthDetailComponent {
         this.loading.set(false);
         toastr.error(err.error?.message ?? 'Error', '');
       }
+    });
+  }
+
+  // Mover un movimiento extra a una categoría: lo vuelve un item PAGADO en ella y borra el extra.
+  moveExtraToCategory(extra: LsStatementExtra, categoryName: string) {
+    const s = this.stmt();
+    if (!s || !extra._id || !categoryName) return;
+    const cat = s.categories.find(c => !c.isVirtual && c.name === categoryName);
+    if (!cat || !cat._id) return;
+    const budget = this.categoryBudget(cat);
+    if (budget > 0) {
+      const remaining = this.categoryRemainingToPay(cat);
+      if (extra.amount > remaining + 0.001) {
+        toastr.error(`Excede "${categoryName}" por ${(extra.amount - remaining).toFixed(2)}. Ajusta el presupuesto primero.`, '');
+        return;
+      }
+    }
+    const extraId = extra._id;
+    this.loading.set(true);
+    this.svc.addItemToCategory(s._id, cat._id, { name: extra.name, budgetedAmount: extra.amount, paymentMethod: 'cash', paid: true }).subscribe({
+      next: () => {
+        this.svc.removeExtra(s._id, extraId).subscribe({
+          next: (updated) => { this.stmt.set(updated); this.loading.set(false); toastr.success(`Movido a ${categoryName}`, ''); },
+          error: () => { this.loading.set(false); this.load(s._id); }
+        });
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'No se pudo mover (¿excede el presupuesto?)', ''); }
     });
   }
 

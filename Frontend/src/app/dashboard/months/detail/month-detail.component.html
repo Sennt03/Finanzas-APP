@@ -181,10 +181,10 @@
             </h3>
             @if (!cat.isVirtual && cat.totalAmount > 0) {
               <div class="cat-budget">
-                <span class="used">{{ itemsSum(cat) | number:'1.2-2' }}</span>
+                <span class="used">{{ categoryPaidSum(cat) | number:'1.2-2' }}</span>
                 <span class="sep">/</span>
                 <span class="total">{{ cat.totalAmount | number:'1.2-2' }}</span>
-                <span class="free" [class.warn]="categoryFreeAmount(cat) < 0">libre {{ categoryFreeAmount(cat) | number:'1.2-2' }}</span>
+                <span class="free" [class.warn]="categoryRemainingToPay(cat) < 0">libre {{ categoryRemainingToPay(cat) | number:'1.2-2' }}</span>
               </div>
             }
             @if (cat.isVirtual) {
@@ -230,7 +230,7 @@
 
           @if (!cat.isVirtual && cat.totalAmount > 0) {
             <div class="cat-progress">
-              <div class="bar" [style.width.%]="(itemsSum(cat) / cat.totalAmount) * 100"></div>
+              <div class="bar" [style.width.%]="categoryPaidSum(cat) / cat.totalAmount * 100 > 100 ? 100 : categoryPaidSum(cat) / cat.totalAmount * 100"></div>
             </div>
           }
 
@@ -361,13 +361,29 @@
                       <i class="bx bx-credit-card status pending"></i>
                     }
                     <span class="name">{{ it.name }}</span>
-                    <span class="credit-badge">tarjeta</span>
+                    <span class="card-chip" [style.border-color]="cardColor(it.cardId)" [style.color]="cardColor(it.cardId)">
+                      <span class="cchip-dot" [style.background]="cardColor(it.cardId)"></span>{{ cardName(it.cardId) }}
+                    </span>
                   </div>
                   <div class="amounts">
                     <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
-                    <button class="btn-icon mini" (click)="removeItemInline(cat, it)" title="Eliminar item">
-                      <i class="bx bx-x"></i>
-                    </button>
+                    <div class="cuota-menu-wrap">
+                      <button type="button" class="btn-icon mini" (click)="toggleCuotaMenu('item-' + it._id)" aria-label="Opciones">
+                        <i class="bx bx-dots-vertical-rounded"></i>
+                      </button>
+                      @if (isCuotaMenuOpen('item-' + it._id)) {
+                        <div class="cuota-menu-backdrop" (click)="closeCuotaMenu()"></div>
+                        <div class="cuota-menu" role="menu">
+                          <label class="cm-field">Tarjeta
+                            <select [ngModel]="it.cardId || ''" (ngModelChange)="setItemCard(cat._id, it._id, $event)">
+                              @for (c of activeCards(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                            </select>
+                          </label>
+                          <div class="cm-sep"></div>
+                          <button type="button" class="cm-item danger" (click)="removeItemInline(cat, it); closeCuotaMenu()">Eliminar item</button>
+                        </div>
+                      }
+                    </div>
                   </div>
                 } @else {
                   <label class="check">
@@ -425,7 +441,25 @@
                   }
                   <span class="name">{{ ext.name }}</span>
                   <span class="from-cat"><i class="bx bx-folder"></i> {{ ext.categoryName }}</span>
+                  <span class="card-chip" [style.border-color]="cardColor(ext.cardId)" [style.color]="cardColor(ext.cardId)">
+                    <span class="cchip-dot" [style.background]="cardColor(ext.cardId)"></span>{{ cardName(ext.cardId) }}
+                  </span>
                   <span class="amount">-{{ ext.amount | number:'1.2-2' }}</span>
+                  <div class="cuota-menu-wrap">
+                    <button type="button" class="btn-icon mini" (click)="toggleCuotaMenu('ext-' + ext.itemId)" aria-label="Cambiar tarjeta">
+                      <i class="bx bx-dots-vertical-rounded"></i>
+                    </button>
+                    @if (isCuotaMenuOpen('ext-' + ext.itemId)) {
+                      <div class="cuota-menu-backdrop" (click)="closeCuotaMenu()"></div>
+                      <div class="cuota-menu" role="menu">
+                        <label class="cm-field">Tarjeta
+                          <select [ngModel]="ext.cardId || ''" (ngModelChange)="setItemCard(ext.categoryId, ext.itemId, $event)">
+                            @for (c of activeCards(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                          </select>
+                        </label>
+                      </div>
+                    }
+                  </div>
                 </div>
               }
             </div>
@@ -490,6 +524,11 @@
                   <i class="bx bx-credit-card"></i>
                   <span class="credit-label">Tarjeta</span>
                 </button>
+                @if (newItemPaymentMethod() === 'credit') {
+                  <select class="card-select" [ngModel]="newItemCardId()" (ngModelChange)="newItemCardId.set($event)" title="¿Con cuál tarjeta?">
+                    @for (c of activeCards(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                  </select>
+                }
                 <button class="btn btn-primary btn-sm" (click)="submitAddItem(cat)">Agregar</button>
                 <button class="btn btn-outline btn-sm" (click)="closeAddItem()">Cancelar</button>
               </div>
@@ -498,7 +537,7 @@
                 <i class="bx bx-plus"></i>
                 <span>Agregar item</span>
                 @if (cat.totalAmount > 0) {
-                  <small>libre {{ categoryFreeAmount(cat) | number:'1.2-2' }}</small>
+                  <small>queda {{ categoryRemainingToPay(cat) | number:'1.2-2' }}</small>
                 }
               </button>
             }
@@ -550,10 +589,16 @@
               <input type="date" [ngModel]="txDate()" (ngModelChange)="txDate.set($event)">
             </label>
             @if (txType() === 'expense' || txType() === 'income') {
-              <label>
+              <label class="span-full">
                 Categoría (opcional)
-                <input type="text" [ngModel]="txCategoryName()" (ngModelChange)="txCategoryName.set($event)">
+                <select [ngModel]="txCategoryName()" (ngModelChange)="txCategoryName.set($event)">
+                  <option [ngValue]="''">Sin categoría (no presupuestado)</option>
+                  @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
+                </select>
               </label>
+              @if (txType() === 'expense' && txCategoryName()) {
+                <small class="tx-hint span-full">Se marcará como gastado en "{{ txCategoryName() }}" (valida el presupuesto).</small>
+              }
             }
             @if (txType() === 'diferido') {
               <label>
@@ -639,6 +684,12 @@
                   <span class="income-amount">+{{ e.amount | number:'1.2-2' }}</span>
                 } @else {
                   <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
+                }
+                @if (!e.linkedSavingsId && e.type === 'expense' && realCategoryNames().length > 0) {
+                  <select class="cat-assign" (change)="moveExtraToCategory(e, $any($event.target).value); $any($event.target).value=''" title="Marcarlo como gasto de una categoría">
+                    <option value="" disabled selected>📁</option>
+                    @for (n of realCategoryNames(); track n) { <option [value]="n">{{ n }}</option> }
+                  </select>
                 }
                 @if (!e.linkedSavingsId) {
                   <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">

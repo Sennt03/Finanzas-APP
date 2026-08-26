@@ -126,15 +126,45 @@
       </div>
     }
 
-    <!-- Sin categoría: lo no presupuestado, que los movimientos van gastando -->
-    @if (s.summary.sinCategoria.budget > 0 || s.summary.sinCategoria.spent !== 0) {
-      <div class="sincat-card" [class.neg]="s.summary.sinCategoria.remaining < 0">
-        <div class="sc-left">
-          <span class="sc-name"><i class="bx bx-wallet-alt"></i> Sin categoría</span>
-          <span class="sc-sub">gastado {{ s.summary.sinCategoria.spent | number:'1.2-2' }} de {{ s.summary.sinCategoria.budget | number:'1.2-2' }} no presupuestado</span>
+    <!-- Sin categoría: lo no presupuestado, con sus movimientos extra -->
+    @if (s.summary.sinCategoria; as sc) {
+      @if (sc.budget > 0 || sc.income > 0 || sc.expense > 0) {
+        <div class="sincat-card" [class.neg]="sc.remaining < 0">
+          <div class="sc-head">
+            <span class="sc-name"><i class="bx bx-wallet-alt"></i> Sin categoría <small>disponible</small></span>
+            <span class="sc-remaining">{{ sc.remaining | number:'1.2-2' }}</span>
+          </div>
+          <div class="sc-lines">
+            @if (sc.budget > 0 && allocCats().length > 0) {
+              <button class="sc-line link" (click)="openAllocate()" title="Enviar este dinero a una categoría">No presupuestado <b>{{ sc.budget | number:'1.2-2' }}</b> <i class="bx bx-chevron-right"></i></button>
+            } @else {
+              <span class="sc-line">No presupuestado <b>{{ sc.budget | number:'1.2-2' }}</b></span>
+            }
+            @if (sc.income > 0) {
+              <span class="sc-line pos">+ Ingresos extra <b>{{ sc.income | number:'1.2-2' }}</b></span>
+            }
+            @if (sc.expense > 0) {
+              <span class="sc-line neg">− Gastos extra <b>{{ sc.expense | number:'1.2-2' }}</b></span>
+            }
+          </div>
+
+          @if (allocating()) {
+            <div class="alloc-form">
+              <span class="af-title">Presupuestar a una categoría</span>
+              <div class="af-row">
+                <select [ngModel]="allocCatId()" (ngModelChange)="allocCatId.set($event)">
+                  @for (c of allocCats(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                </select>
+                <input type="number" min="0" [max]="sc.budget" [ngModel]="allocAmount()" (ngModelChange)="allocAmount.set($event)" (keydown.enter)="submitAllocate()">
+              </div>
+              <div class="af-actions">
+                <button class="btn btn-outline btn-sm" (click)="closeAllocate()">Cancelar</button>
+                <button class="btn btn-primary btn-sm" (click)="submitAllocate()">Presupuestar</button>
+              </div>
+            </div>
+          }
         </div>
-        <span class="sc-remaining">{{ s.summary.sinCategoria.remaining | number:'1.2-2' }}</span>
-      </div>
+      }
     }
 
     <!-- Otras categorías (comprometidas) -->

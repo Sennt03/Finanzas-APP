@@ -21,6 +21,7 @@ export interface LsTemplateItem {
     name: string;
     amount: number;
     paymentMethod?: PaymentMethod;
+    cardId?: string | null;
 }
 
 export interface LsTemplateCategory {
@@ -88,6 +89,7 @@ export interface LsExternalCreditItem {
     name: string;
     amount: number;
     categoryName: string;
+    cardId: string | null;
     isPaid: boolean;
 }
 
@@ -164,7 +166,7 @@ export interface LsStatementSummary {
     puedoGastar: number;
     flexibleCount: number;
     unbudgeted: number;
-    sinCategoria: { budget: number; spent: number; remaining: number };
+    sinCategoria: { budget: number; income: number; expense: number; spent: number; remaining: number };
     apartado: number;
     retainedFromPrev: number;
     disponibleReal: number;

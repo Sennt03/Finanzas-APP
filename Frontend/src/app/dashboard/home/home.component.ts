@@ -130,6 +130,37 @@ export class HomeComponent {
 
   toggleDetails() { this.showDetails.update(v => !v); }
 
+  // ----- Presupuestar lo no presupuestado a una categoría (Fase 3) -----
+  allocating = signal(false);
+  allocCatId = signal<string | null>(null);
+  allocAmount = signal<number>(0);
+  allocCats = computed(() => this.realCats().filter(c => c.kind !== 'savings'));
+
+  openAllocate() {
+    const cats = this.allocCats();
+    this.allocCatId.set(cats[0]?._id ?? null);
+    this.allocAmount.set(this.selected()?.summary.sinCategoria.budget ?? 0);
+    this.allocating.set(true);
+  }
+  closeAllocate() { this.allocating.set(false); }
+
+  submitAllocate() {
+    const id = this.selectedId();
+    const catId = this.allocCatId();
+    const amt = Number(this.allocAmount());
+    if (!id || !catId || amt <= 0) { toastr.error('Elige categoría y monto', ''); return; }
+    this.loading.set(true);
+    this.stmtSvc.allocate(id, { toCategoryId: catId, amount: amt }).subscribe({
+      next: (updated) => {
+        this.months.update(list => list.map(m => m._id === updated._id ? updated : m));
+        this.loading.set(false);
+        this.allocating.set(false);
+        toastr.success('Presupuestado a la categoría', '');
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
   // Marcar/desmarcar una categoría como "cuenta para PUEDO GASTAR".
   toggleFlexible(cat: LsStatementCategory) {
     const id = this.selectedId();

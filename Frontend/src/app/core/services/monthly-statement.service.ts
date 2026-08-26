@@ -52,12 +52,17 @@ export class MonthlyStatementService {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/convert`, payload);
     }
 
-    addItemToCategory(id: string, categoryId: string, payload: { name: string; budgetedAmount: number; paymentMethod?: 'cash' | 'credit' }): Observable<LsMonthlyStatement> {
+    addItemToCategory(id: string, categoryId: string, payload: { name: string; budgetedAmount: number; paymentMethod?: 'cash' | 'credit'; cardId?: string | null; paid?: boolean }): Observable<LsMonthlyStatement> {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items`, payload);
     }
 
     removeItemFromCategory(id: string, categoryId: string, itemId: string): Observable<LsMonthlyStatement> {
         return this.http.delete<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items/${itemId}`);
+    }
+
+    // Cambiar la tarjeta de un item pagado con tarjeta.
+    setItemCard(id: string, categoryId: string, itemId: string, cardId: string | null): Observable<LsMonthlyStatement> {
+        return this.http.patch<LsMonthlyStatement>(`${this.url}/${id}/categories/${categoryId}/items/${itemId}/card`, { cardId });
     }
 
     updateCategoryMeta(id: string, categoryId: string, payload: { name?: string; kind?: CategoryKind; totalAmount?: number; flexible?: boolean; protected?: boolean }): Observable<LsMonthlyStatement> {
@@ -67,6 +72,11 @@ export class MonthlyStatementService {
     // Fase 4: compensar sobregiro moviendo presupuesto entre categorías.
     compensate(id: string, payload: { fromCategoryId: string; toCategoryId: string; amount: number }): Observable<LsMonthlyStatement> {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/compensate`, payload);
+    }
+
+    // Fase 3: mandar lo no presupuestado a una categoría (sube su presupuesto).
+    allocate(id: string, payload: { toCategoryId: string; amount: number }): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/allocate`, payload);
     }
 
     // Fase 4: cierre / reapertura de mes.

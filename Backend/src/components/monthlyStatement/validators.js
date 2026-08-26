@@ -52,7 +52,13 @@ const toggleGroupSchema = Joi.object({
 const addItemSchema = Joi.object({
     name: Joi.string().min(1).max(120).required(),
     budgetedAmount: Joi.number().min(0).default(0),
-    paymentMethod: Joi.string().valid('cash', 'credit').default('cash')
+    paymentMethod: Joi.string().valid('cash', 'credit').default('cash'),
+    cardId: Joi.string().allow(null, ''),
+    paid: Joi.boolean().default(false)
+})
+
+const updateItemCardSchema = Joi.object({
+    cardId: Joi.string().allow(null, '')
 })
 
 const updateCategorySchema = Joi.object({
@@ -65,6 +71,11 @@ const updateCategorySchema = Joi.object({
 
 const compensateSchema = Joi.object({
     fromCategoryId: Joi.string().required(),
+    toCategoryId: Joi.string().required(),
+    amount: Joi.number().greater(0).required()
+})
+
+const allocateSchema = Joi.object({
     toCategoryId: Joi.string().required(),
     amount: Joi.number().greater(0).required()
 })
@@ -93,6 +104,8 @@ module.exports = {
     toggleGroupValidator: validatorHandler(toggleGroupSchema),
     convertValidator: validatorHandler(convertSchema),
     addItemValidator: validatorHandler(addItemSchema),
+    updateItemCardValidator: validatorHandler(updateItemCardSchema),
     updateCategoryValidator: validatorHandler(updateCategorySchema),
-    compensateValidator: validatorHandler(compensateSchema)
+    compensateValidator: validatorHandler(compensateSchema),
+    allocateValidator: validatorHandler(allocateSchema)
 }
