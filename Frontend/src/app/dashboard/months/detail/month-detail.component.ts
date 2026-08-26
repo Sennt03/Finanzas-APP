@@ -220,10 +220,17 @@ export class MonthDetailComponent {
 
   isClosed = computed(() => !!this.stmt()?.closing?.closedAt);
 
+  // Menú de opciones (⋮) por cuota de tarjeta: cambiar categoría, tarjeta o convertir.
+  cuotaMenu = signal<string | null>(null);
+  toggleCuotaMenu(key: string) { this.cuotaMenu.update(v => v === key ? null : key); }
+  closeCuotaMenu() { this.cuotaMenu.set(null); }
+  isCuotaMenuOpen(key?: string | null): boolean { return !!key && this.cuotaMenu() === key; }
+
   // Reasignar la categoría / tarjeta de una compra de tarjeta ya creada.
   reassignCategory(purchaseId: string, categoryName: string) {
     const s = this.stmt();
     if (!s) return;
+    this.closeCuotaMenu();
     this.loading.set(true);
     this.purchaseSvc.update(purchaseId, { categoryName }).subscribe({
       next: () => { this.load(s._id); toastr.success(categoryName ? 'Categoría asignada' : 'Categoría quitada', ''); },
@@ -234,6 +241,7 @@ export class MonthDetailComponent {
   reassignCard(purchaseId: string, cardId: string) {
     const s = this.stmt();
     if (!s) return;
+    this.closeCuotaMenu();
     this.loading.set(true);
     this.purchaseSvc.update(purchaseId, { cardId }).subscribe({
       next: () => { this.load(s._id); toastr.success('Tarjeta cambiada', ''); },

@@ -206,16 +206,23 @@
               @for (cb of s.summary.cardsBreakdown; track cb.cardId) {
                 <div class="cb-row">
                   <span class="cb-dot" [style.background]="cb.color"></span>
-                  <span class="cb-name">{{ cb.name }}</span>
-                  <div class="cb-nums">
-                    <span class="cb-amount">{{ cb.total | number:'1.2-2' }}</span>
-                    @if (cb.others > 0) {
-                      <span class="cb-split">yo {{ cb.mine | number:'1.2-2' }} · otros {{ cb.others | number:'1.2-2' }}</span>
-                    }
-                    @if (cb.creditLimit > 0) {
-                      <span class="cb-cupo">cupo {{ cb.available | number:'1.0-0' }} / {{ cb.creditLimit | number:'1.0-0' }}</span>
-                    }
+                  <div class="cb-info">
+                    <span class="cb-name">{{ cb.name }}</span>
+                    <span class="cb-split">
+                      @if (cb.others > 0) {
+                        <span class="mine">tuyo {{ cb.mine | number:'1.2-2' }}</span>
+                        <span class="dot-sep">·</span>
+                        <span class="others">otros {{ cb.others | number:'1.2-2' }}</span>
+                      } @else {
+                        <span class="all-mine">todo tuyo</span>
+                      }
+                      @if (cb.creditLimit > 0) {
+                        <span class="dot-sep">·</span>
+                        <span class="cb-cupo">cupo {{ cb.available | number:'1.0-0' }}</span>
+                      }
+                    </span>
                   </div>
+                  <span class="cb-amount">{{ cb.total | number:'1.2-2' }}</span>
                 </div>
               }
             </div>
@@ -304,11 +311,8 @@
                         <span class="cchip-dot" [style.background]="cardColor(it.cardId)"></span>{{ cardName(it.cardId) }}
                       </span>
                       @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
+                      @if (it.categoryName) { <span class="cat-tag"><i class="bx bx-folder"></i> {{ it.categoryName }}</span> }
                       @if (it.billedLater) { <span class="pay-badge later">retenido desde {{ monthName(it.budgetMonth) }}</span> }
-                      <select class="cat-assign" [ngModel]="it.categoryName || ''" (ngModelChange)="reassignCategory(it.purchaseId!, $event)" title="Categoría que consume esta compra">
-                        <option [ngValue]="''">Sin categoría</option>
-                        @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
-                      </select>
                       @if (it.subType === 'tdc') {
                         <button type="button" class="mode-toggle" [class.defer]="it.budgetMode === 'defer'"
                           (click)="reassignBudgetMode(it.purchaseId!, it.budgetMode === 'defer' ? 'retain' : 'defer')"
@@ -319,13 +323,33 @@
                     </div>
                     <div class="amounts">
                       <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
-                      <select class="convert-select" (change)="convertCuota(it, $any($event.target).value); $any($event.target).value=''">
-                        <option value="" disabled selected>⋮</option>
-                        <option value="expense">→ Gasto cash</option>
-                        <option value="income">→ Ingreso</option>
-                        @if (it.subType === 'diferido') { <option value="tdc">→ TDC 1 cuota</option> }
-                        @if (it.subType === 'tdc') { <option value="diferido">→ Diferido N cuotas</option> }
-                      </select>
+                      <div class="cuota-menu-wrap">
+                        <button type="button" class="btn-icon mini" (click)="toggleCuotaMenu(it.cuotaId!)" aria-label="Opciones">
+                          <i class="bx bx-dots-vertical-rounded"></i>
+                        </button>
+                        @if (isCuotaMenuOpen(it.cuotaId)) {
+                          <div class="cuota-menu-backdrop" (click)="closeCuotaMenu()"></div>
+                          <div class="cuota-menu" role="menu">
+                            <label class="cm-field">Categoría
+                              <select [ngModel]="it.categoryName || ''" (ngModelChange)="reassignCategory(it.purchaseId!, $event)">
+                                <option [ngValue]="''">Sin categoría</option>
+                                @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
+                              </select>
+                            </label>
+                            <label class="cm-field">Tarjeta
+                              <select [ngModel]="it.cardId || ''" (ngModelChange)="reassignCard(it.purchaseId!, $event)">
+                                @for (c of activeCards(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                              </select>
+                            </label>
+                            <div class="cm-sep"></div>
+                            <div class="cm-title">Convertir a</div>
+                            <button type="button" class="cm-item" (click)="convertCuota(it, 'expense'); closeCuotaMenu()">Gasto cash</button>
+                            <button type="button" class="cm-item" (click)="convertCuota(it, 'income'); closeCuotaMenu()">Ingreso</button>
+                            @if (it.subType === 'diferido') { <button type="button" class="cm-item" (click)="convertCuota(it, 'tdc'); closeCuotaMenu()">TDC 1 cuota</button> }
+                            @if (it.subType === 'tdc') { <button type="button" class="cm-item" (click)="convertCuota(it, 'diferido'); closeCuotaMenu()">Diferido N cuotas</button> }
+                          </div>
+                        }
+                      </div>
                     </div>
                   }
                 } @else if (isCreditItem(it)) {
@@ -425,10 +449,27 @@
                   </div>
                   <div class="cbb-right">
                     <span class="amount">-{{ cb.amount | number:'1.2-2' }}</span>
-                    <select class="cat-assign" [ngModel]="cb.categoryName" (ngModelChange)="reassignCategory(cb.purchaseId, $event)" title="Cambiar o quitar categoría">
-                      <option [ngValue]="''">Quitar de categoría</option>
-                      @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
-                    </select>
+                    <div class="cuota-menu-wrap">
+                      <button type="button" class="btn-icon mini" (click)="toggleCuotaMenu('cbb-' + cb.cuotaId)" aria-label="Opciones">
+                        <i class="bx bx-dots-vertical-rounded"></i>
+                      </button>
+                      @if (isCuotaMenuOpen('cbb-' + cb.cuotaId)) {
+                        <div class="cuota-menu-backdrop" (click)="closeCuotaMenu()"></div>
+                        <div class="cuota-menu" role="menu">
+                          <label class="cm-field">Categoría
+                            <select [ngModel]="cb.categoryName" (ngModelChange)="reassignCategory(cb.purchaseId, $event)">
+                              <option [ngValue]="''">Quitar de categoría</option>
+                              @for (n of realCategoryNames(); track n) { <option [ngValue]="n">{{ n }}</option> }
+                            </select>
+                          </label>
+                          <label class="cm-field">Tarjeta
+                            <select [ngModel]="cb.cardId || ''" (ngModelChange)="reassignCard(cb.purchaseId, $event)">
+                              @for (c of activeCards(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                            </select>
+                          </label>
+                        </div>
+                      }
+                    </div>
                   </div>
                 </div>
               }
