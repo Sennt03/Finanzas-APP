@@ -259,13 +259,20 @@ async function buildEnrichedStatement(stmt, userId) {
     const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
     // Presupuesto de categorías financiadas por ingresos extra: sale del bote sin categoría.
     const extraIncomeAllocated = r2(extraIncomeBudgeted(nonVirtual))
+    // Dos botes SEPARADOS:
+    //  - salaryAvailable: sueldo no presupuestado (real, disponible).
+    //  - extraAvailable: ingresos extra − movimientos/ahorros/categorías-extra (puede ser
+    //    NEGATIVO si sobregiras ingresos extra; eso es una "deuda" aparte, no come el sueldo).
+    const salaryAvailable = unbudgeted
+    const extraAvailable = r2(uncategorizedIncome - uncategorizedExpense - uncategorizedSavings - extraIncomeAllocated)
     const sinCatSpent = r2(uncategorizedExpense + uncategorizedSavings - uncategorizedIncome + extraIncomeAllocated)
-    const sinCatRemaining = r2(unbudgeted - uncategorizedExpense - uncategorizedSavings + uncategorizedIncome - extraIncomeAllocated)
+    const sinCatRemaining = r2(salaryAvailable + extraAvailable) // combinado (referencia)
     const flexibleRemaining = nonVirtual
         .filter(c => c.flexible && c.kind !== 'savings')
         .reduce((a, c) => a + c.remaining, 0)
     const flexibleCount = nonVirtual.filter(c => c.flexible && c.kind !== 'savings').length
-    const puedoGastar = r2(flexibleRemaining + sinCatRemaining)
+    // El sobregiro de ingresos extra NO reduce PUEDO GASTAR (se muestra aparte como deuda).
+    const puedoGastar = r2(flexibleRemaining + salaryAvailable + Math.max(0, extraAvailable))
 
     const tdcShare = tdc.reduce((s, i) => s + i.budgetedAmount, 0)
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
@@ -363,8 +370,8 @@ async function buildEnrichedStatement(stmt, userId) {
             spent: sinCatSpent,
             remaining: sinCatRemaining,
             // Separados: sueldo no presupuestado vs ingresos extra sobrantes (puede ser negativo).
-            salaryAvailable: unbudgeted,
-            extraAvailable: r2(uncategorizedIncome - uncategorizedExpense - uncategorizedSavings - extraIncomeAllocated)
+            salaryAvailable,
+            extraAvailable
         },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,
