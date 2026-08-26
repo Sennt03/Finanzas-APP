@@ -30,10 +30,16 @@
 
     <!-- Tres secundarios -->
     <div class="secondary">
-      <div class="sec-card credit">
-        <span class="sec-label">Por pagar</span>
-        <strong>{{ s.summary.porPagar | number:'1.2-2' }}</strong>
-        <small>tarjetas este mes</small>
+      <div class="sec-card credit" [class.paid]="s.summary.creditCard.groupPaid && s.summary.porPagar > 0">
+        @if (s.summary.creditCard.groupPaid && s.summary.porPagar > 0) {
+          <span class="sec-label">Tarjeta</span>
+          <strong class="ok">Pagada ✓</strong>
+          <small>{{ s.summary.porPagar | number:'1.2-2' }} este mes</small>
+        } @else {
+          <span class="sec-label">Por pagar</span>
+          <strong>{{ s.summary.porPagar | number:'1.2-2' }}</strong>
+          <small>tarjetas este mes</small>
+        }
       </div>
       <div class="sec-card apartado" [class.has]="s.summary.apartado > 0">
         <span class="sec-label">Apartado</span>

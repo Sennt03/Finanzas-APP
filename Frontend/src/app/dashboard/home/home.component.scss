@@ -405,3 +405,6 @@
 }
 
 .sincat-card .sc-lines .sc-line.sav { color: $savings; b { color: $savings; } }
+
+.secondary .sec-card.credit.paid { border-color: color.adjust($success, $lightness: 25%); background: $success-soft; }
+.secondary .sec-card.credit strong.ok { color: $success; font-size: 16px; }
