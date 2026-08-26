@@ -2393,3 +2393,37 @@
 // Fila única Gastado/Queda de categoría
 .cat-spent-row .of-total { color: $primary-faint; font-weight: 400; margin-left: 3px; }
 .cat-spent-row .remaining-label.over strong { color: $danger; }
+
+// Detalle de saldos: ingresos/gastos extra + bote sin categoría
+.saldo-detail .sd-cell strong.pos { color: $success; }
+.saldo-detail .sd-cell strong.neg { color: $danger; }
+
+.pool-box {
+  margin-top: 10px; border: 1px dashed $accent; border-radius: $r-lg;
+  background: $accent-soft; padding: 4px;
+  &.neg { border-color: $danger; background: $danger-soft; }
+
+  .pool-head {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    background: transparent; border: none; cursor: pointer; padding: 10px 12px; text-align: left;
+    &:disabled { cursor: default; opacity: .85; }
+    .pool-info { flex: 1; display: flex; flex-direction: column;
+      .pool-label { font-weight: 700; font-size: 13px; color: $primary; }
+      small { font-size: 11px; color: $primary-muted; } }
+    .pool-amount { font-weight: 800; font-size: 18px; color: $accent; }
+    i { font-size: 22px; color: $accent; }
+  }
+  &.neg .pool-head .pool-amount { color: $danger; }
+
+  .alloc-form {
+    padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px;
+    .af-title { font-size: 12px; font-weight: 700; color: $primary-muted; }
+    .af-row { display: flex; gap: 8px;
+      select, input { padding: 10px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; font-weight: 600; min-height: 40px; }
+      select { flex: 1; } input { width: 100px; text-align: right; } }
+    .af-newname { padding: 10px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; font-weight: 600; }
+    .af-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  }
+}
+
+.extra-inc-tag { font-size: 10px; font-weight: 700; background: $success-soft; color: color.adjust($success, $lightness: -8%); padding: 1px 7px; border-radius: 99px; margin-left: 6px; vertical-align: middle; }

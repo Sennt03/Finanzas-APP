@@ -33,8 +33,18 @@ function categoryBudget(cat) {
     return (cat.totalAmount && cat.totalAmount > 0) ? cat.totalAmount : sumItems(cat)
 }
 
+// El "presupuestado" (limitado por el sueldo) EXCLUYE las categorías financiadas por
+// ingresos extra: su presupuesto no sale del sueldo sino del bote sin categoría.
 function totalBudgeted(categories) {
-    return (categories || []).reduce((acc, cat) => acc + categoryBudget(cat), 0)
+    return (categories || [])
+        .filter(cat => !cat.fromExtraIncome)
+        .reduce((acc, cat) => acc + categoryBudget(cat), 0)
+}
+
+function extraIncomeBudgeted(categories) {
+    return (categories || [])
+        .filter(cat => cat.fromExtraIncome)
+        .reduce((acc, cat) => acc + categoryBudget(cat), 0)
 }
 
 // Suma de pagos de items pagados en efectivo (los credit cuentan vía creditCard.paid)
@@ -247,8 +257,10 @@ async function buildEnrichedStatement(stmt, userId) {
     // (flexible) + el bote "sin categoría" (sueldo no presupuestado − movimientos sin
     // categoría). Puede quedar NEGATIVO si se gasta de más (es intencional).
     const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
-    const sinCatSpent = r2(uncategorizedExpense + uncategorizedSavings - uncategorizedIncome)
-    const sinCatRemaining = r2(unbudgeted - uncategorizedExpense - uncategorizedSavings + uncategorizedIncome)
+    // Presupuesto de categorías financiadas por ingresos extra: sale del bote sin categoría.
+    const extraIncomeAllocated = r2(extraIncomeBudgeted(nonVirtual))
+    const sinCatSpent = r2(uncategorizedExpense + uncategorizedSavings - uncategorizedIncome + extraIncomeAllocated)
+    const sinCatRemaining = r2(unbudgeted - uncategorizedExpense - uncategorizedSavings + uncategorizedIncome - extraIncomeAllocated)
     const flexibleRemaining = nonVirtual
         .filter(c => c.flexible && c.kind !== 'savings')
         .reduce((a, c) => a + c.remaining, 0)
@@ -347,6 +359,7 @@ async function buildEnrichedStatement(stmt, userId) {
             income: r2(uncategorizedIncome),
             expense: r2(uncategorizedExpense),
             savings: r2(uncategorizedSavings),
+            allocated: extraIncomeAllocated,
             spent: sinCatSpent,
             remaining: sinCatRemaining
         },
@@ -515,6 +528,7 @@ async function create(userId, { year, month, salary }) {
         totalAmount: cat.totalAmount || 0,
         flexible: !!cat.flexible,
         protected: !!cat.protected,
+        fromExtraIncome: !!cat.fromExtraIncome,
         items: (cat.items || []).map(it => ({
             name: it.name,
             budgetedAmount: it.amount || 0,
@@ -545,19 +559,26 @@ async function updateMeta(userId, id, { salary, categories }) {
     if (categories !== undefined) {
         // Preservar isPaid/paidAmount/paidAt cuando coincide _id
         const oldMap = new Map()
+        // Y preservar los flags de categoría (flexible/protected/fromExtraIncome) por _id:
+        // el editor de presupuesto no los envía, así que se toman de la categoría existente.
+        const oldCatMap = new Map()
         for (const cat of stmt.categories) {
+            if (cat._id) oldCatMap.set(String(cat._id), cat)
             for (const it of cat.items) {
                 oldMap.set(String(it._id), it)
             }
         }
         const groupPaid = !!(stmt.creditState && stmt.creditState.tdcPaid)
-        stmt.categories = categories.map(cat => ({
+        stmt.categories = categories.map(cat => {
+          const oldCat = cat._id ? oldCatMap.get(String(cat._id)) : null
+          return {
             _id: cat._id,
             name: cat.name,
             kind: cat.kind || 'expense',
             totalAmount: cat.totalAmount || 0,
-            flexible: !!cat.flexible,
-            protected: !!cat.protected,
+            flexible: oldCat ? !!oldCat.flexible : !!cat.flexible,
+            protected: oldCat ? !!oldCat.protected : !!cat.protected,
+            fromExtraIncome: oldCat ? !!oldCat.fromExtraIncome : !!cat.fromExtraIncome,
             items: (cat.items || []).map(it => {
                 const prev = it._id ? oldMap.get(String(it._id)) : null
                 const pm = it.paymentMethod === 'credit' ? 'credit' : 'cash'
@@ -599,7 +620,8 @@ async function updateMeta(userId, id, { salary, categories }) {
                     paymentMethod: 'cash'
                 }
             })
-        }))
+          }
+        })
     }
 
     // Validar items vs total por categoría
@@ -975,28 +997,31 @@ async function allocateToCategory(userId, id, { toCategoryId, amount, newCategor
     const amt = r2(amount)
     if (amt <= 0) throw myError('Monto inválido', 400)
 
-    const budgeted = totalBudgeted(stmt.categories)
-    const unbudgeted = r2(stmt.salary - budgeted)
-    if (amt > unbudgeted + 0.001) {
-        throw myError(`Solo tienes ${unbudgeted.toFixed(2)} sin presupuestar.`, 400)
+    // Se financia con el bote "sin categoría" (no presupuestado + ingresos extra − movimientos).
+    const enriched = await buildEnrichedStatement(stmt, userId)
+    const poolRemaining = enriched.summary.sinCategoria.remaining
+    if (amt > poolRemaining + 0.001) {
+        throw myError(`Solo tienes ${poolRemaining.toFixed(2)} disponible sin presupuestar / de ingresos extra.`, 400)
     }
 
     let targetName
     const newName = (newCategoryName || '').trim()
     if (newName) {
-        // Crear una categoría nueva (flexible) con este presupuesto.
-        stmt.categories.push({ name: newName, kind: 'expense', totalAmount: amt, flexible: true, items: [] })
+        // Categoría nueva financiada por ingresos extra (no cuenta en presupuestado).
+        stmt.categories.push({ name: newName, kind: 'expense', totalAmount: amt, flexible: true, fromExtraIncome: true, items: [] })
         targetName = newName
     } else {
         const to = stmt.categories.id(toCategoryId)
         if (!to) throw myError('Categoría no encontrada', 404)
+        to.fromExtraIncome = true // el refuerzo sale del bote, no del sueldo
+        to.flexible = true
         to.totalAmount = to.totalAmount > 0 ? r2(to.totalAmount + amt) : r2(sumItems(to) + amt)
         targetName = to.name
     }
 
     await stmt.save()
     await log(userId, stmt.year, stmt.month, 'budget_allocated',
-        `Presupuestado $${amt.toFixed(2)} → ${targetName}`, amt)
+        `Presupuestado $${amt.toFixed(2)} (ingreso extra) → ${targetName}`, amt)
     return buildEnrichedStatement(stmt, userId)
 }
 

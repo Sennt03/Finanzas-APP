@@ -89,8 +89,44 @@ export class MonthDetailComponent {
   showClose = signal(false);
 
   // Detalle de saldos plegable
-  showSaldos = signal(false);
+  showSaldos = signal(true);
   toggleSaldos() { this.showSaldos.update(v => !v); }
+
+  // Presupuestar el bote "sin categoría" (ingreso extra / no presupuestado) a una categoría.
+  allocating = signal(false);
+  allocCatId = signal<string>('__new__');
+  allocNewName = signal('');
+  allocAmount = signal<number>(0);
+  allocCats = computed(() => (this.stmt()?.categories ?? []).filter(c => !c.isVirtual && c.fromExtraIncome));
+
+  openAllocate() {
+    const cats = this.allocCats();
+    this.allocCatId.set(cats[0]?._id ?? '__new__');
+    this.allocNewName.set('');
+    this.allocAmount.set(this.stmt()?.summary.sinCategoria.remaining ?? 0);
+    this.allocating.set(true);
+  }
+  closeAllocate() { this.allocating.set(false); }
+
+  submitAllocate() {
+    const s = this.stmt();
+    const sel = this.allocCatId();
+    const amt = Number(this.allocAmount());
+    if (!s || amt <= 0) { toastr.error('Indica un monto válido', ''); return; }
+    const payload: { toCategoryId?: string; newCategoryName?: string; amount: number } = { amount: amt };
+    if (sel === '__new__') {
+      const name = this.allocNewName().trim();
+      if (!name) { toastr.error('Escribe el nombre de la categoría', ''); return; }
+      payload.newCategoryName = name;
+    } else {
+      payload.toCategoryId = sel;
+    }
+    this.loading.set(true);
+    this.svc.allocate(s._id, payload).subscribe({
+      next: (updated) => { this.stmt.set(updated); this.loading.set(false); this.allocating.set(false); toastr.success('Presupuestado (ingreso extra)', ''); },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
 
   itemDrafts = signal<Record<string, number | null>>({});
   itemSaving = signal<Record<string, boolean>>({});

@@ -20,6 +20,9 @@ const categorySchema = new Schema({
     flexible: { type: Boolean, default: false },
     // Fase 4: categoría protegida (ahorro): retiros requieren confirmación + motivo.
     protected: { type: Boolean, default: false },
+    // Categoría financiada por INGRESOS EXTRA / no presupuestado: NO cuenta contra el
+    // límite de "presupuestado" (que es el sueldo); su presupuesto sale del bote sin categoría.
+    fromExtraIncome: { type: Boolean, default: false },
     items: { type: [itemSchema], default: [] }
 }, { _id: true })
 

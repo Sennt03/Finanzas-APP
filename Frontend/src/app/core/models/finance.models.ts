@@ -115,6 +115,7 @@ export interface LsStatementCategory {
     totalAmount: number;
     flexible?: boolean;
     protected?: boolean;
+    fromExtraIncome?: boolean;
     items: LsStatementItem[];
     isVirtual?: boolean;
     groupKey?: 'tdc' | 'diferidos';
@@ -167,7 +168,7 @@ export interface LsStatementSummary {
     puedoGastar: number;
     flexibleCount: number;
     unbudgeted: number;
-    sinCategoria: { budget: number; income: number; expense: number; savings: number; spent: number; remaining: number };
+    sinCategoria: { budget: number; income: number; expense: number; savings: number; allocated: number; spent: number; remaining: number };
     apartado: number;
     retainedFromPrev: number;
     disponibleReal: number;

@@ -135,13 +135,13 @@ export class HomeComponent {
   allocCatId = signal<string>('__new__'); // '__new__' = crear categoría; si no, un categoryId
   allocNewName = signal('');
   allocAmount = signal<number>(0);
-  allocCats = computed(() => this.realCats().filter(c => c.kind !== 'savings'));
+  allocCats = computed(() => this.realCats().filter(c => c.fromExtraIncome));
 
   openAllocate() {
     const cats = this.allocCats();
     this.allocCatId.set(cats[0]?._id ?? '__new__');
     this.allocNewName.set('');
-    this.allocAmount.set(this.selected()?.summary.sinCategoria.budget ?? 0);
+    this.allocAmount.set(this.selected()?.summary.sinCategoria.remaining ?? 0);
     this.allocating.set(true);
   }
   closeAllocate() { this.allocating.set(false); }

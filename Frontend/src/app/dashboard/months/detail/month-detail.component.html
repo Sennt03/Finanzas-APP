@@ -62,11 +62,55 @@
           <div class="sd-cell"><span>Presupuestado</span><strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
           <div class="sd-cell"><span>Sin presupuestar</span><strong>{{ s.summary.availableToBudget | number:'1.2-2' }}</strong></div>
           <div class="sd-cell"><span>Gastado</span><strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong></div>
+          @if (s.summary.sinCategoria.income > 0) {
+            <div class="sd-cell"><span>Ingresos extra</span><strong class="pos">+{{ s.summary.sinCategoria.income | number:'1.2-2' }}</strong></div>
+          }
+          @if (s.summary.sinCategoria.expense > 0) {
+            <div class="sd-cell"><span>Gastos sin categoría</span><strong class="neg">−{{ s.summary.sinCategoria.expense | number:'1.2-2' }}</strong></div>
+          }
+          @if (s.summary.sinCategoria.savings > 0) {
+            <div class="sd-cell"><span>Ahorrado (sin cat.)</span><strong>−{{ s.summary.sinCategoria.savings | number:'1.2-2' }}</strong></div>
+          }
           <div class="sd-cell"><span>Saldo disponible</span><strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong></div>
           @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
             <div class="sd-cell"><span>Disponible real</span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
           }
         </div>
+
+        <!-- Bote sin categoría (no presupuestado + ingresos extra): crear categoría desde aquí -->
+        @if (s.summary.sinCategoria.remaining !== 0 || s.summary.sinCategoria.income > 0 || s.summary.sinCategoria.allocated > 0) {
+          <div class="pool-box" [class.neg]="s.summary.sinCategoria.remaining < 0">
+            <button class="pool-head" (click)="openAllocate()" [disabled]="s.summary.sinCategoria.remaining <= 0"
+              [title]="s.summary.sinCategoria.remaining > 0 ? 'Crear una categoría con este dinero' : ''">
+              <div class="pool-info">
+                <span class="pool-label">Disponible sin categoría / ingresos extra</span>
+                <small>no presupuestado + ingresos extra − movimientos</small>
+              </div>
+              <span class="pool-amount">{{ s.summary.sinCategoria.remaining | number:'1.2-2' }}</span>
+              @if (s.summary.sinCategoria.remaining > 0) { <i class="bx bx-plus-circle"></i> }
+            </button>
+
+            @if (allocating()) {
+              <div class="alloc-form">
+                <span class="af-title">Crear / reforzar una categoría con este dinero</span>
+                <div class="af-row">
+                  <select [ngModel]="allocCatId()" (ngModelChange)="allocCatId.set($event)">
+                    <option [ngValue]="'__new__'">➕ Nueva categoría…</option>
+                    @for (c of allocCats(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
+                  </select>
+                  <input type="number" min="0" [max]="s.summary.sinCategoria.remaining" [ngModel]="allocAmount()" (ngModelChange)="allocAmount.set($event)" (keydown.enter)="submitAllocate()">
+                </div>
+                @if (allocCatId() === '__new__') {
+                  <input class="af-newname" type="text" placeholder="Nombre de la categoría" [ngModel]="allocNewName()" (ngModelChange)="allocNewName.set($event)" (keydown.enter)="submitAllocate()">
+                }
+                <div class="af-actions">
+                  <button class="btn btn-outline btn-sm" (click)="closeAllocate()">Cancelar</button>
+                  <button class="btn btn-primary btn-sm" (click)="submitAllocate()">Presupuestar</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
       }
     </div>
 
@@ -170,6 +214,7 @@
               @else { <i class="bx bx-wallet"></i> }
               {{ cat.name }}
               @if (cat.isVirtual) { <span class="auto-tag">auto</span> }
+              @if (cat.fromExtraIncome) { <span class="extra-inc-tag">ingreso extra</span> }
               @if (cat.isVirtual && cat.categoryPaid) { <span class="paid-tag">pagada</span> }
               @if (!cat.isVirtual && cat.kind !== 'savings') {
                 <button type="button" class="flex-star" [class.on]="cat.flexible" (click)="toggleFlexible(cat)"

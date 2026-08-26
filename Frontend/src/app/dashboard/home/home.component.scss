@@ -415,3 +415,10 @@
   width: 100%; padding: 9px 10px; border: 1px solid $border; border-radius: $r-sm;
   background: $surface; color: $primary; font-weight: 600;
 }
+
+.sincat-card .alloc-cta {
+  margin-top: 10px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: $accent-soft; color: $accent; border: 1px solid color.adjust($accent, $lightness: 25%);
+  border-radius: $r-md; padding: 10px; font-weight: 700; font-size: 13px; cursor: pointer;
+  i { font-size: 18px; }
+}

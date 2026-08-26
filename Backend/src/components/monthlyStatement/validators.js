@@ -15,6 +15,7 @@ const categorySchema = Joi.object({
     totalAmount: Joi.number().min(0).default(0),
     flexible: Joi.boolean().default(false),
     protected: Joi.boolean().default(false),
+    fromExtraIncome: Joi.boolean().default(false),
     items: Joi.array().items(itemSchema).default([])
 })
 
