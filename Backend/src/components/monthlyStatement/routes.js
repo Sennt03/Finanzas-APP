@@ -12,7 +12,8 @@ const {
     updateItemCardValidator,
     updateCategoryValidator,
     compensateValidator,
-    allocateValidator
+    allocateValidator,
+    createSavingsValidator
 } = require('./validators')
 
 router.use(verifyToken)
@@ -70,6 +71,13 @@ router.delete('/:id/extras/:extraId', async (req, res, next) => {
     try {
         const data = await controller.removeExtra(req.user._id, req.params.id, req.params.extraId)
         response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/savings', createSavingsValidator, async (req, res, next) => {
+    try {
+        const data = await controller.createSavings(req.user._id, req.params.id, req.body)
+        response.success(req, res, data, 201)
     } catch (e) { next(e) }
 })
 

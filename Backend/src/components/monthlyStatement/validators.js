@@ -80,6 +80,12 @@ const allocateSchema = Joi.object({
     amount: Joi.number().greater(0).required()
 })
 
+const createSavingsSchema = Joi.object({
+    amount: Joi.number().greater(0).required(),
+    name: Joi.string().max(120).allow('').default(''),
+    categoryId: Joi.string().allow(null, '')
+})
+
 const convertSchema = Joi.object({
     source: Joi.object({
         kind: Joi.string().valid('item', 'extra', 'purchase').required(),
@@ -107,5 +113,6 @@ module.exports = {
     updateItemCardValidator: validatorHandler(updateItemCardSchema),
     updateCategoryValidator: validatorHandler(updateCategorySchema),
     compensateValidator: validatorHandler(compensateSchema),
-    allocateValidator: validatorHandler(allocateSchema)
+    allocateValidator: validatorHandler(allocateSchema),
+    createSavingsValidator: validatorHandler(createSavingsSchema)
 }

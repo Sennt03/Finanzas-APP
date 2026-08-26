@@ -146,6 +146,9 @@
             @if (sc.expense > 0) {
               <span class="sc-line neg">− Gastos extra <b>{{ sc.expense | number:'1.2-2' }}</b></span>
             }
+            @if (sc.savings > 0) {
+              <span class="sc-line sav">− Ahorro <b>{{ sc.savings | number:'1.2-2' }}</b></span>
+            }
           </div>
 
           @if (allocating()) {

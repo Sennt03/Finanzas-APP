@@ -28,6 +28,8 @@ const savingsMovementSchema = new Schema({
         categoryId: { type: Types.ObjectId },
         itemId: { type: Types.ObjectId }
     },
+    // Depósito generado por un movimiento "Ahorro" del mes (se gestiona desde el mes).
+    fromMonthExtra: { type: Boolean, default: false },
     date: { type: Date, default: Date.now }
 }, {
     timestamps: true,

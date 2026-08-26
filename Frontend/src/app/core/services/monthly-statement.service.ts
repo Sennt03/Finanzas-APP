@@ -41,6 +41,11 @@ export class MonthlyStatementService {
         return this.http.delete<LsMonthlyStatement>(`${this.url}/${id}/extras/${extraId}`);
     }
 
+    // Crear un ahorro desde el mes (deposita a ahorros y descuenta del origen).
+    createSavings(id: string, payload: { amount: number; name?: string; categoryId?: string | null }): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/savings`, payload);
+    }
+
     toggleCreditGroup(id: string, payload: { paid: boolean }): Observable<LsMonthlyStatement> {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/credit-group`, payload);
     }

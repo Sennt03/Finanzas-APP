@@ -31,6 +31,9 @@ const extraSchema = new Schema({
     // Si el ingreso proviene de un egreso de ahorros (retiro a transaccional),
     // queda vinculado a ese movimiento para mantenerlos sincronizados al borrar.
     linkedSavingsId: { type: Types.ObjectId, ref: 'savingsMovements', default: null },
+    // Si este movimiento (gasto) es en realidad un AHORRO enviado a la cuenta de
+    // ahorros, queda vinculado al depósito que lo generó.
+    savingsDepositId: { type: Types.ObjectId, ref: 'savingsMovements', default: null },
     date: { type: Date, default: Date.now }
 }, { _id: true })
 

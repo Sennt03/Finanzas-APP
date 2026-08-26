@@ -71,6 +71,10 @@ async function remove(userId, id) {
     if (mov.itemRef?.itemId) {
         throw myError('Este movimiento se generó al marcar un item como pagado. Desmárcalo desde el estado de cuenta.', 400)
     }
+    // Bloquear borrado de depósitos generados por un movimiento "Ahorro" del mes
+    if (mov.fromMonthExtra) {
+        throw myError('Este ahorro se creó desde un mes. Elimínalo desde el movimiento en ese mes.', 400)
+    }
     // Si el egreso registró un ingreso vinculado en el mes, quitarlo también
     if (mov.type === 'withdrawal' && mov.monthlyStatementId) {
         const stmt = await Statement.findOne({ _id: mov.monthlyStatementId, userId })

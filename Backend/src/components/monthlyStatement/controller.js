@@ -178,6 +178,11 @@ async function buildEnrichedStatement(stmt, userId) {
     const paid = totalPaidCash(nonVirtual)
     const extrasExpense = sumExtras(obj.extras, 'expense')
     const extrasIncome = sumExtras(obj.extras, 'income')
+    // Los movimientos "Ahorro" son gastos (salen de la transaccional) pero NO son consumo:
+    // reducen el disponible y el origen igual que un gasto, pero no cuentan como "gastado".
+    const savingsExtrasTotal = (obj.extras || [])
+        .filter(e => e.savingsDepositId && (e.type || 'expense') === 'expense')
+        .reduce((a, e) => a + (e.amount || 0), 0)
 
     // ----- Fase 2/3: envelope por categoría + PUEDO GASTAR -----
     // "spent" de una categoría = efectivo pagado + items a crédito (comprometidos)
@@ -201,6 +206,7 @@ async function buildEnrichedStatement(stmt, userId) {
     const extrasSpentByCat = {}
     let uncategorizedExpense = 0
     let uncategorizedIncome = 0
+    let uncategorizedSavings = 0
     for (const e of (obj.extras || [])) {
         if (e.linkedSavingsId) continue
         const amt = e.amount || 0
@@ -210,6 +216,8 @@ async function buildEnrichedStatement(stmt, userId) {
             extrasSpentByCat[key] = (extrasSpentByCat[key] || 0) + signed
         } else if (e.type === 'income') {
             uncategorizedIncome += amt
+        } else if (e.savingsDepositId) {
+            uncategorizedSavings += amt
         } else {
             uncategorizedExpense += amt
         }
@@ -239,8 +247,8 @@ async function buildEnrichedStatement(stmt, userId) {
     // (flexible) + el bote "sin categoría" (sueldo no presupuestado − movimientos sin
     // categoría). Puede quedar NEGATIVO si se gasta de más (es intencional).
     const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
-    const sinCatSpent = r2(uncategorizedExpense - uncategorizedIncome)
-    const sinCatRemaining = r2(unbudgeted - uncategorizedExpense + uncategorizedIncome)
+    const sinCatSpent = r2(uncategorizedExpense + uncategorizedSavings - uncategorizedIncome)
+    const sinCatRemaining = r2(unbudgeted - uncategorizedExpense - uncategorizedSavings + uncategorizedIncome)
     const flexibleRemaining = nonVirtual
         .filter(c => c.flexible && c.kind !== 'savings')
         .reduce((a, c) => a + c.remaining, 0)
@@ -323,7 +331,7 @@ async function buildEnrichedStatement(stmt, userId) {
     obj.summary = {
         totalBudgeted: budgeted,
         totalPaid: paid,
-        totalExtras: extrasExpense,
+        totalExtras: r2(extrasExpense - savingsExtrasTotal),
         totalExtrasIncome: extrasIncome,
         remainingSalary: realBalance,
         availableBalance: availableBalance,
@@ -338,6 +346,7 @@ async function buildEnrichedStatement(stmt, userId) {
             budget: unbudgeted,
             income: r2(uncategorizedIncome),
             expense: r2(uncategorizedExpense),
+            savings: r2(uncategorizedSavings),
             spent: sinCatSpent,
             remaining: sinCatRemaining
         },
@@ -716,6 +725,58 @@ async function addExtra(userId, id, data) {
     return buildEnrichedStatement(stmt, userId)
 }
 
+// Crear un AHORRO desde el mes: mueve dinero a la cuenta de ahorros (depósito) y lo
+// descuenta de su origen — una categoría (categoryId) o el bote "sin categoría" (sin id).
+// El movimiento-gasto vinculado reduce el disponible y el restante del origen; el depósito
+// suma a ahorros. Borrar el movimiento revierte ambos.
+async function createSavings(userId, id, { amount, name, categoryId }) {
+    const stmt = await Statement.findOne({ _id: id, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+    const amt = r2(amount)
+    if (amt <= 0) throw myError('Monto inválido', 400)
+
+    let categoryName = ''
+    if (categoryId) {
+        const cat = stmt.categories.id(categoryId)
+        if (!cat) throw myError('Categoría no encontrada', 404)
+        categoryName = cat.name
+    }
+
+    let savingsAcc = await Account.findOne({ userId, type: 'savings' })
+    if (!savingsAcc) {
+        const accountController = require('../account/controller')
+        await accountController.bootstrap(userId)
+        savingsAcc = await Account.findOne({ userId, type: 'savings' })
+    }
+    if (!savingsAcc) throw myError('Cuenta de ahorros no encontrada', 404)
+
+    const depositDate = new Date(stmt.year, stmt.month - 1, Math.min(new Date().getDate(), 28), 12)
+    const label = (name || '').trim() || 'Ahorro'
+    const deposit = await SavingsMovement.create({
+        userId,
+        accountId: savingsAcc._id,
+        type: 'deposit',
+        amount: amt,
+        description: `${label}${categoryName ? ' de ' + categoryName : ''}`,
+        monthlyStatementId: stmt._id,
+        fromMonthExtra: true,
+        date: depositDate
+    })
+
+    stmt.extras.push({
+        name: label,
+        amount: amt,
+        type: 'expense',
+        categoryName,
+        savingsDepositId: deposit._id,
+        date: depositDate
+    })
+    await stmt.save()
+    await log(userId, stmt.year, stmt.month, 'savings_added',
+        `Ahorro $${amt.toFixed(2)}${categoryName ? ' desde ' + categoryName : ''}`, amt)
+    return buildEnrichedStatement(stmt, userId)
+}
+
 async function removeExtra(userId, id, extraId) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
@@ -727,6 +788,10 @@ async function removeExtra(userId, id, extraId) {
     // vinculado para devolver el monto a la cuenta de ahorros.
     if (extra.linkedSavingsId) {
         await SavingsMovement.deleteOne({ _id: extra.linkedSavingsId, userId })
+    }
+    // Si el movimiento es un AHORRO, borrar el depósito vinculado (revierte ahorros).
+    if (extra.savingsDepositId) {
+        await SavingsMovement.deleteOne({ _id: extra.savingsDepositId, userId })
     }
     extra.deleteOne()
     await stmt.save()
@@ -1002,7 +1067,7 @@ async function remove(userId, id) {
 module.exports = {
     list, getOne, create, updateMeta,
     setItemAmount,
-    addExtra, removeExtra,
+    addExtra, removeExtra, createSavings,
     addItemToCategory, removeItemFromCategory, updateItemCard, updateCategoryMeta,
     toggleCreditGroup,
     convertMovement,

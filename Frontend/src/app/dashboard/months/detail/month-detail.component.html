@@ -562,6 +562,9 @@
             <button class="btn btn-outline btn-sm" (click)="openTx('diferido')">
               <i class="bx bx-list-plus"></i> Diferido
             </button>
+            <button class="btn btn-outline btn-sm tx-savings" (click)="openTx('ahorro')">
+              <i class="bx bx-piggy-bank"></i> Ahorro
+            </button>
           </div>
         </div>
 
@@ -572,10 +575,23 @@
               <select [ngModel]="txType()" (ngModelChange)="txType.set($event)">
                 <option value="expense">Gasto extra (cash)</option>
                 <option value="income">Ingreso extra</option>
+                <option value="ahorro">Ahorro (a tu cuenta)</option>
                 <option value="tdc">Compra TDC (1 cuota)</option>
                 <option value="diferido">Diferido (N cuotas)</option>
               </select>
             </label>
+            @if (txType() === 'ahorro') {
+              <label class="span-full">
+                ¿De dónde sale este ahorro?
+                <select [ngModel]="txSavingsSource()" (ngModelChange)="txSavingsSource.set($event)">
+                  <option [ngValue]="''">Sin categoría / ingresos extra</option>
+                  @for (c of savableCats(); track c.id) {
+                    <option [ngValue]="c.id">{{ c.name }} (queda {{ c.remaining | number:'1.2-2' }})</option>
+                  }
+                </select>
+              </label>
+              <small class="tx-hint span-full">Se suma a tu cuenta de ahorros y se descuenta del origen elegido.</small>
+            }
             <label>
               Nombre
               <input type="text" [ngModel]="txName()" (ngModelChange)="txName.set($event)" placeholder="Concepto">
@@ -673,11 +689,14 @@
             }
           </div>
           @for (e of day.items; track e._id) {
-            <div class="item extra-item" [class.income]="e.type === 'income'">
+            <div class="item extra-item" [class.income]="e.type === 'income'" [class.savings-mov]="e.savingsDepositId">
               <div class="extra-info">
-                @if (e.linkedSavingsId) { <i class="bx bx-piggy-bank"></i> }
+                @if (e.linkedSavingsId || e.savingsDepositId) { <i class="bx bx-piggy-bank"></i> }
                 <strong>{{ e.name }}</strong>
-                @if (e.categoryName) { <small> · {{ e.categoryName }}</small> }
+                @if (e.savingsDepositId) {
+                  <span class="mov-tag ahorro">→ ahorros</span>
+                  @if (e.categoryName) { <small> · de {{ e.categoryName }}</small> }
+                } @else if (e.categoryName) { <small> · {{ e.categoryName }}</small> }
               </div>
               <div class="amounts">
                 @if (e.type === 'income') {
@@ -685,13 +704,13 @@
                 } @else {
                   <span class="paid-amount">-{{ e.amount | number:'1.2-2' }}</span>
                 }
-                @if (!e.linkedSavingsId && e.type === 'expense' && realCategoryNames().length > 0) {
+                @if (!e.linkedSavingsId && !e.savingsDepositId && e.type === 'expense' && realCategoryNames().length > 0) {
                   <select class="cat-assign" (change)="moveExtraToCategory(e, $any($event.target).value); $any($event.target).value=''" title="Marcarlo como gasto de una categoría">
                     <option value="" disabled selected>📁</option>
                     @for (n of realCategoryNames(); track n) { <option [value]="n">{{ n }}</option> }
                   </select>
                 }
-                @if (!e.linkedSavingsId) {
+                @if (!e.linkedSavingsId && !e.savingsDepositId) {
                   <select class="convert-select" (change)="convertExtra(e, $any($event.target).value); $any($event.target).value=''">
                     <option value="" disabled selected>⋮</option>
                     @if (e.type !== 'expense') { <option value="expense">→ Gasto cash</option> }

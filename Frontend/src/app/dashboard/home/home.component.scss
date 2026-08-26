@@ -403,3 +403,5 @@
     select { flex: 1; } input { width: 96px; text-align: right; } }
   .af-actions { display: flex; justify-content: flex-end; gap: 8px; }
 }
+
+.sincat-card .sc-lines .sc-line.sav { color: $savings; b { color: $savings; } }

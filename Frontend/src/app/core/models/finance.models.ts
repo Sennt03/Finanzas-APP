@@ -137,6 +137,7 @@ export interface LsStatementExtra {
     type: ExtraType;
     categoryName: string;
     linkedSavingsId?: string | null;
+    savingsDepositId?: string | null;
     date: string;
 }
 
@@ -166,7 +167,7 @@ export interface LsStatementSummary {
     puedoGastar: number;
     flexibleCount: number;
     unbudgeted: number;
-    sinCategoria: { budget: number; income: number; expense: number; spent: number; remaining: number };
+    sinCategoria: { budget: number; income: number; expense: number; savings: number; spent: number; remaining: number };
     apartado: number;
     retainedFromPrev: number;
     disponibleReal: number;

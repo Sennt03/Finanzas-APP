@@ -2383,3 +2383,9 @@
 
 // La fila de item de crédito externo ahora lleva chip + menú: que envuelva bien
 .ext-credit-item { flex-wrap: wrap; gap: 6px; align-items: center; }
+
+// Movimiento Ahorro (piggy) y botón Ahorro
+.tx-buttons .tx-savings { color: $savings; border-color: color.adjust($savings, $lightness: 22%); }
+.extra-item.savings-mov { border-left: 3px solid $savings; }
+.extra-item .extra-info i.bx-piggy-bank { color: $savings; }
+.mov-tag.ahorro { font-size: 10px; font-weight: 700; background: $savings-soft; color: $savings; padding: 1px 7px; border-radius: 99px; margin-left: 4px; }

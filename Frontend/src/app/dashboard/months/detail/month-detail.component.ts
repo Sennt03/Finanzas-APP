@@ -32,7 +32,7 @@ interface DraftCategory {
   items: DraftItem[];
 }
 
-type TxType = 'expense' | 'income' | 'tdc' | 'diferido';
+type TxType = 'expense' | 'income' | 'tdc' | 'diferido' | 'ahorro';
 
 @Component({
   selector: 'app-month-detail',
@@ -70,6 +70,7 @@ export class MonthDetailComponent {
   txName = signal('');
   txAmount = signal<number | null>(null);
   txCategoryName = signal('');
+  txSavingsSource = signal<string>(''); // '' = bote sin categoría; si no, un categoryId
   txDate = signal(this.todayIso());
   txInstallments = signal(2);
   txIsShared = signal(false);
@@ -218,6 +219,11 @@ export class MonthDetailComponent {
 
   // Categorías reales (no virtuales) para el selector de categoría en compras de tarjeta.
   realCategoryNames = computed(() => (this.stmt()?.categories ?? []).filter(c => !c.isVirtual).map(c => c.name));
+
+  // Categorías desde las que puede salir un ahorro (categorías de gasto, con su restante).
+  savableCats = computed(() => (this.stmt()?.categories ?? [])
+    .filter(c => !c.isVirtual && c.kind !== 'savings')
+    .map(c => ({ id: c._id!, name: c.name, remaining: this.categoryRemainingToPay(c) })));
 
   isClosed = computed(() => !!this.stmt()?.closing?.closedAt);
 
@@ -967,6 +973,8 @@ export class MonthDetailComponent {
     this.txBorrowerName.set('');
     this.txPurchaseCategory.set('');
     this.txBudgetMode.set('retain');
+    this.txSavingsSource.set('');
+    if (type === 'ahorro') this.txName.set('Ahorro');
     // Tarjeta por defecto: la última usada, si sigue activa; si no, la primera activa.
     let last: string | null = null;
     try { last = localStorage.getItem(LAST_CARD_KEY); } catch { /* no storage */ }
@@ -1006,6 +1014,31 @@ export class MonthDetailComponent {
 
     const type = this.txType();
     this.loading.set(true);
+
+    if (type === 'ahorro') {
+      const srcId = this.txSavingsSource();
+      const srcCat = srcId ? s.categories.find(c => c._id === srcId) : null;
+      // Origen categoría: validar que tenga restante suficiente.
+      if (srcCat && this.categoryBudget(srcCat) > 0) {
+        const remaining = this.categoryRemainingToPay(srcCat);
+        if (amount > remaining + 0.001) {
+          this.loading.set(false);
+          toastr.error(`"${srcCat.name}" solo tiene ${remaining.toFixed(2)} disponible. Elige otro origen o menos monto.`, '');
+          return;
+        }
+      }
+      this.svc.createSavings(s._id, { amount, name, categoryId: srcId || null }).subscribe({
+        next: (updated) => {
+          this.stmt.set(updated);
+          this.refreshSavings();
+          this.closeTx();
+          this.loading.set(false);
+          toastr.success(`Ahorro de $${amount.toFixed(2)} enviado a tu cuenta de ahorros`, '');
+        },
+        error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+      });
+      return;
+    }
 
     if (type === 'expense' || type === 'income') {
       const catName = this.txCategoryName().trim();
