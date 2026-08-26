@@ -355,3 +355,17 @@
   i { font-size: 22px; }
   &.on i { color: $warning; }
 }
+
+// Bote "sin categoría" (lo no presupuestado que los movimientos van gastando)
+.sincat-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: $surface; border: 1px solid $border; border-left: 4px solid $primary-faint;
+  border-radius: $r-lg; padding: 12px 14px; margin-top: 8px; box-shadow: $shadow-sm;
+
+  .sc-left { display: flex; flex-direction: column; gap: 2px; min-width: 0;
+    .sc-name { font-weight: 700; font-size: 14px; i { color: $primary-muted; } }
+    .sc-sub { font-size: 12px; color: $primary-muted; } }
+  .sc-remaining { font-weight: 800; font-size: 18px; white-space: nowrap; }
+
+  &.neg { border-left-color: $danger; .sc-remaining { color: $danger; } }
+}

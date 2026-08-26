@@ -188,6 +188,27 @@ async function buildEnrichedStatement(stmt, userId) {
         if (!budgetItemsByCat[it.categoryName]) budgetItemsByCat[it.categoryName] = []
         budgetItemsByCat[it.categoryName].push(it)
     }
+
+    // Los MOVIMIENTOS (extras) también gastan dinero y consumen presupuesto:
+    // - si el movimiento coincide (por nombre) con una categoría, descuenta esa categoría;
+    // - si no tiene categoría (o no coincide con ninguna), cae en el bote "sin categoría"
+    //   (lo no presupuestado del sueldo), que también es parte de PUEDO GASTAR.
+    // Los egresos restan y los ingresos suman. Se excluyen los ligados a ahorros.
+    const normName = (s) => String(s || '').trim().toLowerCase()
+    const catByName = new Map(nonVirtual.map(c => [normName(c.name), c]))
+    const extrasSpentByCat = {}
+    let uncategorizedSpent = 0
+    for (const e of (obj.extras || [])) {
+        if (e.linkedSavingsId) continue
+        const signed = (e.type === 'income' ? -1 : 1) * (e.amount || 0)
+        const key = normName(e.categoryName)
+        if (key && catByName.has(key)) {
+            extrasSpentByCat[key] = (extrasSpentByCat[key] || 0) + signed
+        } else {
+            uncategorizedSpent += signed
+        }
+    }
+
     for (const cat of nonVirtual) {
         const cashSpent = (cat.items || [])
             .filter(it => !isCreditItem(it))
@@ -196,8 +217,9 @@ async function buildEnrichedStatement(stmt, userId) {
             .filter(isCreditItem)
             .reduce((a, it) => a + (it.budgetedAmount || 0), 0)
         const purchasesConsumed = consumedByCategory[cat.name] || 0
+        const extrasForCat = extrasSpentByCat[normName(cat.name)] || 0
         const budget = categoryBudget(cat)
-        const spent = r2(cashSpent + creditInCat + purchasesConsumed)
+        const spent = r2(cashSpent + creditInCat + purchasesConsumed + extrasForCat)
         cat.categoryBudget = r2(budget)
         cat.spent = spent
         cat.creditConsumed = r2(creditInCat + purchasesConsumed)
@@ -208,13 +230,16 @@ async function buildEnrichedStatement(stmt, userId) {
         cat.creditBudgetItems = budgetItemsByCat[cat.name] || []
     }
     // PUEDO GASTAR = lo que sobra en las categorías que el usuario marcó como "de gasto"
-    // (flexible) + el sueldo que no presupuestó en ninguna categoría.
+    // (flexible) + el bote "sin categoría" (sueldo no presupuestado − movimientos sin
+    // categoría). Puede quedar NEGATIVO si se gasta de más (es intencional).
     const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
+    const sinCatSpent = r2(uncategorizedSpent)
+    const sinCatRemaining = r2(unbudgeted - sinCatSpent)
     const flexibleRemaining = nonVirtual
         .filter(c => c.flexible && c.kind !== 'savings')
         .reduce((a, c) => a + c.remaining, 0)
     const flexibleCount = nonVirtual.filter(c => c.flexible && c.kind !== 'savings').length
-    const puedoGastar = r2(flexibleRemaining + unbudgeted)
+    const puedoGastar = r2(flexibleRemaining + sinCatRemaining)
 
     const tdcShare = tdc.reduce((s, i) => s + i.budgetedAmount, 0)
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
@@ -302,6 +327,8 @@ async function buildEnrichedStatement(stmt, userId) {
         puedoGastar,
         flexibleCount,
         unbudgeted,
+        // Bote "sin categoría": lo no presupuestado menos los movimientos sin categoría.
+        sinCategoria: { budget: unbudgeted, spent: sinCatSpent, remaining: sinCatRemaining },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,
         // Saldo realmente libre: quita lo que aparto este mes y suma lo que retuve antes

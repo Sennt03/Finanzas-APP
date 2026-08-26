@@ -164,6 +164,7 @@ export interface LsStatementSummary {
     puedoGastar: number;
     flexibleCount: number;
     unbudgeted: number;
+    sinCategoria: { budget: number; spent: number; remaining: number };
     apartado: number;
     retainedFromPrev: number;
     disponibleReal: number;
