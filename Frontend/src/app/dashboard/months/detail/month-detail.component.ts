@@ -92,18 +92,27 @@ export class MonthDetailComponent {
   showSaldos = signal(true);
   toggleSaldos() { this.showSaldos.update(v => !v); }
 
-  // Presupuestar el bote "sin categoría" (ingreso extra / no presupuestado) a una categoría.
+  // Presupuestar a una categoría desde el sueldo no presupuestado ('salary') o de los
+  // ingresos extra sobrantes ('extra'). Son dos orígenes separados.
   allocating = signal(false);
+  allocSource = signal<'salary' | 'extra'>('salary');
   allocCatId = signal<string>('__new__');
   allocNewName = signal('');
   allocAmount = signal<number>(0);
-  allocCats = computed(() => (this.stmt()?.categories ?? []).filter(c => !c.isVirtual && c.fromExtraIncome));
+  // Para 'salary': categorías normales. Para 'extra': categorías de ingreso extra.
+  allocCats = computed(() => {
+    const extra = this.allocSource() === 'extra';
+    return (this.stmt()?.categories ?? [])
+      .filter(c => !c.isVirtual && c.kind !== 'savings' && !!c.fromExtraIncome === extra);
+  });
 
-  openAllocate() {
+  openAllocate(source: 'salary' | 'extra') {
+    this.allocSource.set(source);
     const cats = this.allocCats();
     this.allocCatId.set(cats[0]?._id ?? '__new__');
     this.allocNewName.set('');
-    this.allocAmount.set(this.stmt()?.summary.sinCategoria.remaining ?? 0);
+    const sc = this.stmt()?.summary.sinCategoria;
+    this.allocAmount.set((source === 'extra' ? sc?.extraAvailable : sc?.salaryAvailable) ?? 0);
     this.allocating.set(true);
   }
   closeAllocate() { this.allocating.set(false); }
@@ -113,7 +122,7 @@ export class MonthDetailComponent {
     const sel = this.allocCatId();
     const amt = Number(this.allocAmount());
     if (!s || amt <= 0) { toastr.error('Indica un monto válido', ''); return; }
-    const payload: { toCategoryId?: string; newCategoryName?: string; amount: number } = { amount: amt };
+    const payload: { toCategoryId?: string; newCategoryName?: string; amount: number; source: 'salary' | 'extra' } = { amount: amt, source: this.allocSource() };
     if (sel === '__new__') {
       const name = this.allocNewName().trim();
       if (!name) { toastr.error('Escribe el nombre de la categoría', ''); return; }
@@ -123,7 +132,7 @@ export class MonthDetailComponent {
     }
     this.loading.set(true);
     this.svc.allocate(s._id, payload).subscribe({
-      next: (updated) => { this.stmt.set(updated); this.loading.set(false); this.allocating.set(false); toastr.success('Presupuestado (ingreso extra)', ''); },
+      next: (updated) => { this.stmt.set(updated); this.loading.set(false); this.allocating.set(false); toastr.success('Presupuestado a la categoría', ''); },
       error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
     });
   }

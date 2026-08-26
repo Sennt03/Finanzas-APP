@@ -361,7 +361,10 @@ async function buildEnrichedStatement(stmt, userId) {
             savings: r2(uncategorizedSavings),
             allocated: extraIncomeAllocated,
             spent: sinCatSpent,
-            remaining: sinCatRemaining
+            remaining: sinCatRemaining,
+            // Separados: sueldo no presupuestado vs ingresos extra sobrantes (puede ser negativo).
+            salaryAvailable: unbudgeted,
+            extraAvailable: r2(uncategorizedIncome - uncategorizedExpense - uncategorizedSavings - extraIncomeAllocated)
         },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,
@@ -991,37 +994,42 @@ async function compensate(userId, id, { fromCategoryId, toCategoryId, amount }) 
 
 // Fase 3: mandar parte (o todo) lo NO presupuestado a una categoría, subiendo su
 // presupuesto. Así ese dinero queda marcado como "puedo gastar" en esa categoría.
-async function allocateToCategory(userId, id, { toCategoryId, amount, newCategoryName }) {
+// Presupuestar a una categoría desde uno de DOS orígenes (separados):
+//  - source 'salary': sueldo no presupuestado → categoría NORMAL (cuenta en presupuestado).
+//  - source 'extra' : ingresos extra sobrantes → categoría de INGRESO EXTRA (no cuenta).
+async function allocateToCategory(userId, id, { toCategoryId, amount, newCategoryName, source }) {
     const stmt = await Statement.findOne({ _id: id, userId })
     if (!stmt) throw myError('Statement not found', 404)
     const amt = r2(amount)
     if (amt <= 0) throw myError('Monto inválido', 400)
 
-    // Se financia con el bote "sin categoría" (no presupuestado + ingresos extra − movimientos).
     const enriched = await buildEnrichedStatement(stmt, userId)
-    const poolRemaining = enriched.summary.sinCategoria.remaining
-    if (amt > poolRemaining + 0.001) {
-        throw myError(`Solo tienes ${poolRemaining.toFixed(2)} disponible sin presupuestar / de ingresos extra.`, 400)
+    const sc = enriched.summary.sinCategoria
+    const salaryAvail = r2(sc.budget)                                    // sueldo no presupuestado
+    const extraAvail = r2(sc.income - sc.expense - sc.savings - sc.allocated)  // ingresos extra sobrantes
+    const fromExtra = source === 'extra'
+    const avail = fromExtra ? extraAvail : salaryAvail
+    if (amt > avail + 0.001) {
+        throw myError(`Solo tienes ${avail.toFixed(2)} disponible ${fromExtra ? 'de ingresos extra' : 'sin presupuestar (sueldo)'}.`, 400)
     }
 
     let targetName
     const newName = (newCategoryName || '').trim()
     if (newName) {
-        // Categoría nueva financiada por ingresos extra (no cuenta en presupuestado).
-        stmt.categories.push({ name: newName, kind: 'expense', totalAmount: amt, flexible: true, fromExtraIncome: true, items: [] })
+        stmt.categories.push({ name: newName, kind: 'expense', totalAmount: amt, flexible: true, fromExtraIncome: fromExtra, items: [] })
         targetName = newName
     } else {
         const to = stmt.categories.id(toCategoryId)
         if (!to) throw myError('Categoría no encontrada', 404)
-        to.fromExtraIncome = true // el refuerzo sale del bote, no del sueldo
         to.flexible = true
+        if (fromExtra) to.fromExtraIncome = true
         to.totalAmount = to.totalAmount > 0 ? r2(to.totalAmount + amt) : r2(sumItems(to) + amt)
         targetName = to.name
     }
 
     await stmt.save()
     await log(userId, stmt.year, stmt.month, 'budget_allocated',
-        `Presupuestado $${amt.toFixed(2)} (ingreso extra) → ${targetName}`, amt)
+        `Presupuestado $${amt.toFixed(2)} (${fromExtra ? 'ingreso extra' : 'sueldo'}) → ${targetName}`, amt)
     return buildEnrichedStatement(stmt, userId)
 }
 

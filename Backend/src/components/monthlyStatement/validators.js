@@ -79,6 +79,7 @@ const compensateSchema = Joi.object({
 const allocateSchema = Joi.object({
     toCategoryId: Joi.string().allow(null, ''),
     newCategoryName: Joi.string().max(120).allow('', null),
+    source: Joi.string().valid('salary', 'extra').default('salary'),
     amount: Joi.number().greater(0).required()
 }).or('toCategoryId', 'newCategoryName')
 

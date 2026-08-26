@@ -168,7 +168,7 @@ export interface LsStatementSummary {
     puedoGastar: number;
     flexibleCount: number;
     unbudgeted: number;
-    sinCategoria: { budget: number; income: number; expense: number; savings: number; allocated: number; spent: number; remaining: number };
+    sinCategoria: { budget: number; income: number; expense: number; savings: number; allocated: number; spent: number; remaining: number; salaryAvailable: number; extraAvailable: number };
     apartado: number;
     retainedFromPrev: number;
     disponibleReal: number;

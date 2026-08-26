@@ -2430,3 +2430,22 @@
 
 .pool-box .pool-note { padding: 0 12px 12px; font-size: 12px; color: $primary-muted; line-height: 1.5;
   strong { color: $danger; } }
+
+// Celda "Sin presupuestar (sueldo)" clickeable para crear categoría
+.saldo-detail .sd-cell.clickable {
+  text-align: left; cursor: pointer; font: inherit;
+  border: 1px dashed $accent; border-radius: $r-md; background: $accent-soft;
+  padding: 8px 10px;
+  span { color: $accent; font-weight: 600; i { font-size: 14px; } }
+  strong { color: $accent; }
+}
+.alloc-form.standalone {
+  margin-top: 10px; border: 1px solid $border; border-radius: $r-lg; background: $surface-alt;
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  .af-title { font-size: 12px; font-weight: 700; color: $primary-muted; }
+  .af-row { display: flex; gap: 8px;
+    select, input { padding: 10px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; font-weight: 600; min-height: 40px; }
+    select { flex: 1; } input { width: 110px; text-align: right; } }
+  .af-newname { padding: 10px; border: 1px solid $border; border-radius: $r-sm; background: $surface; color: $primary; font-weight: 600; }
+  .af-actions { display: flex; justify-content: flex-end; gap: 8px; }
+}

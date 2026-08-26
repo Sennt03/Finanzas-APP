@@ -159,7 +159,7 @@
             <span class="sc-remaining">{{ sc.remaining | number:'1.2-2' }}</span>
           </div>
           <div class="sc-lines">
-            <span class="sc-line">No presupuestado <b>{{ sc.budget | number:'1.2-2' }}</b></span>
+            <span class="sc-line">Sin presupuestar (sueldo) <b>{{ sc.salaryAvailable | number:'1.2-2' }}</b></span>
             @if (sc.income > 0) {
               <span class="sc-line pos">+ Ingresos extra <b>{{ sc.income | number:'1.2-2' }}</b></span>
             }
@@ -172,21 +172,29 @@
             @if (sc.allocated > 0) {
               <span class="sc-line">→ Presupuestado a categorías <b>{{ sc.allocated | number:'1.2-2' }}</b></span>
             }
+            <span class="sc-line" [class.neg]="sc.extraAvailable < 0">Ingresos extra disponibles <b>{{ sc.extraAvailable | number:'1.2-2' }}</b></span>
           </div>
 
-          @if (sc.remaining > 0 && !allocating()) {
-            <button class="alloc-cta" (click)="openAllocate()"><i class="bx bx-plus-circle"></i> Crear categoría con este dinero</button>
+          @if (!allocating()) {
+            <div class="alloc-ctas">
+              @if (sc.salaryAvailable > 0) {
+                <button class="alloc-cta" (click)="openAllocate('salary')"><i class="bx bx-plus-circle"></i> Categoría del sueldo ({{ sc.salaryAvailable | number:'1.2-2' }})</button>
+              }
+              @if (sc.extraAvailable > 0) {
+                <button class="alloc-cta" (click)="openAllocate('extra')"><i class="bx bx-plus-circle"></i> Categoría de ingreso extra ({{ sc.extraAvailable | number:'1.2-2' }})</button>
+              }
+            </div>
           }
 
           @if (allocating()) {
             <div class="alloc-form">
-              <span class="af-title">Crear / reforzar una categoría</span>
+              <span class="af-title">{{ allocSource() === 'extra' ? 'Con ingresos extra' : 'Con sueldo no presupuestado' }}</span>
               <div class="af-row">
                 <select [ngModel]="allocCatId()" (ngModelChange)="allocCatId.set($event)">
                   <option [ngValue]="'__new__'">➕ Nueva categoría…</option>
                   @for (c of allocCats(); track c._id) { <option [ngValue]="c._id">{{ c.name }}</option> }
                 </select>
-                <input type="number" min="0" [max]="sc.remaining" [ngModel]="allocAmount()" (ngModelChange)="allocAmount.set($event)" (keydown.enter)="submitAllocate()">
+                <input type="number" min="0" [ngModel]="allocAmount()" (ngModelChange)="allocAmount.set($event)" (keydown.enter)="submitAllocate()">
               </div>
               @if (allocCatId() === '__new__') {
                 <input class="af-newname" type="text" placeholder="Nombre de la categoría" [ngModel]="allocNewName()" (ngModelChange)="allocNewName.set($event)" (keydown.enter)="submitAllocate()">
