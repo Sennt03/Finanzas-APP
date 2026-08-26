@@ -264,7 +264,10 @@ async function buildEnrichedStatement(stmt, userId) {
     //  - extraAvailable: ingresos extra − movimientos/ahorros/categorías-extra (puede ser
     //    NEGATIVO si sobregiras ingresos extra; eso es una "deuda" aparte, no come el sueldo).
     const salaryAvailable = unbudgeted
-    const extraAvailable = r2(uncategorizedIncome - uncategorizedExpense - uncategorizedSavings - extraIncomeAllocated)
+    // Un préstamo TRANSFERIDO de otro mes, al cobrarse aquí, es plata nueva de este mes
+    // (el principal se prestó en el mes origen) → cuenta como ingreso extra disponible.
+    const transferLoansCollected = r2(paidFromTransferNet)
+    const extraAvailable = r2(uncategorizedIncome - uncategorizedExpense - uncategorizedSavings - extraIncomeAllocated + transferLoansCollected)
     const sinCatSpent = r2(uncategorizedExpense + uncategorizedSavings - uncategorizedIncome + extraIncomeAllocated)
     const sinCatRemaining = r2(salaryAvailable + extraAvailable) // combinado (referencia)
     const flexibleRemaining = nonVirtual
@@ -371,7 +374,8 @@ async function buildEnrichedStatement(stmt, userId) {
             remaining: sinCatRemaining,
             // Separados: sueldo no presupuestado vs ingresos extra sobrantes (puede ser negativo).
             salaryAvailable,
-            extraAvailable
+            extraAvailable,
+            loanIncome: transferLoansCollected
         },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,

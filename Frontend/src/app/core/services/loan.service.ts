@@ -42,6 +42,10 @@ export class LoanService {
         return this.http.patch<LsPayLoanResult>(`${this.url}/${id}/pay`, body);
     }
 
+    revertPayment(id: string): Observable<LsLoan> {
+        return this.http.patch<LsLoan>(`${this.url}/${id}/revert-payment`, {});
+    }
+
     transfer(id: string, toStatementId: string, mode: LoanTransferType): Observable<LsTransferLoanResult> {
         return this.http.patch<LsTransferLoanResult>(`${this.url}/${id}/transfer`, { toStatementId, mode });
     }

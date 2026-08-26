@@ -114,6 +114,34 @@ async function pay(userId, loanId, { amount } = {}) {
     }
 }
 
+// Deshacer el cobro de un préstamo: vuelve a 'pendiente' con paidAmount 0.
+async function revertPayment(userId, loanId) {
+    const loan = await Loan.findOne({ _id: loanId, userId })
+    if (!loan) throw myError('Préstamo no encontrado', 404)
+    if ((loan.paidAmount || 0) <= 0 && loan.status !== 'paid') {
+        throw myError('Este préstamo no tiene cobros que revertir', 400)
+    }
+    if (loan.paidBackToSavings) {
+        throw myError('Ya devolviste esta plata a ahorros. Deshaz eso primero.', 400)
+    }
+    if (loan.status === 'transferred') {
+        throw myError('Este préstamo fue transferido; revierte la transferencia primero', 400)
+    }
+    loan.paidAmount = 0
+    loan.status = 'pending'
+    loan.paidAt = null
+    loan.history.push({ type: 'payment_reverted', date: new Date() })
+    await loan.save()
+
+    const stmtMap = await buildStmtMap([loan])
+    const stmtRef = stmtMap.get(String(loan.currentStatementId))
+    if (stmtRef) {
+        await log(userId, stmtRef.year, stmtRef.month, 'loan_payment_reverted',
+            `Cobro revertido: ${loan.borrowerName} $${loan.amount.toFixed(2)} vuelve a pendiente`, loan.amount)
+    }
+    return enrichLoan(loan, stmtMap)
+}
+
 async function transfer(userId, loanId, { toStatementId, mode }) {
     const loan = await Loan.findOne({ _id: loanId, userId })
     if (!loan) throw myError('Préstamo no encontrado', 404)
@@ -321,4 +349,4 @@ async function remove(userId, loanId) {
     return { _id: loanId }
 }
 
-module.exports = { list, listForStatement, getPendingTotal, create, pay, transfer, revertTransfer, repaySavings, remove }
+module.exports = { list, listForStatement, getPendingTotal, create, pay, revertPayment, transfer, revertTransfer, repaySavings, remove }

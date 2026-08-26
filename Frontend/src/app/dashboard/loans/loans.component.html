@@ -236,6 +236,11 @@
             </button>
           </div>
         }
+        @if (!loan.paidBackToSavings) {
+          <div class="loan-actions">
+            <button class="btn btn-outline btn-sm" (click)="revertPayment(loan)"><i class="bx bx-undo"></i> Marcar como no pagado</button>
+          </div>
+        }
       </div>
     }
   </section>

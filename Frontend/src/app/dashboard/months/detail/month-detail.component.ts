@@ -638,6 +638,22 @@ export class MonthDetailComponent {
     });
   }
 
+  revertLoanPayment(loan: LsLoan) {
+    if (!confirm(`¿Marcar el préstamo de ${loan.borrowerName} como NO pagado? Volverá a pendiente.`)) return;
+    const s = this.stmt();
+    if (!s) return;
+    this.loading.set(true);
+    this.loanSvc.revertPayment(loan._id).subscribe({
+      next: (updated) => {
+        this.monthLoans.update(list => list.map(l => l._id === updated._id ? updated : l));
+        this.svc.get(s._id).subscribe({ next: (fresh) => this.stmt.set(fresh) });
+        this.loading.set(false);
+        toastr.info('Cobro revertido — vuelve a pendiente', '');
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
   pendingLoans = computed(() => this.monthLoans().filter(l => l.status === 'pending'));
 
   // ----- Shared card cuotas (tarjeta prestada) -----

@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 
 const historySchema = new Schema({
-    type: { type: String, enum: ['lent', 'transferred', 'paid', 'partial_payment', 'repaid_savings', 'transfer_reverted'], required: true },
+    type: { type: String, enum: ['lent', 'transferred', 'paid', 'partial_payment', 'repaid_savings', 'transfer_reverted', 'payment_reverted'], required: true },
     date: { type: Date, default: Date.now },
     toStatementId: Schema.Types.ObjectId,
     fromStatementId: Schema.Types.ObjectId,

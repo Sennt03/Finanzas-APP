@@ -19,7 +19,7 @@
   @if (selected(); as s) {
     <!-- HÉROE: un solo número que importa -->
     <section class="hero" [class.negative]="s.summary.puedoGastar < 0">
-      <span class="hero-label">PUEDO GASTAR</span>
+      <span class="hero-label">DISPONIBLE GASTOS YO</span>
       <strong class="hero-amount">$ {{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
       @if (s.summary.flexibleCount > 0) {
         <span class="hero-sub">lo que sobra en tus {{ s.summary.flexibleCount }} categoría(s) de gasto{{ s.summary.unbudgeted > 0 ? ' + no presupuestado' : '' }}</span>
@@ -62,12 +62,12 @@
       <div class="details-panel">
         <div class="detail-grid">
           <div class="detail-cell">
-            <span class="d-label">Saldo disponible</span>
+            <span class="d-label">Saldo en cuenta</span>
             <strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong>
           </div>
           <div class="detail-cell">
-            <span class="d-label">Saldo en cuenta</span>
-            <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+            <span class="d-label">Saldo a tener (con préstamos)</span>
+            <strong>{{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong>
           </div>
           <div class="detail-cell">
             <span class="d-label">Presupuestado</span>

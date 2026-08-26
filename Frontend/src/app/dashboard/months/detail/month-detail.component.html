@@ -29,7 +29,7 @@
     <!-- Puedo gastar: lo primero y lo único grande -->
     <div class="section" id="saldos-section">
       <div class="puedo-hero" [class.negative]="s.summary.puedoGastar < 0">
-        <span class="ph-label">PUEDO GASTAR</span>
+        <span class="ph-label">DISPONIBLE GASTOS YO</span>
         <strong class="ph-amount">$ {{ s.summary.puedoGastar | number:'1.2-2' }}</strong>
         @if (s.summary.flexibleCount > 0) {
           <span class="ph-sub">lo que sobra en tus {{ s.summary.flexibleCount }} categoría(s) de gasto{{ s.summary.unbudgeted > 0 ? ' + no presupuestado' : '' }}</span>
@@ -78,7 +78,8 @@
           @if (s.summary.sinCategoria.savings > 0) {
             <div class="sd-cell"><span>Ahorrado (sin cat.)</span><strong>−{{ s.summary.sinCategoria.savings | number:'1.2-2' }}</strong></div>
           }
-          <div class="sd-cell"><span>Saldo disponible</span><strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong></div>
           @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
             <div class="sd-cell"><span>Disponible real</span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
           }
@@ -847,6 +848,11 @@
                 </div>
               } @else if (loan.status === 'paid') {
                 <span class="income-amount">+{{ loan.paidAmount | number:'1.2-2' }}</span>
+                @if (!loan.paidBackToSavings) {
+                  <button class="btn-icon mini" (click)="revertLoanPayment(loan)" title="Marcar como NO pagado (revertir cobro)">
+                    <i class="bx bx-undo"></i>
+                  </button>
+                }
               } @else {
                 <!-- Pendiente: monto total y parcial si aplica -->
                 <div class="loan-amounts-col">
@@ -855,6 +861,11 @@
                     <span class="loan-partial-note">{{ loan.paidAmount | number:'1.2-2' }} cobrado de {{ loan.amount | number:'1.2-2' }}</span>
                   }
                 </div>
+                @if ((loan.paidAmount || 0) > 0) {
+                  <button class="btn-icon mini" (click)="revertLoanPayment(loan)" title="Deshacer cobros">
+                    <i class="bx bx-undo"></i>
+                  </button>
+                }
               }
 
               <!-- Form pago parcial inline -->

@@ -245,6 +245,19 @@ export class LoansComponent {
     });
   }
 
+  revertPayment(loan: LsLoan) {
+    if (!confirm(`¿Marcar el préstamo de ${loan.borrowerName} como NO pagado? Volverá a pendiente.`)) return;
+    this.loading.set(true);
+    this.loanSvc.revertPayment(loan._id).subscribe({
+      next: (updated) => {
+        this.loans.update(list => list.map(l => l._id === updated._id ? updated : l));
+        this.loading.set(false);
+        toastr.info('Cobro revertido — vuelve a pendiente', '');
+      },
+      error: (err) => { this.loading.set(false); toastr.error(err.error?.message ?? 'Error', ''); }
+    });
+  }
+
   isTransfering(loan: LsLoan): boolean {
     return this.transferingLoanId() === loan._id;
   }

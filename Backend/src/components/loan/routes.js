@@ -34,6 +34,13 @@ router.patch('/:id/pay', async (req, res, next) => {
     } catch (e) { next(e) }
 })
 
+router.patch('/:id/revert-payment', async (req, res, next) => {
+    try {
+        const data = await ctrl.revertPayment(req.user._id, req.params.id)
+        success(req, res, data)
+    } catch (e) { next(e) }
+})
+
 router.patch('/:id/transfer', transferValidator, async (req, res, next) => {
     try {
         const data = await ctrl.transfer(req.user._id, req.params.id, req.body)
