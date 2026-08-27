@@ -104,8 +104,9 @@ async function findBudgetMonthData(userId, year, month) {
     const items = []
     let apartado = 0            // budgetMonth==M y se factura después → aparto ahora para el próximo mes
     let retainedFromPrev = 0    // se factura este mes pero ya se apartó en un mes anterior
-    let poolConsumed = 0        // gasto de tarjeta SIN categoría que consume presupuesto este mes
+    let poolConsumed = 0        // gasto de tarjeta SIN categoría, RETENIDO, consume disponible este mes
     const retainedItems = []
+    const avanceItems = []      // gasto de tarjeta SIN categoría, NO retenido (defer) → categoría "Avance" este mes
 
     const before = (a, y, mo) => (a.year < y) || (a.year === y && a.month < mo)
 
@@ -121,7 +122,23 @@ async function findBudgetMonthData(userId, year, month) {
             if (budgetIsThisMonth) {
                 const amt = c.amount
                 if (billedLater) apartado += amt
-                if (!p.categoryName) poolConsumed += amt // sin categoría → reduce "disponible gastos yo"
+                if (!p.categoryName) {
+                    if (p.budgetMode === 'defer') {
+                        // No retenido: se presupuesta como "Avance" en su mes de facturación.
+                        avanceItems.push({
+                            purchaseId: String(p._id),
+                            cuotaId: String(c._id),
+                            name: p.installments > 1 ? `${p.name} (${idx + 1}/${p.installments})` : p.name,
+                            amount: amt,
+                            cardId: p.cardId ? String(p.cardId) : null,
+                            isPaid: !!c.isPaid,
+                            billYear: c.year,
+                            billMonth: c.month
+                        })
+                    } else {
+                        poolConsumed += amt // retenido sin categoría → reduce "disponible gastos yo"
+                    }
+                }
                 if (p.categoryName) {
                     consumedByCategory[p.categoryName] = (consumedByCategory[p.categoryName] || 0) + amt
                     items.push({
@@ -161,7 +178,8 @@ async function findBudgetMonthData(userId, year, month) {
         retainedFromPrev: Math.round(retainedFromPrev * 100) / 100,
         poolConsumed: Math.round(poolConsumed * 100) / 100,
         items,
-        retainedItems
+        retainedItems,
+        avanceItems
     }
 }
 

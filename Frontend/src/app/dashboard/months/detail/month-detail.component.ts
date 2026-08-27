@@ -272,6 +272,16 @@ export class MonthDetailComponent {
 
   isClosed = computed(() => !!this.stmt()?.closing?.closedAt);
 
+  // Si el presupuesto (categorías + avance) pasa el sueldo: sugerir recortar de abajo hacia arriba.
+  budgetCutOrder = computed(() => {
+    const s = this.stmt();
+    if (!s || s.summary.presupuestoExcedido <= 0) return [] as { name: string; budget: number }[];
+    return [...s.categories]
+      .filter(c => !c.isVirtual && c.kind !== 'savings' && (c.categoryBudget ?? c.totalAmount ?? 0) > 0)
+      .reverse()
+      .map(c => ({ name: c.name, budget: c.categoryBudget ?? c.totalAmount ?? 0 }));
+  });
+
   // Menú de opciones (⋮) por cuota de tarjeta: cambiar categoría, tarjeta o convertir.
   cuotaMenu = signal<string | null>(null);
   toggleCuotaMenu(key: string) { this.cuotaMenu.update(v => v === key ? null : key); }

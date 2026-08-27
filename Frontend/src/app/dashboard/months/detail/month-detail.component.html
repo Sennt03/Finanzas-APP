@@ -52,6 +52,21 @@
         <div class="mini savings"><span>Ahorro del mes</span><strong>+{{ s.summary.savings.monthDeposits | number:'1.2-2' }}</strong></div>
       </div>
 
+      @if (s.summary.presupuestoExcedido > 0) {
+        <div class="budget-alert">
+          <i class="bx bx-error-circle"></i>
+          <div class="ba-text">
+            <strong>Presupuesto excedido por {{ s.summary.presupuestoExcedido | number:'1.2-2' }}</strong>
+            <span>Tus categorías + avances de tarjeta pasan tu sueldo.
+              @if (budgetCutOrder().length > 0) {
+                Recorta empezando por abajo: <b>{{ budgetCutOrder()[0].name }}</b> (tiene {{ budgetCutOrder()[0].budget | number:'1.2-2' }}).
+              }
+            </span>
+          </div>
+          <button class="btn btn-outline btn-sm" (click)="enterEdit()">Editar</button>
+        </div>
+      }
+
       <button class="detalle-toggle" (click)="toggleSaldos()" [attr.aria-expanded]="showSaldos()">
         <i class="bx" [class.bx-chevron-down]="!showSaldos()" [class.bx-chevron-up]="showSaldos()"></i>
         {{ showSaldos() ? 'Ocultar detalle' : 'Ver saldos y presupuesto' }}
@@ -208,6 +223,24 @@
       <span id="budget-anchor" class="nav-anchor" aria-hidden="true"></span>
       <!-- Categorías (template + virtuales) -->
       @for (cat of s.categories; track cat._id) {
+        @if (cat.isAvance) {
+          <section class="category avance-cat">
+            <div class="cat-head">
+              <h3><i class="bx bx-credit-card"></i> {{ cat.name }} <span class="avance-tag">no retenido</span></h3>
+              <div class="cat-budget credit-total"><span class="label">a pagar</span><span class="total">{{ cat.categoryBudget | number:'1.2-2' }}</span></div>
+            </div>
+            <p class="muted small">Tarjeta de meses anteriores que elegiste pagar este mes — ya está presupuestada aquí (te descuenta del sueldo disponible).</p>
+            @for (it of cat.items; track it._id) {
+              <div class="item">
+                <div class="item-readonly">
+                  <span class="name">{{ it.name }}</span>
+                  <span class="card-chip" [style.border-color]="cardColor(it.cardId)" [style.color]="cardColor(it.cardId)"><span class="cchip-dot" [style.background]="cardColor(it.cardId)"></span>{{ cardName(it.cardId) }}</span>
+                </div>
+                <span class="paid-amount">-{{ it.budgetedAmount | number:'1.2-2' }}</span>
+              </div>
+            }
+          </section>
+        } @else {
         <section class="category"
           [id]="cat.isVirtual ? 'credit-section' : null"
           [class.savings-cat]="cat.kind === 'savings'"
@@ -592,6 +625,7 @@
             }
           }
         </section>
+        }
       }
 
       <!-- Movimientos extras -->

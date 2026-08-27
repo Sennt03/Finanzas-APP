@@ -118,6 +118,7 @@ export interface LsStatementCategory {
     fromExtraIncome?: boolean;
     items: LsStatementItem[];
     isVirtual?: boolean;
+    isAvance?: boolean;
     groupKey?: 'tdc' | 'diferidos';
     categoryPaid?: boolean;
     categoryPaidAt?: string | null;
@@ -168,6 +169,8 @@ export interface LsStatementSummary {
     puedoGastar: number;
     flexibleCount: number;
     unbudgeted: number;
+    avance: number;
+    presupuestoExcedido: number;
     sinCategoria: { budget: number; income: number; expense: number; savings: number; allocated: number; spent: number; remaining: number; salaryAvailable: number; extraAvailable: number; loanIncome: number; cardConsumed: number };
     apartado: number;
     retainedFromPrev: number;

@@ -124,6 +124,37 @@ async function buildEnrichedStatement(stmt, userId) {
             totalAll: cuotasTotal + extTotal
         }))
     }
+    // Categoría "Avance": gastos de tarjeta SIN categoría marcados como NO retener, que se
+    // presupuestan en su mes de facturación. Se muestra como categoría comprometida.
+    const avanceRaw = budgetData.avanceItems || []
+    const avanceTotal = r2(avanceRaw.reduce((s, a) => s + (a.amount || 0), 0))
+    if (avanceRaw.length > 0) {
+        virtualCats.push({
+            _id: '__avance__',
+            name: 'Avance (tarjeta a pagar)',
+            kind: 'expense',
+            isVirtual: true,
+            isAvance: true,
+            totalAmount: avanceTotal,
+            categoryBudget: avanceTotal,
+            spent: avanceTotal,
+            remaining: 0,
+            flexible: false,
+            protected: false,
+            items: avanceRaw.map(a => ({
+                _id: a.cuotaId,
+                name: a.name,
+                budgetedAmount: a.amount,
+                paidAmount: a.isPaid ? a.amount : 0,
+                isPaid: !!a.isPaid,
+                cardId: a.cardId,
+                purchaseId: a.purchaseId,
+                cuotaId: a.cuotaId,
+                billMonth: a.billMonth,
+                billYear: a.billYear
+            }))
+        })
+    }
     obj.categories = [...(obj.categories || []), ...virtualCats]
 
     const start = new Date(obj.year, obj.month - 1, 1)
@@ -256,7 +287,11 @@ async function buildEnrichedStatement(stmt, userId) {
     // PUEDO GASTAR = lo que sobra en las categorías que el usuario marcó como "de gasto"
     // (flexible) + el bote "sin categoría" (sueldo no presupuestado − movimientos sin
     // categoría). Puede quedar NEGATIVO si se gasta de más (es intencional).
-    const unbudgeted = Math.max(0, r2(obj.salary - budgeted))
+    // El "Avance" (tarjeta no retenida a pagar este mes) también ocupa presupuesto del sueldo.
+    const committedTotal = r2(budgeted + avanceTotal)
+    const unbudgeted = Math.max(0, r2(obj.salary - committedTotal))
+    // Alerta: cuánto se pasa el presupuesto (categorías + avance) del sueldo.
+    const presupuestoExcedido = Math.max(0, r2(committedTotal - obj.salary))
     // Presupuesto de categorías financiadas por ingresos extra: sale del bote sin categoría.
     const extraIncomeAllocated = r2(extraIncomeBudgeted(nonVirtual))
     // Dos botes SEPARADOS:
@@ -360,12 +395,15 @@ async function buildEnrichedStatement(stmt, userId) {
         totalExtrasIncome: extrasIncome,
         remainingSalary: realBalance,
         availableBalance: availableBalance,
-        availableToBudget: obj.salary - budgeted,
+        availableToBudget: r2(obj.salary - committedTotal),
         pendingLoansTotal,
         // Fase 2/3
         puedoGastar,
         flexibleCount,
         unbudgeted,
+        // Avance (tarjeta no retenida) + alerta de presupuesto excedido.
+        avance: avanceTotal,
+        presupuestoExcedido,
         // Bote "sin categoría": lo no presupuestado, con sus movimientos sin categoría.
         sinCategoria: {
             budget: unbudgeted,

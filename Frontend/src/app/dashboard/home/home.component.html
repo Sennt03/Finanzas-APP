@@ -53,6 +53,13 @@
       </div>
     </div>
 
+    @if (s.summary.presupuestoExcedido > 0) {
+      <div class="budget-alert">
+        <i class="bx bx-error-circle"></i>
+        <span><strong>Presupuesto excedido por {{ s.summary.presupuestoExcedido | number:'1.2-2' }}</strong> — tus categorías + avances de tarjeta pasan tu sueldo. Recorta en el mes.</span>
+      </div>
+    }
+
     <!-- Detalle plegable: saldos y cupos -->
     <button class="details-toggle" (click)="toggleDetails()" [attr.aria-expanded]="showDetails()">
       <i class="bx" [class.bx-chevron-down]="!showDetails()" [class.bx-chevron-up]="showDetails()"></i>

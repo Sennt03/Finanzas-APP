@@ -422,3 +422,11 @@
   border-radius: $r-md; padding: 10px; font-weight: 700; font-size: 13px; cursor: pointer;
   i { font-size: 18px; }
 }
+
+.budget-alert {
+  display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  background: $danger-soft; border: 1px solid color.adjust($danger, $lightness: 20%);
+  border-radius: $r-lg; padding: 11px 14px; font-size: 12px; color: $primary-soft;
+  i { font-size: 22px; color: $danger; flex: none; }
+  strong { color: color.adjust($danger, $lightness: -8%); }
+}
