@@ -274,8 +274,11 @@ async function buildEnrichedStatement(stmt, userId) {
         .filter(c => c.flexible && c.kind !== 'savings')
         .reduce((a, c) => a + c.remaining, 0)
     const flexibleCount = nonVirtual.filter(c => c.flexible && c.kind !== 'savings').length
+    // Gasto de tarjeta SIN categoría que se presupuesta este mes (retenido) → reduce lo
+    // que puedo gastar, porque ese dinero queda apartado para pagar la tarjeta.
+    const cardConsumedNoCat = r2(budgetData.poolConsumed || 0)
     // El sobregiro de ingresos extra NO reduce PUEDO GASTAR (se muestra aparte como deuda).
-    const puedoGastar = r2(flexibleRemaining + salaryAvailable + Math.max(0, extraAvailable))
+    const puedoGastar = r2(flexibleRemaining + salaryAvailable + Math.max(0, extraAvailable) - cardConsumedNoCat)
 
     const tdcShare = tdc.reduce((s, i) => s + i.budgetedAmount, 0)
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
@@ -375,7 +378,8 @@ async function buildEnrichedStatement(stmt, userId) {
             // Separados: sueldo no presupuestado vs ingresos extra sobrantes (puede ser negativo).
             salaryAvailable,
             extraAvailable,
-            loanIncome: transferLoansCollected
+            loanIncome: transferLoansCollected,
+            cardConsumed: cardConsumedNoCat
         },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,

@@ -104,6 +104,7 @@ async function findBudgetMonthData(userId, year, month) {
     const items = []
     let apartado = 0            // budgetMonth==M y se factura después → aparto ahora para el próximo mes
     let retainedFromPrev = 0    // se factura este mes pero ya se apartó en un mes anterior
+    let poolConsumed = 0        // gasto de tarjeta SIN categoría que consume presupuesto este mes
     const retainedItems = []
 
     const before = (a, y, mo) => (a.year < y) || (a.year === y && a.month < mo)
@@ -120,6 +121,7 @@ async function findBudgetMonthData(userId, year, month) {
             if (budgetIsThisMonth) {
                 const amt = c.amount
                 if (billedLater) apartado += amt
+                if (!p.categoryName) poolConsumed += amt // sin categoría → reduce "disponible gastos yo"
                 if (p.categoryName) {
                     consumedByCategory[p.categoryName] = (consumedByCategory[p.categoryName] || 0) + amt
                     items.push({
@@ -157,6 +159,7 @@ async function findBudgetMonthData(userId, year, month) {
         consumedByCategory,
         apartado: Math.round(apartado * 100) / 100,
         retainedFromPrev: Math.round(retainedFromPrev * 100) / 100,
+        poolConsumed: Math.round(poolConsumed * 100) / 100,
         items,
         retainedItems
     }

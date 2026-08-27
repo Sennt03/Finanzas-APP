@@ -78,6 +78,9 @@
           @if (s.summary.sinCategoria.savings > 0) {
             <div class="sd-cell"><span>Ahorrado (sin cat.)</span><strong>−{{ s.summary.sinCategoria.savings | number:'1.2-2' }}</strong></div>
           }
+          @if (s.summary.sinCategoria.cardConsumed > 0) {
+            <div class="sd-cell"><span>Tarjeta retenida (sin cat.)</span><strong class="neg">−{{ s.summary.sinCategoria.cardConsumed | number:'1.2-2' }}</strong></div>
+          }
           <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong></div>
           <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong></div>
           @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
