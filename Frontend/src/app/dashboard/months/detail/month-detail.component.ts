@@ -1510,11 +1510,22 @@ export class MonthDetailComponent {
     L.push('--- RESUMEN ---');
     L.push(`Presupuestado: ${this.fmt(s.summary.totalBudgeted)}`);
     L.push(`Gastado: ${this.fmt(s.summary.totalPaid + s.summary.totalExtras)}`);
+    L.push(`Disponible gastos yo: ${this.fmt(s.summary.puedoGastar)}`);
+    if (s.summary.avance > 0) {
+      L.push(`Avance (tarjeta a pagar): ${this.fmt(s.summary.avance)}`);
+    }
+    if (s.summary.presupuestoExcedido > 0) {
+      L.push(`Presupuesto excedido: ${this.fmt(s.summary.presupuestoExcedido)}`);
+    }
+    L.push(`Ingresos extra: ${this.fmt(s.summary.sinCategoria.extraAvailable)}`);
     if (s.summary.creditCard.total > 0) {
       L.push(`Tarjeta: ${this.fmt(s.summary.creditCard.total)} (${s.summary.creditCard.groupPaid ? 'pagada' : 'pendiente'})`);
     }
-    L.push(`Saldo cuenta: ${this.fmt(s.summary.remainingSalary)}`);
-    L.push(`Saldo disponible: ${this.fmt(s.summary.availableBalance)}`);
+    L.push(`Saldo en cuenta: ${this.fmt(s.summary.saldoEnCuenta)}`);
+    L.push(`Saldo a tener (con préstamos): ${this.fmt(s.summary.saldoATener)}`);
+    if (s.summary.creditCard.pending > 0) {
+      L.push(`Disponible real (pagando mi tarjeta): ${this.fmt(s.summary.disponibleReal)}`);
+    }
 
     const sav = this.savingsInfo(s);
     if (sav) {
@@ -1547,8 +1558,19 @@ export class MonthDetailComponent {
     L.push(this.row('Sueldo', this.fmt(s.salary)));
     L.push(this.row('Presupuestado', this.fmt(s.summary.totalBudgeted)));
     L.push(this.row('Gastado', this.fmt(s.summary.totalPaid + s.summary.totalExtras)));
-    L.push(this.row('Saldo cuenta', this.fmt(s.summary.remainingSalary)));
-    L.push(this.row('Saldo disponible', this.fmt(s.summary.availableBalance)));
+    L.push(this.row('Disponible gastos yo', this.fmt(s.summary.puedoGastar)));
+    if (s.summary.avance > 0) {
+      L.push(this.row('Avance (tarjeta a pagar)', this.fmt(s.summary.avance)));
+    }
+    if (s.summary.presupuestoExcedido > 0) {
+      L.push(this.row('Presupuesto excedido', this.fmt(s.summary.presupuestoExcedido)));
+    }
+    L.push(this.row('Ingresos extra', this.fmt(s.summary.sinCategoria.extraAvailable)));
+    L.push(this.row('Saldo en cuenta', this.fmt(s.summary.saldoEnCuenta)));
+    L.push(this.row('Saldo a tener', this.fmt(s.summary.saldoATener)));
+    if (s.summary.creditCard.pending > 0) {
+      L.push(this.row('Disponible real', this.fmt(s.summary.disponibleReal)));
+    }
     L.push('');
 
     for (const cat of s.categories) {

@@ -96,10 +96,10 @@
           @if (s.summary.sinCategoria.cardConsumed > 0) {
             <div class="sd-cell"><span>Tarjeta retenida (sin cat.)</span><strong class="neg">−{{ s.summary.sinCategoria.cardConsumed | number:'1.2-2' }}</strong></div>
           }
-          <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong></div>
-          <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.remainingSalary + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong></div>
-          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
-            <div class="sd-cell"><span>Disponible real</span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.saldoEnCuenta | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.saldoATener | number:'1.2-2' }}</strong></div>
+          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0 || s.summary.creditCard.pending > 0) {
+            <div class="sd-cell"><span>Disponible real <small>(pagando mi tarjeta)</small></span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
           }
         </div>
 

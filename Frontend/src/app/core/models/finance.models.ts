@@ -175,6 +175,8 @@ export interface LsStatementSummary {
     sinCategoria: { budget: number; income: number; expense: number; savings: number; allocated: number; spent: number; remaining: number; salaryAvailable: number; extraAvailable: number; loanIncome: number; cardConsumed: number };
     apartado: number;
     retainedFromPrev: number;
+    saldoEnCuenta: number;
+    saldoATener: number;
     disponibleReal: number;
     porPagar: number;
     cardsBreakdown: LsCardBreakdown[];

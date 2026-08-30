@@ -421,9 +421,13 @@ async function buildEnrichedStatement(stmt, userId) {
         },
         apartado: budgetData.apartado || 0,
         retainedFromPrev: budgetData.retainedFromPrev || 0,
-        // Saldo realmente libre: quita lo que aparto este mes y suma lo que retuve antes
-        // (ese dinero ya está en la cuenta para pagar la tarjeta de este mes).
-        disponibleReal: r2(availableBalance - (budgetData.apartado || 0) + (budgetData.retainedFromPrev || 0)),
+        // Saldo en cuenta = plata real en el banco (solo baja al pagar tarjeta) + lo retenido
+        // en meses anteriores para pagar la tarjeta de este mes (ese dinero ya está en cuenta).
+        saldoEnCuenta: r2(realBalance + (budgetData.retainedFromPrev || 0)),
+        // Saldo a tener = saldo en cuenta + préstamos por cobrar.
+        saldoATener: r2(realBalance + (budgetData.retainedFromPrev || 0) + pendingLoansTotal),
+        // Disponible real = saldo en cuenta − lo que aún debo pagar de MI tarjeta (no de otros).
+        disponibleReal: r2(realBalance + (budgetData.retainedFromPrev || 0) - (groupPaid ? 0 : (creditTotal - sharedShare))),
         porPagar: r2(creditTotal),
         cardsBreakdown,
         savings: { monthDeposits, monthWithdrawals },

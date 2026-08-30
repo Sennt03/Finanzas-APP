@@ -70,11 +70,11 @@
         <div class="detail-grid">
           <div class="detail-cell">
             <span class="d-label">Saldo en cuenta</span>
-            <strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong>
+            <strong>{{ s.summary.saldoEnCuenta | number:'1.2-2' }}</strong>
           </div>
           <div class="detail-cell">
             <span class="d-label">Saldo a tener (con préstamos)</span>
-            <strong>{{ s.summary.remainingSalary + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong>
+            <strong>{{ s.summary.saldoATener | number:'1.2-2' }}</strong>
           </div>
           <div class="detail-cell">
             <span class="d-label">Presupuestado</span>
@@ -84,9 +84,9 @@
             <span class="d-label">Ahorros (real)</span>
             <strong>{{ (savingsBalance() ?? 0) | number:'1.2-2' }}</strong>
           </div>
-          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
+          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0 || s.summary.creditCard.pending > 0) {
             <div class="detail-cell">
-              <span class="d-label">Disponible real</span>
+              <span class="d-label">Disponible real (pagando mi tarjeta)</span>
               <strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong>
             </div>
           }
