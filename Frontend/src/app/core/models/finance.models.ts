@@ -155,6 +155,9 @@ export interface LsCardBreakdown {
     total: number;
     mine: number;
     others: number;
+    paidAmount: number;
+    pending: number;
+    paid: boolean;
 }
 
 export interface LsStatementSummary {

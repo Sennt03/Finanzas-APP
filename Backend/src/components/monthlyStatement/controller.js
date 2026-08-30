@@ -92,7 +92,8 @@ function collectExternalCreditItems(categories) {
                     amount: it.budgetedAmount || 0,
                     categoryName: cat.name,
                     cardId: it.cardId ? String(it.cardId) : null,
-                    isPaid: !!it.isPaid
+                    isPaid: !!it.isPaid,
+                    paidAmount: it.paidAmount || 0
                 })
             }
         }
@@ -319,9 +320,18 @@ async function buildEnrichedStatement(stmt, userId) {
     const difShare = diferidos.reduce((s, i) => s + i.budgetedAmount, 0)
     const itemsShare = sumCreditItems(nonVirtual)
     const creditTotal = tdcShare + difShare + itemsShare
-    const groupPaid = !!cs.tdcPaid
-    const creditPaidAmt = groupPaid ? creditTotal : 0
-    const creditPending = creditTotal - creditPaidAmt
+    // Pago por-tarjeta: el pagado se calcula de los montos realmente pagados en cada cuota
+    // (no todo-o-nada). groupPaid = todo pagado. Así se puede pagar una tarjeta a la vez.
+    const allCuotasPaid = [...tdc, ...diferidos]
+        .reduce((s, i) => s + (i.isPaid ? i.budgetedAmount : (i.paidAmount || 0)), 0)
+    const creditItemsPaid = nonVirtual.reduce((a, cat) =>
+        a + (cat.items || []).filter(isCreditItem).reduce((s, it) => s + (it.paidAmount || 0), 0), 0)
+    const creditPaidAmt = r2(allCuotasPaid + creditItemsPaid)
+    const groupPaid = creditTotal > 0 && creditPaidAmt >= creditTotal - 0.005
+    const creditPending = r2(creditTotal - creditPaidAmt)
+    // El check "pagar todo" refleja el pago real (todas las tarjetas pagadas).
+    const creditVirtual = (obj.categories || []).find(c => c._id === '__credit__')
+    if (creditVirtual) creditVirtual.categoryPaid = groupPaid
 
     // Shared card cuotas: amount paid back by borrowers adds to balance.
     const allCuotas = [...tdc, ...diferidos]
@@ -331,6 +341,11 @@ async function buildEnrichedStatement(stmt, userId) {
     const sharedShare = allCuotas
         .filter(i => i.isShared)
         .reduce((s, i) => s + i.budgetedAmount, 0)
+    // Lo MÍO de tarjeta que aún NO pago (para "disponible total"): mi parte − lo ya pagado de lo mío.
+    const sharedPaid = allCuotas
+        .filter(i => i.isShared)
+        .reduce((s, i) => s + (i.isPaid ? i.budgetedAmount : (i.paidAmount || 0)), 0)
+    const ownPending = r2((creditTotal - sharedShare) - (creditPaidAmt - sharedPaid))
 
     const base = obj.salary - paid - extrasExpense + extrasIncome + withdrawalsForBalance + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet + paidFromTransferNet
     const realBalance = base - creditPaidAmt - balancePendingTotal
@@ -363,7 +378,7 @@ async function buildEnrichedStatement(stmt, userId) {
                 bank: meta ? (meta.bank || '') : '',
                 creditLimit: meta ? (meta.creditLimit || 0) : 0,
                 used: r2(usageMap[key] || 0),
-                total: 0, mine: 0, others: 0
+                total: 0, mine: 0, others: 0, paidAmount: 0
             }
             breakdownMap.set(key, b)
         }
@@ -374,17 +389,22 @@ async function buildEnrichedStatement(stmt, userId) {
         b.total += c.budgetedAmount
         if (c.isShared) b.others += c.budgetedAmount
         else b.mine += c.budgetedAmount
+        b.paidAmount += (c.isPaid ? c.budgetedAmount : (c.paidAmount || 0))
     }
     for (const ext of externalCreditItems) {
         const b = bucket(ext.cardId || null)
         b.total += ext.amount
         b.mine += ext.amount
+        b.paidAmount += (ext.isPaid ? ext.amount : (ext.paidAmount || 0))
     }
     const cardsBreakdown = [...breakdownMap.values()].map(b => ({
         ...b,
         total: r2(b.total),
         mine: r2(b.mine),
         others: r2(b.others),
+        paidAmount: r2(b.paidAmount),
+        pending: r2(b.total - b.paidAmount),
+        paid: b.total > 0 && b.paidAmount >= b.total - 0.005,
         available: b.creditLimit > 0 ? r2(Math.max(0, b.creditLimit - b.used)) : 0
     }))
 
@@ -426,9 +446,9 @@ async function buildEnrichedStatement(stmt, userId) {
         saldoEnCuenta: r2(realBalance + (budgetData.retainedFromPrev || 0)),
         // Saldo a tener = saldo en cuenta + préstamos por cobrar.
         saldoATener: r2(realBalance + (budgetData.retainedFromPrev || 0) + pendingLoansTotal),
-        // Disponible real = saldo en cuenta − lo que aún debo pagar de MI tarjeta (no de otros).
-        disponibleReal: r2(realBalance + (budgetData.retainedFromPrev || 0) - (groupPaid ? 0 : (creditTotal - sharedShare))),
-        porPagar: r2(creditTotal),
+        // Disponible total = saldo en cuenta − lo que aún debo pagar de MI tarjeta (no de otros).
+        disponibleReal: r2(realBalance + (budgetData.retainedFromPrev || 0) - ownPending),
+        porPagar: creditPending,
         cardsBreakdown,
         savings: { monthDeposits, monthWithdrawals },
         creditCard: {
@@ -488,6 +508,52 @@ async function toggleCreditGroup(userId, statementId, { paid }) {
     const action = paid ? 'credit_group_paid' : 'credit_group_unpaid'
     const desc = paid ? 'Tarjeta de crédito marcada como pagada' : 'Tarjeta de crédito desmarcada'
     await log(userId, stmt.year, stmt.month, action, desc)
+    return buildEnrichedStatement(stmt, userId)
+}
+
+// Pagar/despagar UNA tarjeta del mes (por cardId; null = "Sin tarjeta").
+async function toggleCard(userId, statementId, { cardId, paid }) {
+    const stmt = await Statement.findOne({ _id: statementId, userId })
+    if (!stmt) throw myError('Statement not found', 404)
+    const now = new Date()
+    const target = cardId ? String(cardId) : null
+    const sameCard = (id) => (id ? String(id) : null) === target
+
+    // Items a crédito de este mes con esa tarjeta.
+    for (const cat of stmt.categories || []) {
+        for (const it of cat.items || []) {
+            if (isCreditItem(it) && sameCard(it.cardId)) {
+                it.isPaid = !!paid
+                it.paidAmount = paid ? (it.budgetedAmount || 0) : 0
+                it.paidAt = paid ? now : null
+            }
+        }
+    }
+    // Cuotas (de compras) con esa tarjeta que se facturan este mes.
+    const CreditPurchase = require('../creditPurchase/model')
+    const purchases = await CreditPurchase.find({ userId })
+    for (const p of purchases) {
+        if (!sameCard(p.cardId)) continue
+        let dirty = false
+        for (const c of p.cuotas) {
+            if (c.year === stmt.year && c.month === stmt.month) {
+                c.isPaid = !!paid
+                c.paidAmount = paid ? c.amount : 0
+                c.paidAt = paid ? now : null
+                dirty = true
+            }
+        }
+        if (dirty) await p.save()
+    }
+
+    await stmt.save()
+    let cardName = 'Sin tarjeta'
+    if (target) {
+        const meta = await require('../card/model').findById(target).lean()
+        cardName = meta ? meta.name : 'tarjeta'
+    }
+    await log(userId, stmt.year, stmt.month, paid ? 'card_paid' : 'card_unpaid',
+        `Tarjeta ${cardName} ${paid ? 'marcada como pagada' : 'desmarcada'}`)
     return buildEnrichedStatement(stmt, userId)
 }
 
@@ -1170,6 +1236,7 @@ module.exports = {
     addExtra, removeExtra, createSavings,
     addItemToCategory, removeItemFromCategory, updateItemCard, updateCategoryMeta,
     toggleCreditGroup,
+    toggleCard,
     convertMovement,
     compensate,
     allocateToCategory,

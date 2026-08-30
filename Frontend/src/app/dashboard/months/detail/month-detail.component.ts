@@ -7,7 +7,7 @@ import { LoanService } from '@services/loan.service';
 import { AccountService } from '@services/account.service';
 import { CardService } from '@services/card.service';
 import {
-  CategoryKind, ExtraType, LsCard, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementExtra, LsStatementItem, MONTH_NAMES
+  CategoryKind, ExtraType, LsCard, LsCardBreakdown, LsLoan, LsMonthlyStatement, LsStatementCategory, LsStatementExtra, LsStatementItem, MONTH_NAMES
 } from '@models/finance.models';
 import { sharedImports } from '@shared/shared.imports';
 import toastr from '@shared/utils/toastr';
@@ -1295,6 +1295,24 @@ export class MonthDetailComponent {
         this.stmt.set(updated);
         this.loading.set(false);
         toastr.success(checked ? 'Tarjeta marcada como pagada' : 'Tarjeta desmarcada', '');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        toastr.error(err.error?.message ?? 'Error', '');
+      }
+    });
+  }
+
+  payCard(cb: LsCardBreakdown, ev: Event) {
+    const s = this.stmt();
+    if (!s) return;
+    const checked = (ev.target as HTMLInputElement).checked;
+    this.loading.set(true);
+    this.svc.toggleCard(s._id, { cardId: cb.cardId, paid: checked }).subscribe({
+      next: (updated) => {
+        this.stmt.set(updated);
+        this.loading.set(false);
+        toastr.success(`${cb.name} ${checked ? 'pagada' : 'desmarcada'}`, '');
       },
       error: (err) => {
         this.loading.set(false);

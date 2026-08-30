@@ -2377,7 +2377,26 @@
       .dot-sep { color: $primary-faint; }
       .cb-cupo { color: $primary-faint; } } }
   .cb-amount { font-weight: 800; font-size: 16px; color: $credit; white-space: nowrap; }
+
+  .cb-check { display: inline-flex; align-items: center; flex: none;
+    input { width: 20px; height: 20px; accent-color: $success; cursor: pointer; } }
+  .cb-ok { color: $success; font-size: 14px; vertical-align: middle; }
+  .cb-paystate { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+
+  &.cb-paid {
+    .cb-name { color: $success; }
+    .cb-amount { color: $success; text-decoration: line-through; opacity: 0.7; }
+  }
 }
+
+// Pastillas pagado / por pagar (tarjeta)
+.pay-pill {
+  display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+  padding: 1px 8px; border-radius: 99px; white-space: nowrap;
+  &.paid { background: rgba($success, 0.14); color: $success; }
+  &.pend { background: rgba($credit, 0.14); color: $credit; }
+}
+.cat-budget.credit-total .pay-pill { margin-left: 4px; }
 
 // Opción destructiva dentro del menú ⋮
 .cuota-menu .cm-item.danger { color: $danger; border-color: color.adjust($danger, $lightness: 25%);

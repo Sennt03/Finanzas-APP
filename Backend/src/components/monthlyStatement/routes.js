@@ -7,6 +7,7 @@ const {
     setItemAmountValidator,
     extraValidator,
     toggleGroupValidator,
+    toggleCardValidator,
     convertValidator,
     addItemValidator,
     updateItemCardValidator,
@@ -84,6 +85,13 @@ router.post('/:id/savings', createSavingsValidator, async (req, res, next) => {
 router.post('/:id/credit-group', toggleGroupValidator, async (req, res, next) => {
     try {
         const data = await controller.toggleCreditGroup(req.user._id, req.params.id, req.body)
+        response.success(req, res, data)
+    } catch (e) { next(e) }
+})
+
+router.post('/:id/credit-card', toggleCardValidator, async (req, res, next) => {
+    try {
+        const data = await controller.toggleCard(req.user._id, req.params.id, req.body)
         response.success(req, res, data)
     } catch (e) { next(e) }
 })

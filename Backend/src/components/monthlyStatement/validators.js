@@ -50,6 +50,11 @@ const toggleGroupSchema = Joi.object({
     paid: Joi.boolean().required()
 })
 
+const toggleCardSchema = Joi.object({
+    cardId: Joi.string().allow(null, ''),
+    paid: Joi.boolean().required()
+})
+
 const addItemSchema = Joi.object({
     name: Joi.string().min(1).max(120).required(),
     budgetedAmount: Joi.number().min(0).default(0),
@@ -111,6 +116,7 @@ module.exports = {
     setItemAmountValidator: validatorHandler(setItemAmountSchema),
     extraValidator: validatorHandler(extraSchema),
     toggleGroupValidator: validatorHandler(toggleGroupSchema),
+    toggleCardValidator: validatorHandler(toggleCardSchema),
     convertValidator: validatorHandler(convertSchema),
     addItemValidator: validatorHandler(addItemSchema),
     updateItemCardValidator: validatorHandler(updateItemCardSchema),

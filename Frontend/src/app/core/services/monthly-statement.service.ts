@@ -50,6 +50,10 @@ export class MonthlyStatementService {
         return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/credit-group`, payload);
     }
 
+    toggleCard(id: string, payload: { cardId: string | null; paid: boolean }): Observable<LsMonthlyStatement> {
+        return this.http.post<LsMonthlyStatement>(`${this.url}/${id}/credit-card`, payload);
+    }
+
     convertMovement(id: string, payload: {
         source: { kind: 'item' | 'extra' | 'purchase'; categoryId?: string; itemId?: string; extraId?: string; purchaseId?: string };
         target: { type: 'expense' | 'income' | 'tdc' | 'diferido'; installments?: number; date?: string; categoryName?: string };
