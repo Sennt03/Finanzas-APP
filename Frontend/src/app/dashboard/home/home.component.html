@@ -72,21 +72,25 @@
             <span class="d-label">Saldo en cuenta</span>
             <strong>{{ s.summary.saldoEnCuenta | number:'1.2-2' }}</strong>
           </div>
-          <div class="detail-cell">
-            <span class="d-label">Saldo a tener (con préstamos)</span>
-            <strong>{{ s.summary.saldoATener | number:'1.2-2' }}</strong>
-          </div>
-          <div class="detail-cell">
-            <span class="d-label">Presupuestado</span>
-            <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
-          </div>
+          @if (s.summary.pendingLoansTotal > 0) {
+            <div class="detail-cell">
+              <span class="d-label">Saldo a tener (con préstamos)</span>
+              <strong>{{ s.summary.saldoATener | number:'1.2-2' }}</strong>
+            </div>
+          }
+          @if (budgetedDiffersFromSalary(s)) {
+            <div class="detail-cell">
+              <span class="d-label">Presupuestado</span>
+              <strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong>
+            </div>
+          }
           <div class="detail-cell">
             <span class="d-label">Ahorros (real)</span>
             <strong>{{ (savingsBalance() ?? 0) | number:'1.2-2' }}</strong>
           </div>
-          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0 || s.summary.creditCard.pending > 0) {
+          @if (s.summary.creditCard.pending > 0) {
             <div class="detail-cell">
-              <span class="d-label">Disponible real (pagando mi tarjeta)</span>
+              <span class="d-label">Disponible total (TDC pagada)</span>
               <strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong>
             </div>
           }
@@ -166,7 +170,9 @@
             <span class="sc-remaining">{{ sc.remaining | number:'1.2-2' }}</span>
           </div>
           <div class="sc-lines">
-            <span class="sc-line">Sin presupuestar (sueldo) <b>{{ sc.salaryAvailable | number:'1.2-2' }}</b></span>
+            @if (sc.salaryAvailable > 0) {
+              <span class="sc-line">Sin presupuestar (sueldo) <b>{{ sc.salaryAvailable | number:'1.2-2' }}</b></span>
+            }
             @if (sc.income > 0) {
               <span class="sc-line pos">+ Ingresos extra <b>{{ sc.income | number:'1.2-2' }}</b></span>
             }

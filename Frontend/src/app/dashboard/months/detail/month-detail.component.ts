@@ -260,6 +260,11 @@ export class MonthDetailComponent {
     return day >= cutoff;
   });
 
+  // "Presupuestado" solo se muestra si NO coincide con el sueldo (si coincide es redundante).
+  budgetedDiffersFromSalary(s: LsMonthlyStatement): boolean {
+    return Math.abs((s.summary?.totalBudgeted ?? 0) - (s.salary ?? 0)) > 0.005;
+  }
+
   cardName(id?: string | null): string {
     if (!id) return 'Sin tarjeta';
     return this.cardMap().get(id)?.name ?? 'Sin tarjeta';

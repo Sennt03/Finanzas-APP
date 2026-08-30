@@ -30,6 +30,11 @@ export class HomeComponent {
 
   user = signal<LsUser>({ ...LsUserDefault });
   months = signal<LsMonthlyStatement[]>([]);
+
+  // "Presupuestado" solo se muestra si NO coincide con el sueldo.
+  budgetedDiffersFromSalary(s: LsMonthlyStatement): boolean {
+    return Math.abs((s.summary?.totalBudgeted ?? 0) - (s.salary ?? 0)) > 0.005;
+  }
   cards = signal<LsCard[]>([]);
   savingsBalance = signal<number | null>(null);
   selectedId = signal<string | null>(null);

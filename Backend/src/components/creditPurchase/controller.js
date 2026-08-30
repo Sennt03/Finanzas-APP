@@ -376,6 +376,8 @@ module.exports = {
     findCuotasForMonth,
     findBudgetMonthData,
     budgetMonthOf,
+    crossesCutoff,
+    effectiveMode,
     calculateCuotas,
     setCuotaAmount,
     payBorrowerCuota,

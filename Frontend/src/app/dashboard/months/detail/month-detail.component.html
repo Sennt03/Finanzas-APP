@@ -74,14 +74,14 @@
       @if (showSaldos()) {
         <div class="saldo-detail">
           <div class="sd-cell"><span>Sueldo</span><strong>{{ s.salary | number:'1.2-2' }}</strong></div>
-          <div class="sd-cell"><span>Presupuestado</span><strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
+          @if (budgetedDiffersFromSalary(s)) {
+            <div class="sd-cell"><span>Presupuestado</span><strong>{{ s.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
+          }
           @if (s.summary.sinCategoria.salaryAvailable > 0) {
             <button type="button" class="sd-cell clickable" (click)="openAllocate('salary')" title="Crear una categoría con este dinero del sueldo">
               <span>Sin presupuestar (sueldo) <i class="bx bx-plus-circle"></i></span>
               <strong>{{ s.summary.sinCategoria.salaryAvailable | number:'1.2-2' }}</strong>
             </button>
-          } @else {
-            <div class="sd-cell"><span>Sin presupuestar (sueldo)</span><strong>{{ s.summary.availableToBudget | number:'1.2-2' }}</strong></div>
           }
           <div class="sd-cell"><span>Gastado</span><strong>{{ s.summary.totalPaid + s.summary.totalExtras | number:'1.2-2' }}</strong></div>
           @if (s.summary.sinCategoria.income > 0) {
@@ -97,9 +97,11 @@
             <div class="sd-cell"><span>Tarjeta retenida (sin cat.)</span><strong class="neg">−{{ s.summary.sinCategoria.cardConsumed | number:'1.2-2' }}</strong></div>
           }
           <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.saldoEnCuenta | number:'1.2-2' }}</strong></div>
-          <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.saldoATener | number:'1.2-2' }}</strong></div>
-          @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0 || s.summary.creditCard.pending > 0) {
-            <div class="sd-cell"><span>Disponible real <small>(pagando mi tarjeta)</small></span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
+          @if (s.summary.pendingLoansTotal > 0) {
+            <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.saldoATener | number:'1.2-2' }}</strong></div>
+          }
+          @if (s.summary.creditCard.pending > 0) {
+            <div class="sd-cell"><span>Disponible total <small>(TDC pagada)</small></span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
           }
         </div>
 
