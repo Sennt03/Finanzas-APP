@@ -59,11 +59,11 @@
             </button>
           </div>
           <div class="row"><span>Sueldo</span><strong>{{ m.salary | number:'1.2-2' }}</strong></div>
-          <div class="row"><span>Presupuestado</span><strong>{{ m.summary.totalBudgeted | number:'1.2-2' }}</strong></div>
           <div class="row"><span>Gastado</span><strong>{{ m.summary.totalPaid + m.summary.totalExtras | number:'1.2-2' }}</strong></div>
+          <div class="row"><span>Saldo en cuenta</span><strong>{{ m.summary.saldoEnCuenta | number:'1.2-2' }}</strong></div>
           <div class="row remaining">
-            <span>Disponible</span>
-            <strong>{{ m.summary.remainingSalary | number:'1.2-2' }}</strong>
+            <span>Disponible gastos yo</span>
+            <strong>{{ m.summary.puedoGastar | number:'1.2-2' }}</strong>
           </div>
         </a>
       }

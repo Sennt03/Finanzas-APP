@@ -30,36 +30,18 @@
         <div class="balance-group">
           <div class="balance-row">
             <div class="bal-label">
+              <span>Disponible gastos yo</span>
+              <small>lo que te queda para gastar</small>
+            </div>
+            <strong>{{ (t.puedoGastar ?? 0) | number:'1.2-2' }}</strong>
+          </div>
+          <div class="balance-row secondary-row">
+            <div class="bal-label">
               <span>Saldo cuenta</span>
               <small>dinero real en banco</small>
             </div>
-            <strong>{{ t.balance | number:'1.2-2' }}</strong>
+            <strong class="available-total">{{ t.balance | number:'1.2-2' }}</strong>
           </div>
-          @if (t.pendingLoansTotal > 0) {
-            <div class="balance-row loans-row">
-              <div class="bal-label">
-                <span>Con deudas cobradas</span>
-                <small>{{ t.pendingLoansTotal | number:'1.2-2' }} en préstamos pendientes</small>
-              </div>
-              <strong class="loans-total">{{ t.balance + t.pendingLoansTotal | number:'1.2-2' }}</strong>
-            </div>
-          }
-          <div class="balance-row secondary-row">
-            <div class="bal-label">
-              <span>Saldo disponible</span>
-              <small>descuenta TDC pendiente</small>
-            </div>
-            <strong class="available-total">{{ t.availableBalance | number:'1.2-2' }}</strong>
-          </div>
-          @if (t.pendingLoansTotal > 0) {
-            <div class="balance-row loans-available-row">
-              <div class="bal-label">
-                <span>Disponible con cobros</span>
-                <small>si cobras los {{ t.pendingLoansTotal | number:'1.2-2' }} pendientes</small>
-              </div>
-              <strong class="loans-available-total">{{ t.availableBalance + t.pendingLoansTotal | number:'1.2-2' }}</strong>
-            </div>
-          }
         </div>
       </div>
     }

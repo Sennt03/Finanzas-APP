@@ -12,6 +12,8 @@ export interface LsAccount {
     balance: number;
     availableBalance: number;
     pendingLoansTotal: number;
+    puedoGastar?: number;
+    saldoEnCuenta?: number;
     createdAt?: string;
     updatedAt?: string;
 }

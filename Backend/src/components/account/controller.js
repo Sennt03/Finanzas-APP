@@ -52,104 +52,20 @@ async function computeBalances(account) {
     const year = now.getFullYear()
     const month = now.getMonth() + 1
     const stmt = await MonthlyStatement.findOne({ userId: account.userId, year, month })
-    if (!stmt) return { balance: 0, availableBalance: 0 }
+    if (!stmt) return { balance: 0, availableBalance: 0, pendingLoansTotal: 0, puedoGastar: 0, saldoEnCuenta: 0 }
 
-    // Separate cash-paid items from credit items (mirrors buildEnrichedStatement logic)
-    let paidCash = 0
-    let itemsShare = 0
-    for (const cat of stmt.categories) {
-        for (const it of cat.items) {
-            if (it.paymentMethod === 'credit') {
-                itemsShare += it.budgetedAmount || 0
-            } else {
-                paidCash += it.paidAmount || 0
-            }
-        }
+    // Fuente única de verdad: el resumen enriquecido del mes (evita duplicar la lógica de
+    // saldos/tarjeta y mantenerla en sync con buildEnrichedStatement).
+    const msCtrl = require('../monthlyStatement/controller')
+    const enriched = await msCtrl.getOne(account.userId, stmt._id)
+    const s = enriched.summary
+    return {
+        balance: s.saldoEnCuenta,
+        availableBalance: s.availableBalance,
+        pendingLoansTotal: s.pendingLoansTotal,
+        puedoGastar: s.puedoGastar,
+        saldoEnCuenta: s.saldoEnCuenta
     }
-
-    const extrasExpense = (stmt.extras || [])
-        .filter(e => (e.type || 'expense') === 'expense')
-        .reduce((s, e) => s + (e.amount || 0), 0)
-    const extrasIncome = (stmt.extras || [])
-        .filter(e => e.type === 'income')
-        .reduce((s, e) => s + (e.amount || 0), 0)
-
-    const withdrawalsThisMonth = await SavingsMovement.find({
-        userId: account.userId, type: 'withdrawal',
-        date: { $gte: new Date(year, month - 1, 1), $lt: new Date(year, month, 1) }
-    })
-    // Excluir egresos ya registrados como ingreso vinculado en el mes (su +saldo lo
-    // aporta extrasIncome), para no contarlos dos veces. Mismo criterio que buildEnrichedStatement.
-    const linkedSavingsIds = new Set(
-        (stmt.extras || []).filter(e => e.linkedSavingsId).map(e => String(e.linkedSavingsId))
-    )
-    const wSum = withdrawalsThisMonth
-        .filter(m => !linkedSavingsIds.has(String(m._id)))
-        .reduce((s, m) => s + m.amount, 0)
-
-    // TDC/diferidos del mes
-    const purchases = await CreditPurchase.find({ userId: account.userId })
-    let tdcTotal = 0, tdcPaid = 0, difTotal = 0, difPaid = 0
-    const cs = stmt.creditState || {}
-    for (const p of purchases) {
-        const isDif = p.installments > 1
-        for (const c of p.cuotas) {
-            if (c.year === year && c.month === month) {
-                if (isDif) {
-                    difTotal += c.amount
-                    if (cs.diferidosPaid) difPaid += c.amount
-                } else {
-                    tdcTotal += c.amount
-                    if (cs.tdcPaid) tdcPaid += c.amount
-                }
-            }
-        }
-    }
-
-    const creditTotal = tdcTotal + difTotal + itemsShare
-    const creditPaid = cs.tdcPaid ? creditTotal : 0
-
-    const Loan = require('../loan/model')
-    const allCurrentLoans = await Loan.find({ userId: account.userId, currentStatementId: stmt._id })
-
-    const balancePendingTotal = allCurrentLoans
-        .filter(l => ['pending', 'transferred'].includes(l.status) && !l.fromSavings && !l.fromCard)
-        .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
-
-    const pendingLoansTotal = allCurrentLoans
-        .filter(l => l.status === 'pending' && !l.fromSavings && !l.fromCard)
-        .reduce((s, l) => s + (l.amount - (l.paidAmount || 0)), 0)
-
-    const paidFromSavingsNet = allCurrentLoans
-        .filter(l => l.fromSavings)
-        .reduce((s, l) => {
-            const collected = l.paidAmount || 0
-            const repaid = l.paidBackToSavings ? (l.amount || 0) : 0
-            return s + collected - repaid
-        }, 0)
-
-    const paidFromCardNet = allCurrentLoans
-        .filter(l => l.fromCard)
-        .reduce((s, l) => s + (l.paidAmount || 0), 0)
-
-    // Shared credit purchases: amount paid back by borrowers
-    let paidByBorrowerNet = 0
-    let sharedShare = 0
-    for (const p of purchases) {
-        if (!p.isShared) continue
-        for (const c of p.cuotas) {
-            if (c.year === year && c.month === month) {
-                paidByBorrowerNet += c.paidByBorrower || 0
-                sharedShare += c.amount
-            }
-        }
-    }
-
-    const base = stmt.salary - paidCash - extrasExpense + extrasIncome + wSum + paidFromSavingsNet + paidByBorrowerNet + paidFromCardNet
-    const realBalance = base - creditPaid - balancePendingTotal
-    const availableBalance = base - paidByBorrowerNet - (creditTotal - sharedShare) - balancePendingTotal
-
-    return { balance: realBalance, availableBalance, pendingLoansTotal }
 }
 
 module.exports = {
