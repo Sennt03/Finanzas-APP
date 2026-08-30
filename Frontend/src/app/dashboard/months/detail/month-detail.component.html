@@ -96,8 +96,8 @@
           @if (s.summary.sinCategoria.cardConsumed > 0) {
             <div class="sd-cell"><span>Tarjeta retenida (sin cat.)</span><strong class="neg">−{{ s.summary.sinCategoria.cardConsumed | number:'1.2-2' }}</strong></div>
           }
-          <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.availableBalance | number:'1.2-2' }}</strong></div>
-          <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.availableBalance + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo en cuenta</span><strong>{{ s.summary.remainingSalary | number:'1.2-2' }}</strong></div>
+          <div class="sd-cell"><span>Saldo a tener <small>(con préstamos)</small></span><strong>{{ s.summary.remainingSalary + s.summary.pendingLoansTotal | number:'1.2-2' }}</strong></div>
           @if (s.summary.apartado > 0 || s.summary.retainedFromPrev > 0) {
             <div class="sd-cell"><span>Disponible real</span><strong>{{ s.summary.disponibleReal | number:'1.2-2' }}</strong></div>
           }
@@ -398,7 +398,7 @@
                       @if (it.subType === 'diferido') { <span class="sub-tag dif">diferido</span> }
                       @if (it.categoryName) { <span class="cat-tag"><i class="bx bx-folder"></i> {{ it.categoryName }}</span> }
                       @if (it.billedLater) { <span class="pay-badge later">retenido desde {{ monthName(it.budgetMonth) }}</span> }
-                      @if (it.subType === 'tdc') {
+                      @if (it.subType === 'tdc' && it.crossesCutoff) {
                         <button type="button" class="mode-toggle" [class.defer]="it.budgetMode === 'defer'"
                           (click)="reassignBudgetMode(it.purchaseId!, it.budgetMode === 'defer' ? 'retain' : 'defer')"
                           [title]="it.budgetMode === 'defer' ? 'Se paga al facturar (no retiene). Click para retener en el mes de compra' : 'Se retiene en el mes de compra. Click para pagar al facturar'">
@@ -725,9 +725,15 @@
                 </select>
               </label>
             }
-            @if (txType() === 'tdc') {
+            @if (txType() === 'tdc' && !txCrossesCutoff()) {
+              <p class="span-full mode-hint">
+                <i class="bx bx-info-circle"></i>
+                Compra antes del corte: se factura y se paga <strong>este mismo mes</strong>, así que descuenta de su categoría (o del disponible) ahora. No hay que retener.
+              </p>
+            }
+            @if (txType() === 'tdc' && txCrossesCutoff()) {
               <div class="span-full mode-choice">
-                <span class="mode-label">¿Cómo manejas el dinero si se paga el mes siguiente?</span>
+                <span class="mode-label">Se paga el mes siguiente. ¿Cómo manejas el dinero?</span>
                 <div class="mode-options">
                   <button type="button" class="mode-opt" [class.sel]="txBudgetMode() === 'retain'" (click)="txBudgetMode.set('retain')">
                     <strong>Retener ahora</strong>

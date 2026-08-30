@@ -250,6 +250,16 @@ export class MonthDetailComponent {
   activeCards = computed(() => this.cards().filter(c => c.active));
   cardMap = computed(() => new Map(this.cards().map(c => [c._id, c])));
 
+  // Fase corte: la compra cruza el corte (día compra >= día corte de la tarjeta) → se factura
+  // el mes siguiente y ahí sí tiene sentido elegir retener/no retener. Si es antes del corte,
+  // se paga este mismo mes y se fuerza "retener" (descuenta este mes), sin mostrar la opción.
+  txCrossesCutoff = computed(() => {
+    const day = new Date(this.txDate() + 'T00:00:00').getDate();
+    const card = this.txCardId() ? this.cardMap().get(this.txCardId()!) : null;
+    const cutoff = card?.cutoffDay ?? 12;
+    return day >= cutoff;
+  });
+
   cardName(id?: string | null): string {
     if (!id) return 'Sin tarjeta';
     return this.cardMap().get(id)?.name ?? 'Sin tarjeta';
@@ -1175,7 +1185,8 @@ export class MonthDetailComponent {
         borrowerName: isShared ? borrowerName : undefined,
         cardId: this.txCardId(),
         categoryName: categoryName || undefined,
-        budgetMode: this.txBudgetMode()
+        // Antes del corte se paga este mismo mes → siempre 'retain' (descuenta ahora).
+        budgetMode: this.txCrossesCutoff() ? this.txBudgetMode() : 'retain'
       };
       const typeLabel = type === 'diferido' ? 'Diferido registrado' : 'Compra TDC registrada';
 

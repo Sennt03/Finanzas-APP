@@ -28,6 +28,21 @@ function calculateCuotas(purchaseDate, installments, totalAmount, cutoffDay) {
     return cuotas
 }
 
+// ¿La compra cruza el corte? (día de compra >= día de corte → se factura el mes SIGUIENTE).
+// Solo si cruza el corte tiene sentido elegir retener/no retener; si se compra antes del
+// corte, se factura y se paga este mismo mes → siempre "retain" (descuenta este mes).
+function crossesCutoff(p) {
+    if ((p.installments || 1) !== 1) return true // diferidos: cada cuota factura en un mes posterior
+    const d = new Date(p.purchaseDate)
+    return d.getDate() >= (p.cutoffDayUsed || 12)
+}
+
+// budgetMode efectivo: si la compra NO cruza el corte se paga este mismo mes, así que
+// se fuerza 'retain' aunque el guardado sea 'defer' (no hay "mes siguiente" que diferir).
+function effectiveMode(p) {
+    return crossesCutoff(p) ? (p.budgetMode || 'retain') : 'retain'
+}
+
 // Mes en el que la cuota `idx` CONSUME presupuesto (Fase 2):
 //   - Compra simple (1 cuota):
 //       · budgetMode 'retain' (default) → mes de la FECHA DE COMPRA (retengo/aparto ahora).
@@ -35,7 +50,7 @@ function calculateCuotas(purchaseDate, installments, totalAmount, cutoffDay) {
 //   - Diferido (N cuotas): cada cuota consume presupuesto en su propio mes de facturación.
 function budgetMonthOf(p, idx) {
     if ((p.installments || 1) === 1) {
-        if (p.budgetMode === 'defer') {
+        if (effectiveMode(p) === 'defer') {
             const c = p.cuotas[0]
             return { year: c.year, month: c.month }
         }
@@ -75,7 +90,8 @@ async function findCuotasForMonth(userId, year, month) {
                     cuotaId: c._id,
                     cardId: p.cardId ? String(p.cardId) : null,
                     categoryName: p.categoryName || '',
-                    budgetMode: p.budgetMode || 'retain',
+                    budgetMode: effectiveMode(p),
+                    crossesCutoff: crossesCutoff(p),
                     isShared: p.isShared || false,
                     borrowerName: p.borrowerName || '',
                     paidByBorrower: c.paidByBorrower || 0,
@@ -123,7 +139,7 @@ async function findBudgetMonthData(userId, year, month) {
                 const amt = c.amount
                 if (billedLater) apartado += amt
                 if (!p.categoryName) {
-                    if (p.budgetMode === 'defer') {
+                    if (effectiveMode(p) === 'defer') {
                         // No retenido: se presupuesta como "Avance" en su mes de facturación.
                         avanceItems.push({
                             purchaseId: String(p._id),

@@ -2251,6 +2251,14 @@
 .cards.summary .card.retained strong { color: $info; }
 .cards.summary .card.disponible strong { color: $success; &.neg { color: $danger; } }
 
+.tx-form .mode-hint {
+  display: flex; align-items: flex-start; gap: 8px; margin: 0;
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(59, 130, 246, 0.10); border: 1px solid rgba(59, 130, 246, 0.28);
+  font-size: 12.5px; line-height: 1.4; color: $primary-muted;
+  i { font-size: 16px; color: #3b82f6; flex-shrink: 0; margin-top: 1px; }
+  strong { color: $primary; }
+}
 .tx-form .mode-choice {
   display: flex; flex-direction: column; gap: 8px;
   .mode-label { font-size: 12px; font-weight: 600; color: $primary-muted; }

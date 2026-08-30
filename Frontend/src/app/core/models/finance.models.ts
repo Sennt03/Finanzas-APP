@@ -78,6 +78,7 @@ export interface LsStatementItem {
     cardId?: string | null;
     categoryName?: string;
     budgetMode?: 'retain' | 'defer';
+    crossesCutoff?: boolean;
     budgetYear?: number;
     budgetMonth?: number;
     billedLater?: boolean;
